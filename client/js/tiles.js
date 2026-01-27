@@ -1,24 +1,23 @@
-// Tile Loading System - OpenStreetMap tiles with OSRS dark filter
+// Tile Loading System - OpenStreetMap tiles on ground plane
 class TileManager {
-  constructor(apiKey) {
-    this.tiles = new Map(); // key: "x_y" -> { mesh, loading }
+  constructor() {
+    this.tiles = new Map(); // key: "z_x_y" -> { mesh, loading, texture }
     this.zoom = GAME_CONFIG.view3d.tileZoom;
     this.tilesPerSide = GAME_CONFIG.view3d.tilesPerSide;
-    this.worldTileSize = GAME_CONFIG.view3d.worldTileSize;
-    this.textureLoader = new THREE.TextureLoader();
     this.scene = null;
     this.centerLat = 0;
     this.centerLng = 0;
 
-    // Enable cross-origin loading
-    this.textureLoader.crossOrigin = 'anonymous';
+    // Calculate world scale: how many world units per degree of latitude
+    // This determines the overall scale of the 3D world
+    this.worldScale = GAME_CONFIG.view3d.worldScale;
   }
 
   setScene(scene) {
     this.scene = scene;
   }
 
-  // Calculate tile coordinates from lat/lng (standard Web Mercator)
+  // Standard Web Mercator: lat/lng to tile coordinates
   latLngToTileCoords(lat, lng, zoom) {
     const n = Math.pow(2, zoom);
     const x = Math.floor((lng + 180) / 360 * n);
@@ -27,7 +26,7 @@ class TileManager {
     return { x, y };
   }
 
-  // Calculate lat/lng from tile coordinates
+  // Tile coordinates to lat/lng (top-left corner of tile)
   tileCoordsToLatLng(x, y, zoom) {
     const n = Math.pow(2, zoom);
     const lng = x / n * 360 - 180;
@@ -36,55 +35,35 @@ class TileManager {
     return { lat, lng };
   }
 
-  // Get the center lat/lng for a tile
-  getTileCenter(tileX, tileY, zoom) {
-    return this.tileCoordsToLatLng(tileX + 0.5, tileY + 0.5, zoom);
+  // Get the bounds of a tile in lat/lng
+  getTileBounds(tileX, tileY, zoom) {
+    const topLeft = this.tileCoordsToLatLng(tileX, tileY, zoom);
+    const bottomRight = this.tileCoordsToLatLng(tileX + 1, tileY + 1, zoom);
+    return {
+      north: topLeft.lat,
+      south: bottomRight.lat,
+      west: topLeft.lng,
+      east: bottomRight.lng
+    };
   }
 
   // Get OpenStreetMap tile URL
   getTileUrl(tileX, tileY, zoom) {
-    // Use multiple subdomains for parallel loading
     const subdomains = ['a', 'b', 'c'];
     const subdomain = subdomains[Math.abs(tileX + tileY) % subdomains.length];
     return `https://${subdomain}.tile.openstreetmap.org/${zoom}/${tileX}/${tileY}.png`;
   }
 
-  // Load and darken a tile texture
-  async loadTileTexture(tileX, tileY, zoom) {
-    return new Promise((resolve, reject) => {
+  // Load tile texture (no filter, just raw OSM tile)
+  loadTileTexture(tileX, tileY, zoom) {
+    return new Promise((resolve) => {
       const url = this.getTileUrl(tileX, tileY, zoom);
-
-      // Load image manually to apply dark filter
       const img = new Image();
       img.crossOrigin = 'anonymous';
 
       img.onload = () => {
-        // Create canvas and apply dark OSRS filter
-        const canvas = document.createElement('canvas');
-        canvas.width = 256;
-        canvas.height = 256;
-        const ctx = canvas.getContext('2d');
-
-        // Draw the original tile
-        ctx.drawImage(img, 0, 0, 256, 256);
-
-        // Apply dark filter (similar to minimap style)
-        ctx.globalCompositeOperation = 'multiply';
-        ctx.fillStyle = '#3a3a3a';
-        ctx.fillRect(0, 0, 256, 256);
-
-        // Add slight color tint
-        ctx.globalCompositeOperation = 'overlay';
-        ctx.fillStyle = 'rgba(30, 25, 20, 0.3)';
-        ctx.fillRect(0, 0, 256, 256);
-
-        // Increase contrast slightly
-        ctx.globalCompositeOperation = 'source-over';
-        ctx.fillStyle = 'rgba(0, 0, 0, 0.2)';
-        ctx.fillRect(0, 0, 256, 256);
-
-        // Create Three.js texture from canvas
-        const texture = new THREE.CanvasTexture(canvas);
+        const texture = new THREE.Texture(img);
+        texture.needsUpdate = true;
         texture.colorSpace = THREE.SRGBColorSpace;
         texture.minFilter = THREE.LinearFilter;
         texture.magFilter = THREE.LinearFilter;
@@ -92,157 +71,142 @@ class TileManager {
       };
 
       img.onerror = () => {
-        // Create fallback dark texture
-        resolve(this.createFallbackTexture());
+        // Create fallback gray texture
+        const canvas = document.createElement('canvas');
+        canvas.width = 256;
+        canvas.height = 256;
+        const ctx = canvas.getContext('2d');
+        ctx.fillStyle = '#444444';
+        ctx.fillRect(0, 0, 256, 256);
+        ctx.strokeStyle = '#555555';
+        ctx.lineWidth = 1;
+        for (let i = 0; i <= 256; i += 32) {
+          ctx.beginPath();
+          ctx.moveTo(i, 0);
+          ctx.lineTo(i, 256);
+          ctx.stroke();
+          ctx.beginPath();
+          ctx.moveTo(0, i);
+          ctx.lineTo(256, i);
+          ctx.stroke();
+        }
+        const texture = new THREE.CanvasTexture(canvas);
+        texture.colorSpace = THREE.SRGBColorSpace;
+        resolve(texture);
       };
 
       img.src = url;
     });
   }
 
-  // Create a fallback dark texture
-  createFallbackTexture() {
-    const canvas = document.createElement('canvas');
-    canvas.width = 256;
-    canvas.height = 256;
-    const ctx = canvas.getContext('2d');
-
-    // Dark background
-    ctx.fillStyle = '#1a1a1a';
-    ctx.fillRect(0, 0, 256, 256);
-
-    // Grid lines
-    ctx.strokeStyle = '#2a2a2a';
-    ctx.lineWidth = 1;
-    for (let i = 0; i <= 256; i += 32) {
-      ctx.beginPath();
-      ctx.moveTo(i, 0);
-      ctx.lineTo(i, 256);
-      ctx.stroke();
-      ctx.beginPath();
-      ctx.moveTo(0, i);
-      ctx.lineTo(256, i);
-      ctx.stroke();
-    }
-
-    const texture = new THREE.CanvasTexture(canvas);
-    texture.colorSpace = THREE.SRGBColorSpace;
-    return texture;
-  }
-
-  // Convert lat/lng to world position (relative to center)
+  // Convert lat/lng to world position
   latLngToWorld(lat, lng) {
-    const scale = GAME_CONFIG.view3d.worldScale;
-    const x = (lng - this.centerLng) * scale * Math.cos(this.centerLat * Math.PI / 180);
-    const z = (this.centerLat - lat) * scale;
-    return { x, y: 0, z };
+    const x = (lng - this.centerLng) * this.worldScale * Math.cos(this.centerLat * Math.PI / 180);
+    const z = (this.centerLat - lat) * this.worldScale;
+    return { x, z };
   }
 
-  // Convert world position to lat/lng
-  worldToLatLng(x, z) {
-    const scale = GAME_CONFIG.view3d.worldScale;
-    const lng = this.centerLng + x / (scale * Math.cos(this.centerLat * Math.PI / 180));
-    const lat = this.centerLat - z / scale;
-    return { lat, lng };
-  }
+  // Create mesh for a tile - positioned and sized to match its geographic bounds
+  createTileMesh(tileX, tileY, zoom, texture) {
+    const bounds = this.getTileBounds(tileX, tileY, zoom);
 
-  // Create a ground plane mesh for a tile
-  createTileMesh(worldX, worldZ, texture) {
-    const geometry = new THREE.PlaneGeometry(this.worldTileSize, this.worldTileSize);
+    // Convert tile corners to world coordinates
+    const topLeft = this.latLngToWorld(bounds.north, bounds.west);
+    const bottomRight = this.latLngToWorld(bounds.south, bounds.east);
+
+    // Calculate tile size in world units
+    const width = bottomRight.x - topLeft.x;
+    const height = bottomRight.z - topLeft.z;
+
+    // Calculate tile center in world units
+    const centerX = (topLeft.x + bottomRight.x) / 2;
+    const centerZ = (topLeft.z + bottomRight.z) / 2;
+
+    const geometry = new THREE.PlaneGeometry(width, height);
     const material = new THREE.MeshBasicMaterial({
       map: texture,
       side: THREE.FrontSide
     });
+
     const mesh = new THREE.Mesh(geometry, material);
-    mesh.rotation.x = -Math.PI / 2; // Rotate to be horizontal
-    mesh.position.set(worldX, 0, worldZ);
+    mesh.rotation.x = -Math.PI / 2; // Lay flat
+    mesh.position.set(centerX, 0, centerZ);
+
     return mesh;
   }
 
-  // Update tiles based on player position
+  // Update tiles around player position
   async updateTiles(playerLat, playerLng) {
     if (!this.scene) return;
 
-    // Set center if not set
+    // Set center on first call
     if (this.centerLat === 0 && this.centerLng === 0) {
       this.centerLat = playerLat;
       this.centerLng = playerLng;
     }
 
     const halfTiles = Math.floor(this.tilesPerSide / 2);
-
-    // Calculate the base tile coordinates for the player position
     const baseTile = this.latLngToTileCoords(playerLat, playerLng, this.zoom);
-
-    // Track which tiles should exist
     const neededTiles = new Set();
 
-    // Create/update tiles in a grid around the player
+    // Load tiles in grid around player
     for (let dx = -halfTiles; dx <= halfTiles; dx++) {
       for (let dy = -halfTiles; dy <= halfTiles; dy++) {
         const tileX = baseTile.x + dx;
         const tileY = baseTile.y + dy;
-        const key = `${tileX}_${tileY}`;
+        const key = `${this.zoom}_${tileX}_${tileY}`;
         neededTiles.add(key);
 
-        // Skip if tile already exists or is loading
         if (this.tiles.has(key)) continue;
 
         // Mark as loading
-        this.tiles.set(key, { mesh: null, loading: true });
+        this.tiles.set(key, { mesh: null, loading: true, texture: null });
 
-        // Get tile center lat/lng
-        const tileCenter = this.getTileCenter(tileX, tileY, this.zoom);
-
-        // Calculate world position
-        const worldPos = this.latLngToWorld(tileCenter.lat, tileCenter.lng);
-
-        // Load texture and create mesh (async)
+        // Load texture and create mesh
         this.loadTileTexture(tileX, tileY, this.zoom).then(texture => {
-          // Check if tile is still needed
           if (!this.tiles.has(key)) {
             texture.dispose();
             return;
           }
 
-          const mesh = this.createTileMesh(worldPos.x, worldPos.z, texture);
+          const mesh = this.createTileMesh(tileX, tileY, this.zoom, texture);
           this.scene.add(mesh);
           this.tiles.set(key, { mesh, loading: false, texture });
         });
       }
     }
 
-    // Remove tiles that are too far away
+    // Remove distant tiles
     for (const [key, tile] of this.tiles.entries()) {
       if (!neededTiles.has(key)) {
         if (tile.mesh) {
           this.scene.remove(tile.mesh);
-          if (tile.texture) {
-            tile.texture.dispose();
-          }
-          tile.mesh.material.dispose();
           tile.mesh.geometry.dispose();
+          tile.mesh.material.dispose();
+        }
+        if (tile.texture) {
+          tile.texture.dispose();
         }
         this.tiles.delete(key);
       }
     }
   }
 
-  // Clean up all tiles
+  // Clean up
   dispose() {
     for (const [key, tile] of this.tiles.entries()) {
       if (tile.mesh) {
         this.scene.remove(tile.mesh);
-        if (tile.texture) {
-          tile.texture.dispose();
-        }
-        tile.mesh.material.dispose();
         tile.mesh.geometry.dispose();
+        tile.mesh.material.dispose();
+      }
+      if (tile.texture) {
+        tile.texture.dispose();
       }
     }
     this.tiles.clear();
   }
 }
 
-// Export for use in other modules
+// Export
 window.TileManager = TileManager;

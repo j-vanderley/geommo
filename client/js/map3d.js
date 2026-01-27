@@ -71,7 +71,7 @@ class Map3D {
     this.scene.add(ambientLight);
 
     // Create tile manager
-    this.tileManager = new TileManager(this.apiKey);
+    this.tileManager = new TileManager();
     this.tileManager.setScene(this.scene);
 
     // Bind events

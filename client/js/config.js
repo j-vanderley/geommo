@@ -87,17 +87,15 @@ const GAME_CONFIG = {
   // 3D View settings
   view3d: {
     enabled: true,                  // Enable 3D view (set false for 2D fallback)
-    tileZoom: 18,                   // Google Maps zoom level for tiles
-    tileSize: 640,                  // Static map image size (max 640 for free tier)
-    tilesPerSide: 5,                // 5x5 grid of tiles around player
-    worldTileSize: 50,              // Size of each tile in world units
-    worldScale: 5000,               // Scale factor for lat/lng to world units
-    cameraDistance: 40,             // Default camera distance from player
-    cameraPitch: 0.8,               // Camera tilt angle (~45 degrees)
+    tileZoom: 16,                   // OSM zoom level (lower = larger tiles, 16 is good balance)
+    tilesPerSide: 7,                // 7x7 grid of tiles around player
+    worldScale: 8000,               // Scale factor for lat/lng to world units
+    cameraDistance: 60,             // Default camera distance from player
+    cameraPitch: 0.7,               // Camera tilt angle (~40 degrees)
     cameraRotateSpeed: 0.005,       // Mouse drag rotation speed
-    cameraZoomSpeed: 3,             // Scroll wheel zoom speed
-    cameraMinDistance: 15,          // Minimum zoom distance
-    cameraMaxDistance: 120,         // Maximum zoom distance
-    playerSpriteSize: 3,            // Size of player sprites in world units
+    cameraZoomSpeed: 5,             // Scroll wheel zoom speed
+    cameraMinDistance: 20,          // Minimum zoom distance
+    cameraMaxDistance: 200,         // Maximum zoom distance
+    playerSpriteSize: 4,            // Size of player sprites in world units
   }
 };
