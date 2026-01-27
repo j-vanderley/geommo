@@ -631,40 +631,75 @@ body {
   color: var(--osrs-text-light);
 }
 
-.color-options {
+/* Color picker row */
+.color-picker-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.color-picker {
+  width: 60px;
+  height: 40px;
+  border: 2px solid var(--osrs-border);
+  border-radius: 4px;
+  cursor: pointer;
+  background: transparent;
+  padding: 2px;
+}
+
+.color-picker::-webkit-color-swatch-wrapper {
+  padding: 0;
+}
+
+.color-picker::-webkit-color-swatch {
+  border: none;
+  border-radius: 2px;
+}
+
+.color-hex {
+  font-family: 'Courier New', monospace;
+  font-size: 14px;
+  color: var(--osrs-text);
+  text-transform: uppercase;
+}
+
+/* Theme options */
+.theme-options {
   display: grid;
   grid-template-columns: repeat(5, 1fr);
   gap: 8px;
 }
 
-.color-option {
-  width: 100%;
-  aspect-ratio: 1;
-  border-radius: 50%;
+.theme-option {
+  padding: 8px 4px;
+  text-align: center;
+  background: rgba(0, 0, 0, 0.3);
+  border: 2px solid var(--osrs-border);
+  border-radius: 6px;
   cursor: pointer;
-  border: 3px solid transparent;
   transition: all 0.2s;
-  position: relative;
 }
 
-.color-option:hover {
-  transform: scale(1.1);
+.theme-option:hover {
+  transform: translateY(-2px);
 }
 
-.color-option.selected {
+.theme-option.selected {
   border-color: #fff;
-  box-shadow: 0 0 10px currentColor;
+  box-shadow: 0 0 10px rgba(255, 255, 255, 0.3);
 }
 
-.color-option::after {
-  content: attr(data-name);
-  position: absolute;
-  bottom: -18px;
-  left: 50%;
-  transform: translateX(-50%);
+.theme-option .theme-preview {
+  width: 100%;
+  height: 24px;
+  border-radius: 3px;
+  margin-bottom: 4px;
+}
+
+.theme-option .theme-name {
   font-size: 10px;
   color: var(--osrs-text);
-  white-space: nowrap;
 }
 
 #avatar-submit-btn {
@@ -674,34 +709,177 @@ body {
   font-size: 18px;
 }
 
-/* Theme color variables - applied dynamically */
-body.theme-gold { --theme-color: #ffb000; }
-body.theme-red { --theme-color: #ff4444; }
-body.theme-blue { --theme-color: #4488ff; }
-body.theme-green { --theme-color: #44ff88; }
-body.theme-purple { --theme-color: #aa44ff; }
-body.theme-pink { --theme-color: #ff66aa; }
-body.theme-cyan { --theme-color: #44ffff; }
-body.theme-orange { --theme-color: #ff8844; }
-body.theme-lime { --theme-color: #aaff44; }
-body.theme-white { --theme-color: #ffffff; }
+/* ===== UI THEMES ===== */
 
-/* Apply theme color to UI elements */
-body[class*="theme-"] .panel-header {
-  border-bottom: 2px solid var(--theme-color);
+/* Classic Theme (default OSRS style) */
+body.ui-classic {
+  --ui-primary: #ffb000;
+  --ui-secondary: #ff981f;
+  --ui-background: rgba(0, 0, 0, 0.85);
+  --ui-panel: #494034;
+  --ui-border: #5d5447;
+  --ui-text: #ffff00;
+  --ui-text-muted: #ff981f;
+  --ui-font: "Courier New", monospace;
+  --ui-radius: 4px;
 }
 
-body[class*="theme-"] .ui-panel {
-  border-color: var(--theme-color);
+/* Midnight Theme */
+body.ui-midnight {
+  --ui-primary: #60a5fa;
+  --ui-secondary: #93c5fd;
+  --ui-background: rgba(15, 23, 42, 0.92);
+  --ui-panel: #1e293b;
+  --ui-border: #334155;
+  --ui-text: #f1f5f9;
+  --ui-text-muted: #94a3b8;
+  --ui-font: "Segoe UI", system-ui, sans-serif;
+  --ui-radius: 8px;
 }
 
-body[class*="theme-"] #player-name {
-  color: var(--theme-color);
+/* Cyber Theme */
+body.ui-cyber {
+  --ui-primary: #00ff88;
+  --ui-secondary: #00ffff;
+  --ui-background: rgba(0, 10, 20, 0.9);
+  --ui-panel: #0a1628;
+  --ui-border: #00ff8855;
+  --ui-text: #00ff88;
+  --ui-text-muted: #00aa66;
+  --ui-font: "Courier New", monospace;
+  --ui-radius: 2px;
 }
 
-body[class*="theme-"] .player-name-label.self {
-  color: var(--theme-color);
-  border-color: var(--theme-color);
+/* Forest Theme */
+body.ui-forest {
+  --ui-primary: #86efac;
+  --ui-secondary: #a3e635;
+  --ui-background: rgba(20, 30, 20, 0.88);
+  --ui-panel: #1a2e1a;
+  --ui-border: #3d5a3d;
+  --ui-text: #d9f99d;
+  --ui-text-muted: #86efac;
+  --ui-font: Georgia, serif;
+  --ui-radius: 12px;
+}
+
+/* Ocean Theme */
+body.ui-ocean {
+  --ui-primary: #38bdf8;
+  --ui-secondary: #22d3ee;
+  --ui-background: rgba(8, 20, 40, 0.9);
+  --ui-panel: #0c1929;
+  --ui-border: #1e3a5f;
+  --ui-text: #e0f2fe;
+  --ui-text-muted: #7dd3fc;
+  --ui-font: "Trebuchet MS", sans-serif;
+  --ui-radius: 6px;
+}
+
+/* Apply theme to UI elements */
+body[class*="ui-"] .ui-panel {
+  background: var(--ui-background);
+  border-color: var(--ui-border);
+  border-radius: var(--ui-radius);
+  font-family: var(--ui-font);
+}
+
+body[class*="ui-"] .panel-header {
+  background: linear-gradient(180deg, var(--ui-border) 0%, var(--ui-panel) 100%);
+  color: var(--ui-primary);
+  border-radius: var(--ui-radius) var(--ui-radius) 0 0;
+}
+
+body[class*="ui-"] #player-name {
+  color: var(--ui-text);
+}
+
+body[class*="ui-"] #player-coords {
+  color: var(--ui-text-muted);
+}
+
+body[class*="ui-"] #player-list li {
+  color: var(--ui-text-muted);
+  border-color: rgba(255, 255, 255, 0.1);
+}
+
+body[class*="ui-"] #player-list li:hover {
+  background: rgba(255, 255, 255, 0.05);
+  color: var(--ui-text);
+}
+
+body[class*="ui-"] #player-list li.self {
+  color: var(--ui-primary);
+}
+
+body[class*="ui-"] .chat-message .sender {
+  color: var(--ui-text);
+}
+
+body[class*="ui-"] .chat-message .text {
+  color: var(--ui-text-muted);
+}
+
+body[class*="ui-"] .chat-message.global .sender {
+  color: var(--ui-secondary);
+}
+
+body[class*="ui-"] #chat-input {
+  background: rgba(0, 0, 0, 0.3);
+  border-color: var(--ui-border);
+  color: var(--ui-text);
+  font-family: var(--ui-font);
+}
+
+body[class*="ui-"] #chat-input:focus {
+  border-color: var(--ui-primary);
+}
+
+body[class*="ui-"] .osrs-btn {
+  background: linear-gradient(180deg, var(--ui-border) 0%, var(--ui-panel) 100%);
+  border-color: var(--ui-border);
+  color: var(--ui-text-muted);
+  font-family: var(--ui-font);
+  border-radius: var(--ui-radius);
+}
+
+body[class*="ui-"] .osrs-btn:hover {
+  color: var(--ui-text);
+}
+
+body[class*="ui-"] #city-select {
+  background: rgba(0, 0, 0, 0.3);
+  border-color: var(--ui-border);
+  color: var(--ui-text-muted);
+  font-family: var(--ui-font);
+  border-radius: var(--ui-radius);
+}
+
+body[class*="ui-"] #controls-hint {
+  background: var(--ui-background);
+  border-color: var(--ui-border);
+  color: var(--ui-text-muted);
+  font-family: var(--ui-font);
+  border-radius: var(--ui-radius);
+}
+
+body[class*="ui-"] #controls-hint strong {
+  color: var(--ui-primary);
+}
+
+body[class*="ui-"] .player-name-label {
+  background: var(--ui-background);
+  border-color: var(--ui-border);
+  font-family: var(--ui-font);
+  border-radius: var(--ui-radius);
+}
+
+body[class*="ui-"] .chat-bubble-3d {
+  background: var(--ui-background);
+  border-color: var(--ui-border);
+  color: var(--ui-text);
+  font-family: var(--ui-font);
+  border-radius: calc(var(--ui-radius) * 2);
 }
 
 /* 3D View Controls Hint */

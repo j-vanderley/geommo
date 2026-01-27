@@ -135,17 +135,18 @@ class GeoMMO {
 
   setupAvatarSelector() {
     const examplesGrid = document.getElementById('avatar-examples');
-    const colorOptions = document.getElementById('color-options');
+    const colorPicker = document.getElementById('color-picker');
+    const colorHex = document.getElementById('color-hex');
+    const themeOptions = document.getElementById('theme-options');
     const avatarInput = document.getElementById('avatar-input');
-    const previewText = document.getElementById('preview-text');
-    const previewCircle = document.getElementById('preview-circle');
     const submitBtn = document.getElementById('avatar-submit-btn');
 
-    // Current selection state
+    // Current selection state - load saved UI theme if available
+    const savedUITheme = localStorage.getItem('ui_theme') || 'classic';
     this.avatarSelection = {
       text: ':-)',
-      color: COLOR_OPTIONS[0].hex,
-      theme: COLOR_OPTIONS[0].theme
+      color: '#ffb000',
+      uiTheme: savedUITheme
     };
 
     // Populate avatar examples
@@ -160,20 +161,29 @@ class GeoMMO {
       examplesGrid.appendChild(option);
     });
 
-    // Populate color options
-    COLOR_OPTIONS.forEach((color, index) => {
+    // Color picker handler
+    colorPicker.addEventListener('input', (e) => {
+      this.avatarSelection.color = e.target.value;
+      colorHex.textContent = e.target.value;
+      this.updateAvatarPreview();
+    });
+
+    // Populate UI theme options
+    UI_THEMES.forEach((theme, index) => {
       const option = document.createElement('div');
-      option.className = 'color-option' + (index === 0 ? ' selected' : '');
-      option.style.backgroundColor = color.hex;
-      option.setAttribute('data-name', color.name);
+      const isSelected = theme.id === savedUITheme;
+      option.className = 'theme-option' + (isSelected ? ' selected' : '');
+      option.innerHTML = `
+        <div class="theme-preview" style="background: linear-gradient(135deg, ${theme.colors.primary} 0%, ${theme.colors.panel} 100%);"></div>
+        <div class="theme-name">${theme.name}</div>
+      `;
       option.addEventListener('click', () => {
-        document.querySelectorAll('.color-option').forEach(o => o.classList.remove('selected'));
+        document.querySelectorAll('.theme-option').forEach(o => o.classList.remove('selected'));
         option.classList.add('selected');
-        this.avatarSelection.color = color.hex;
-        this.avatarSelection.theme = color.theme;
-        this.updateAvatarPreview();
+        this.avatarSelection.uiTheme = theme.id;
+        this.applyUITheme(theme.id);
       });
-      colorOptions.appendChild(option);
+      themeOptions.appendChild(option);
     });
 
     // Input change handler
@@ -203,15 +213,15 @@ class GeoMMO {
   async submitAvatar() {
     const text = this.avatarSelection.text || ':-)';
     const color = this.avatarSelection.color || '#ffb000';
-    const theme = this.avatarSelection.theme || 'gold';
+    const uiTheme = this.avatarSelection.uiTheme || 'classic';
 
-    this.selectedAvatar = { text, color, theme };
+    this.selectedAvatar = { text, color };
 
     // Save to localStorage
     localStorage.setItem(`avatar_${this.getUserId()}`, JSON.stringify(this.selectedAvatar));
 
-    // Apply theme
-    this.applyTheme(theme);
+    // Apply UI theme (stored separately from avatar)
+    this.applyUITheme(uiTheme);
 
     // If already in game, update avatar on server
     if (this.socket && this.socket.connected) {
@@ -227,11 +237,14 @@ class GeoMMO {
     }
   }
 
-  applyTheme(theme) {
-    // Remove existing theme classes
-    document.body.className = document.body.className.replace(/theme-\w+/g, '');
-    // Add new theme class
-    document.body.classList.add(`theme-${theme}`);
+  applyUITheme(themeId) {
+    // Remove existing UI theme classes
+    document.body.className = document.body.className.replace(/ui-\w+/g, '');
+    // Add new UI theme class
+    document.body.classList.add(`ui-${themeId}`);
+
+    // Save to localStorage
+    localStorage.setItem('ui_theme', themeId);
   }
 
   showAvatarSelector() {
@@ -255,15 +268,21 @@ class GeoMMO {
     // Pre-fill current avatar if exists
     if (this.selectedAvatar) {
       document.getElementById('avatar-input').value = this.selectedAvatar.text;
-      this.avatarSelection = { ...this.selectedAvatar };
+      document.getElementById('color-picker').value = this.selectedAvatar.color || '#ffb000';
+      document.getElementById('color-hex').textContent = this.selectedAvatar.color || '#ffb000';
+
+      this.avatarSelection = {
+        text: this.selectedAvatar.text,
+        color: this.selectedAvatar.color || '#ffb000',
+        uiTheme: localStorage.getItem('ui_theme') || 'classic'
+      };
       this.updateAvatarPreview();
 
-      // Select the current color
-      const colorOptions = document.querySelectorAll('.color-option');
-      colorOptions.forEach(opt => {
+      // Select the current UI theme
+      const savedTheme = localStorage.getItem('ui_theme') || 'classic';
+      document.querySelectorAll('.theme-option').forEach((opt, index) => {
         opt.classList.remove('selected');
-        if (opt.style.backgroundColor === this.selectedAvatar.color ||
-            this.rgbToHex(opt.style.backgroundColor) === this.selectedAvatar.color.toLowerCase()) {
+        if (UI_THEMES[index]?.id === savedTheme) {
           opt.classList.add('selected');
         }
       });
@@ -309,10 +328,9 @@ class GeoMMO {
     document.getElementById('avatar-screen').classList.add('hidden');
     document.getElementById('game-screen').classList.remove('hidden');
 
-    // Apply theme
-    if (this.selectedAvatar && this.selectedAvatar.theme) {
-      this.applyTheme(this.selectedAvatar.theme);
-    }
+    // Apply saved UI theme
+    const savedUITheme = localStorage.getItem('ui_theme') || 'classic';
+    this.applyUITheme(savedUITheme);
 
     // Initialize map
     this.mapManager = new MapManager();

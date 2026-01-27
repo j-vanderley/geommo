@@ -44,7 +44,7 @@
   <!-- Avatar Customization Screen -->
   <div id="avatar-screen" class="screen hidden">
     <div class="avatar-selector-box">
-      <h2>Customize Your Avatar</h2>
+      <h2>Customize Your Look</h2>
 
       <div class="avatar-preview">
         <div id="preview-circle" class="preview-circle">
@@ -64,7 +64,15 @@
 
       <div class="avatar-section">
         <label>Your Color</label>
-        <div id="color-options" class="color-options"></div>
+        <div class="color-picker-row">
+          <input type="color" id="color-picker" class="color-picker" value="#ffb000">
+          <span id="color-hex" class="color-hex">#ffb000</span>
+        </div>
+      </div>
+
+      <div class="avatar-section">
+        <label>UI Theme</label>
+        <div id="theme-options" class="theme-options"></div>
       </div>
 
       <button id="avatar-submit-btn" class="osrs-btn">Enter Game</button>

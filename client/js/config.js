@@ -19,18 +19,88 @@ const AVATAR_EXAMPLES = [
   '(:', '):', '><', '^^', 'uwu', 'owo', ':^)', '8-)',
 ];
 
-// Color options for player avatar
-const COLOR_OPTIONS = [
-  { name: 'Gold', hex: '#ffb000', theme: 'gold' },
-  { name: 'Red', hex: '#ff4444', theme: 'red' },
-  { name: 'Blue', hex: '#4488ff', theme: 'blue' },
-  { name: 'Green', hex: '#44ff88', theme: 'green' },
-  { name: 'Purple', hex: '#aa44ff', theme: 'purple' },
-  { name: 'Pink', hex: '#ff66aa', theme: 'pink' },
-  { name: 'Cyan', hex: '#44ffff', theme: 'cyan' },
-  { name: 'Orange', hex: '#ff8844', theme: 'orange' },
-  { name: 'Lime', hex: '#aaff44', theme: 'lime' },
-  { name: 'White', hex: '#ffffff', theme: 'white' },
+// UI Theme options
+const UI_THEMES = [
+  {
+    id: 'classic',
+    name: 'Classic',
+    description: 'OSRS-inspired warm tones',
+    colors: {
+      primary: '#ffb000',
+      secondary: '#ff981f',
+      background: 'rgba(0, 0, 0, 0.85)',
+      panel: '#494034',
+      border: '#5d5447',
+      text: '#ffff00',
+      textMuted: '#ff981f'
+    },
+    font: '"Courier New", monospace',
+    panelRadius: '4px'
+  },
+  {
+    id: 'midnight',
+    name: 'Midnight',
+    description: 'Sleek dark mode',
+    colors: {
+      primary: '#60a5fa',
+      secondary: '#93c5fd',
+      background: 'rgba(15, 23, 42, 0.92)',
+      panel: '#1e293b',
+      border: '#334155',
+      text: '#f1f5f9',
+      textMuted: '#94a3b8'
+    },
+    font: '"Segoe UI", system-ui, sans-serif',
+    panelRadius: '8px'
+  },
+  {
+    id: 'cyber',
+    name: 'Cyber',
+    description: 'Neon futuristic',
+    colors: {
+      primary: '#00ff88',
+      secondary: '#00ffff',
+      background: 'rgba(0, 10, 20, 0.9)',
+      panel: '#0a1628',
+      border: '#00ff8855',
+      text: '#00ff88',
+      textMuted: '#00aa66'
+    },
+    font: '"Orbitron", "Courier New", monospace',
+    panelRadius: '2px'
+  },
+  {
+    id: 'forest',
+    name: 'Forest',
+    description: 'Natural earth tones',
+    colors: {
+      primary: '#86efac',
+      secondary: '#a3e635',
+      background: 'rgba(20, 30, 20, 0.88)',
+      panel: '#1a2e1a',
+      border: '#3d5a3d',
+      text: '#d9f99d',
+      textMuted: '#86efac'
+    },
+    font: 'Georgia, serif',
+    panelRadius: '12px'
+  },
+  {
+    id: 'ocean',
+    name: 'Ocean',
+    description: 'Deep sea blues',
+    colors: {
+      primary: '#38bdf8',
+      secondary: '#22d3ee',
+      background: 'rgba(8, 20, 40, 0.9)',
+      panel: '#0c1929',
+      border: '#1e3a5f',
+      text: '#e0f2fe',
+      textMuted: '#7dd3fc'
+    },
+    font: '"Trebuchet MS", sans-serif',
+    panelRadius: '6px'
+  }
 ];
 
 // Major cities for fast travel
