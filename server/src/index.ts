@@ -59,10 +59,27 @@ io.on('connection', (socket) => {
   // Authentication
   socket.on('player:authenticate', async (data) => {
     try {
-      // Verify Firebase ID token
-      const decodedToken = await admin.auth().verifyIdToken(data.token);
-      const odId = decodedToken.uid;
-      const username = decodedToken.name || decodedToken.email || `Player_${odId.slice(0, 6)}`;
+      let odId: string;
+      let username: string;
+
+      if (data.authType === 'wallet') {
+        // Wallet-based authentication (Phantom)
+        if (!data.walletAddress) {
+          socket.emit('auth:error', { message: 'Wallet address required' });
+          return;
+        }
+        odId = data.walletAddress;
+        username = data.username || `${data.walletAddress.slice(0, 4)}...${data.walletAddress.slice(-4)}`;
+      } else {
+        // Firebase token authentication
+        if (!data.token) {
+          socket.emit('auth:error', { message: 'Token required' });
+          return;
+        }
+        const decodedToken = await admin.auth().verifyIdToken(data.token);
+        odId = decodedToken.uid;
+        username = decodedToken.name || decodedToken.email || `Player_${odId.slice(0, 6)}`;
+      }
 
       // Add player to the game
       const player = await playerManager.addPlayer(socket.id, odId, username, data.flag);
@@ -76,7 +93,7 @@ io.on('connection', (socket) => {
       // Broadcast new player to all other players
       socket.broadcast.emit('player:joined', player);
 
-      console.log(`Player authenticated: ${username} (${odId})`);
+      console.log(`Player authenticated: ${username} (${odId}) via ${data.authType}`);
     } catch (error) {
       console.error('Authentication error:', error);
       socket.emit('auth:error', { message: 'Authentication failed' });

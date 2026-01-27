@@ -96,6 +96,70 @@ body {
   height: 20px;
 }
 
+/* Login divider */
+.login-divider {
+  display: flex;
+  align-items: center;
+  margin: 20px 0;
+  color: var(--osrs-text);
+}
+
+.login-divider::before,
+.login-divider::after {
+  content: '';
+  flex: 1;
+  border-bottom: 1px solid var(--osrs-border);
+}
+
+.login-divider span {
+  padding: 0 15px;
+  font-size: 12px;
+}
+
+/* Phantom button */
+.phantom-btn {
+  background: linear-gradient(180deg, #5d47a3 0%, #3d2680 100%);
+  border-color: #7c5dc4;
+}
+
+.phantom-btn:hover {
+  background: linear-gradient(180deg, #7d67b3 0%, #4d3690 100%);
+}
+
+/* Username input */
+.osrs-input {
+  width: 100%;
+  background: rgba(0, 0, 0, 0.5);
+  border: 2px solid var(--osrs-border);
+  color: var(--osrs-text-light);
+  padding: 12px 16px;
+  font-family: inherit;
+  font-size: 16px;
+  margin-bottom: 15px;
+  text-align: center;
+}
+
+.osrs-input:focus {
+  outline: none;
+  border-color: var(--osrs-gold);
+}
+
+.osrs-input::placeholder {
+  color: var(--osrs-text);
+}
+
+#wallet-address-display {
+  color: var(--osrs-text);
+  font-size: 12px;
+  margin-bottom: 20px;
+  word-break: break-all;
+}
+
+#username-screen .login-box h2 {
+  color: var(--osrs-gold);
+  margin-bottom: 10px;
+}
+
 /* Game Screen */
 #game-screen {
   position: relative;
@@ -104,6 +168,14 @@ body {
 #map {
   width: 100%;
   height: 100%;
+  position: relative;
+}
+
+/* Three.js Canvas */
+#map canvas {
+  display: block;
+  width: 100% !important;
+  height: 100% !important;
 }
 
 /* UI Overlay */
@@ -299,7 +371,7 @@ body {
   font-size: 12px;
 }
 
-/* Chat Bubbles on Map */
+/* Chat Bubbles on Map (2D) */
 .chat-bubble {
   background: rgba(0, 0, 0, 0.8);
   border: 1px solid var(--osrs-border);
@@ -311,6 +383,53 @@ body {
   font-size: 12px;
   animation: fadeIn 0.3s, fadeOut 0.5s 4.5s forwards;
   pointer-events: none;
+}
+
+/* Chat Bubbles for 3D View */
+.chat-bubble-3d {
+  position: absolute;
+  background: rgba(0, 0, 0, 0.85);
+  border: 2px solid var(--osrs-border);
+  color: var(--osrs-text-light);
+  padding: 8px 14px;
+  border-radius: 12px;
+  max-width: 220px;
+  word-wrap: break-word;
+  font-size: 13px;
+  font-family: 'Courier New', monospace;
+  animation: fadeIn3d 0.3s ease-out, fadeOut3d 0.5s 4.5s forwards;
+  pointer-events: none;
+  transform: translate(-50%, -100%);
+  z-index: 200;
+  text-shadow: 1px 1px 2px #000;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.5);
+}
+
+.chat-bubble-3d::after {
+  content: '';
+  position: absolute;
+  bottom: -8px;
+  left: 50%;
+  transform: translateX(-50%);
+  border-left: 8px solid transparent;
+  border-right: 8px solid transparent;
+  border-top: 8px solid var(--osrs-border);
+}
+
+@keyframes fadeIn3d {
+  from {
+    opacity: 0;
+    transform: translate(-50%, -80%);
+  }
+  to {
+    opacity: 1;
+    transform: translate(-50%, -100%);
+  }
+}
+
+@keyframes fadeOut3d {
+  from { opacity: 1; }
+  to { opacity: 0; }
 }
 
 @keyframes fadeIn {
@@ -423,6 +542,25 @@ body {
 
 .flag-option:active {
   transform: scale(0.95);
+}
+
+/* 3D View Controls Hint */
+#controls-hint {
+  position: absolute;
+  bottom: 10px;
+  right: 220px;
+  background: var(--osrs-chat-bg);
+  border: 1px solid var(--osrs-border);
+  color: var(--osrs-text);
+  padding: 8px 12px;
+  font-size: 11px;
+  pointer-events: none;
+  opacity: 0.8;
+  z-index: 100;
+}
+
+#controls-hint strong {
+  color: var(--osrs-gold);
 }
 
 /* Scrollbar Styling */

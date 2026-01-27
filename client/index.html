@@ -10,6 +10,14 @@
   <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-auth-compat.js"></script>
   <!-- Socket.io -->
   <script src="https://cdn.socket.io/4.7.2/socket.io.min.js"></script>
+  <!-- Three.js for 3D rendering -->
+  <script type="importmap">
+    {
+      "imports": {
+        "three": "https://unpkg.com/three@0.160.0/build/three.module.js"
+      }
+    }
+  </script>
 </head>
 <body>
   <!-- Login Screen -->
@@ -21,6 +29,21 @@
         <img src="https://www.gstatic.com/firebasejs/ui/2.0.0/images/auth/google.svg" alt="Google">
         Sign in with Google
       </button>
+      <div class="login-divider"><span>or</span></div>
+      <button id="phantom-login-btn" class="osrs-btn phantom-btn">
+        <img src="https://phantom.app/img/phantom-icon-purple.svg" alt="Phantom" onerror="this.style.display='none'">
+        Connect Phantom Wallet
+      </button>
+    </div>
+  </div>
+
+  <!-- Wallet Username Screen -->
+  <div id="username-screen" class="screen hidden">
+    <div class="login-box">
+      <h2>Choose Your Name</h2>
+      <p id="wallet-address-display"></p>
+      <input type="text" id="username-input" class="osrs-input" placeholder="Enter username..." maxlength="20">
+      <button id="username-submit-btn" class="osrs-btn">Enter Game</button>
     </div>
   </div>
 
@@ -60,6 +83,11 @@
         <ul id="player-list"></ul>
       </div>
 
+      <!-- 3D Controls Hint (bottom right) -->
+      <div id="controls-hint">
+        <strong>Camera:</strong> Right-click drag to rotate | Scroll to zoom | Arrow keys to rotate
+      </div>
+
       <!-- Chat Box (bottom left) -->
       <div id="chat-container" class="ui-panel">
         <div class="panel-header">
@@ -78,21 +106,41 @@
     </div>
   </div>
 
-  <!-- Google Maps API - Replace YOUR_API_KEY with actual key -->
+  <!-- Google Maps API -->
   <script>
-    // This will be loaded dynamically after getting the API key
     window.initMap = function() {
       window.mapReady = true;
       if (window.onMapReady) window.onMapReady();
     };
   </script>
-  <script async defer src="https://maps.googleapis.com/maps/api/js?key=AIzaSyA215L_qSgleCyUM7brvtNUIXKx0GxEErA&callback=initMap"></script>
+  <script async src="https://maps.googleapis.com/maps/api/js?key=AIzaSyA215L_qSgleCyUM7brvtNUIXKx0GxEErA&loading=async&callback=initMap"></script>
 
-  <!-- Game Scripts -->
-  <script src="js/config.js"></script>
-  <script src="js/map.js"></script>
-  <script src="js/player.js"></script>
-  <script src="js/chat.js"></script>
-  <script src="js/main.js"></script>
+  <!-- Load Three.js as module and expose globally, then load game scripts -->
+  <script type="module">
+    import * as THREE from 'three';
+    window.THREE = THREE;
+
+    // Load game scripts after THREE is available
+    const scripts = [
+      'js/config.js',
+      'js/tiles.js',
+      'js/camera.js',
+      'js/map3d.js',
+      'js/map.js',
+      'js/player.js',
+      'js/chat.js',
+      'js/main.js'
+    ];
+
+    for (const src of scripts) {
+      await new Promise((resolve, reject) => {
+        const script = document.createElement('script');
+        script.src = src;
+        script.onload = resolve;
+        script.onerror = reject;
+        document.body.appendChild(script);
+      });
+    }
+  </script>
 </body>
 </html>

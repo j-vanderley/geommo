@@ -30,7 +30,13 @@ export interface WorldState {
 export interface ClientToServerEvents {
   'player:move': (data: { lat: number; lng: number }) => void;
   'chat:send': (data: { message: string; type: 'global' | 'local' }) => void;
-  'player:authenticate': (data: { token: string; flag?: string }) => void;
+  'player:authenticate': (data: {
+    token?: string;
+    walletAddress?: string;
+    username?: string;
+    flag?: string;
+    authType: 'firebase' | 'wallet';
+  }) => void;
   'player:updateFlag': (data: { flag: string }) => void;
 }
 

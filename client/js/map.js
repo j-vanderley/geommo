@@ -1,16 +1,25 @@
-// Map Manager - Handles Google Maps integration
+// Map Manager - Handles 3D view (Three.js) + Google Maps minimap
 class MapManager {
   constructor() {
-    this.map = null;
+    // 3D rendering
+    this.map3d = null;
+
+    // Google Maps (minimap only)
     this.minimap = null;
-    this.markers = new Map(); // socketId -> marker overlay
-    this.chatBubbles = new Map(); // socketId -> overlay
+
+    // Legacy compatibility
+    this.markers = new Map(); // socketId -> marker data
+    this.chatBubbles = new Map();
     this.selfMarker = null;
+    this.selfPlayerId = null;
     this.onMoveCallback = null;
+
+    // API key (extracted from page)
+    this.apiKey = 'AIzaSyA215L_qSgleCyUM7brvtNUIXKx0GxEErA';
   }
 
   async init() {
-    // Wait for Google Maps to load
+    // Wait for Google Maps to load (for minimap)
     if (!window.google || !window.google.maps) {
       await new Promise(resolve => {
         window.onMapReady = resolve;
@@ -18,7 +27,45 @@ class MapManager {
       });
     }
 
-    // Initialize main map
+    // Check if 3D is enabled
+    if (GAME_CONFIG.view3d && GAME_CONFIG.view3d.enabled) {
+      await this.init3D();
+    } else {
+      await this.init2D();
+    }
+
+    // Initialize minimap (always Google Maps)
+    this.minimap = new google.maps.Map(document.getElementById('minimap'), {
+      center: GAME_CONFIG.defaultPosition,
+      zoom: GAME_CONFIG.minimap.zoom,
+      disableDefaultUI: true,
+      draggable: false,
+      zoomControl: false,
+      scrollwheel: false,
+      disableDoubleClickZoom: true,
+      styles: this.getMapStyle()
+    });
+
+    return this;
+  }
+
+  // Initialize 3D view
+  async init3D() {
+    const container = document.getElementById('map');
+
+    // Create 3D manager
+    this.map3d = new Map3D(container, this.apiKey);
+    await this.map3d.init();
+
+    // Set up click handler
+    this.map3d.onClick2D((latLng) => {
+      this.handleMapClick(latLng);
+    });
+  }
+
+  // Fallback to 2D Google Maps view
+  async init2D() {
+    // Original Google Maps implementation
     this.map = new google.maps.Map(document.getElementById('map'), {
       center: GAME_CONFIG.defaultPosition,
       zoom: GAME_CONFIG.map.defaultZoom,
@@ -32,31 +79,20 @@ class MapManager {
       styles: this.getMapStyle()
     });
 
-    // Initialize minimap
-    this.minimap = new google.maps.Map(document.getElementById('minimap'), {
-      center: GAME_CONFIG.defaultPosition,
-      zoom: GAME_CONFIG.minimap.zoom,
-      disableDefaultUI: true,
-      draggable: false,
-      zoomControl: false,
-      scrollwheel: false,
-      disableDoubleClickZoom: true,
-      styles: this.getMapStyle()
-    });
-
     // Click to move
     this.map.addListener('click', (e) => {
-      this.handleMapClick(e.latLng);
+      this.handleMapClick({
+        lat: e.latLng.lat(),
+        lng: e.latLng.lng()
+      });
     });
-
-    return this;
   }
 
   handleMapClick(latLng) {
     if (this.onMoveCallback) {
       const position = {
-        lat: latLng.lat(),
-        lng: latLng.lng()
+        lat: latLng.lat,
+        lng: latLng.lng
       };
       this.onMoveCallback(position);
     }
@@ -66,10 +102,52 @@ class MapManager {
     this.onMoveCallback = callback;
   }
 
-  // Custom Player Marker Overlay class
-  createPlayerOverlayClass() {
-    const self = this;
+  // Create player marker (3D sprite or 2D overlay)
+  createPlayerMarker(player, isSelf = false) {
+    if (this.map3d) {
+      // 3D mode
+      const sprite = this.map3d.createPlayerSprite(player, isSelf);
+      this.markers.set(player.id, { sprite, isSelf, playerId: player.id });
 
+      if (isSelf) {
+        this.selfMarker = sprite;
+        this.selfPlayerId = player.id;
+        this.centerOn(player.position);
+      }
+
+      return sprite;
+    } else {
+      // 2D fallback
+      return this.createPlayerMarker2D(player, isSelf);
+    }
+  }
+
+  // 2D player marker (original implementation)
+  createPlayerMarker2D(player, isSelf = false) {
+    const markerElement = document.createElement('div');
+    markerElement.className = `player-marker ${isSelf ? 'self' : ''}`;
+    const flag = player.flag || '?';
+    markerElement.innerHTML = `
+      <div class="name">${player.username}</div>
+      <div class="player-sprite">${flag}</div>
+    `;
+
+    const PlayerOverlay = this.createPlayerOverlayClass();
+    const overlay = new PlayerOverlay(player.position, markerElement, isSelf);
+    overlay.setMap(this.map);
+
+    this.markers.set(player.id, { overlay, element: markerElement, flag });
+
+    if (isSelf) {
+      this.selfMarker = overlay;
+      this.centerOn(player.position);
+    }
+
+    return overlay;
+  }
+
+  // Custom Player Marker Overlay class (for 2D fallback)
+  createPlayerOverlayClass() {
     class PlayerOverlay extends google.maps.OverlayView {
       constructor(position, element, isSelf) {
         super();
@@ -113,43 +191,23 @@ class MapManager {
     return PlayerOverlay;
   }
 
-  // Create player marker
-  createPlayerMarker(player, isSelf = false) {
-    const markerElement = document.createElement('div');
-    markerElement.className = `player-marker ${isSelf ? 'self' : ''}`;
-    const flag = player.flag || '🏳️';
-    markerElement.innerHTML = `
-      <div class="name">${player.username}</div>
-      <div class="player-sprite">${flag}</div>
-    `;
-
-    const PlayerOverlay = this.createPlayerOverlayClass();
-    const overlay = new PlayerOverlay(player.position, markerElement, isSelf);
-    overlay.setMap(this.map);
-
-    this.markers.set(player.id, { overlay, element: markerElement, flag });
-
-    if (isSelf) {
-      this.selfMarker = overlay;
-      this.centerOn(player.position);
-    }
-
-    return overlay;
-  }
-
-  // Update player position with animation
+  // Update player position
   updatePlayerPosition(playerId, position, animate = true) {
-    const markerData = this.markers.get(playerId);
-    if (!markerData) return;
-
-    if (animate) {
-      this.animateMarker(markerData.overlay, position);
+    if (this.map3d) {
+      this.map3d.updatePlayerPosition(playerId, position, animate);
     } else {
-      markerData.overlay.setPosition(position);
+      const markerData = this.markers.get(playerId);
+      if (!markerData) return;
+
+      if (animate) {
+        this.animateMarker(markerData.overlay, position);
+      } else {
+        markerData.overlay.setPosition(position);
+      }
     }
   }
 
-  // Simple animation between positions
+  // Simple animation between positions (2D fallback)
   animateMarker(overlay, targetPos) {
     const currentPos = { ...overlay.position };
     const steps = 20;
@@ -173,27 +231,46 @@ class MapManager {
 
   // Remove player marker
   removePlayer(playerId) {
-    const markerData = this.markers.get(playerId);
-    if (markerData) {
-      markerData.overlay.setMap(null);
-      this.markers.delete(playerId);
+    if (this.map3d) {
+      this.map3d.removePlayer(playerId);
+    } else {
+      const markerData = this.markers.get(playerId);
+      if (markerData) {
+        markerData.overlay.setMap(null);
+      }
     }
 
+    this.markers.delete(playerId);
     this.removeChatBubble(playerId);
   }
 
   // Center map on position
   centerOn(position) {
-    this.map.setCenter(position);
-    this.minimap.setCenter(position);
+    if (this.map3d) {
+      this.map3d.centerOn(position.lat, position.lng);
+    } else if (this.map) {
+      this.map.setCenter(position);
+    }
+
+    // Always update minimap
+    if (this.minimap) {
+      this.minimap.setCenter(position);
+    }
   }
 
   // Update self position
   updateSelfPosition(position) {
-    if (this.selfMarker) {
+    if (this.map3d && this.selfPlayerId) {
+      // 3D mode
+      this.map3d.updatePlayerPosition(this.selfPlayerId, position, true);
+    } else if (this.selfMarker) {
       this.selfMarker.setPosition(position);
     }
-    this.minimap.setCenter(position);
+
+    // Update minimap
+    if (this.minimap) {
+      this.minimap.setCenter(position);
+    }
 
     // Update coordinates display
     document.getElementById('player-coords').textContent =
@@ -202,6 +279,15 @@ class MapManager {
 
   // Show chat bubble above player
   showChatBubble(playerId, message) {
+    if (this.map3d) {
+      this.map3d.showChatBubble(playerId, message);
+    } else {
+      this.showChatBubble2D(playerId, message);
+    }
+  }
+
+  // 2D chat bubble (original implementation)
+  showChatBubble2D(playerId, message) {
     const markerData = this.markers.get(playerId);
     if (!markerData) return;
 
@@ -262,23 +348,31 @@ class MapManager {
   }
 
   removeChatBubble(playerId) {
-    const bubble = this.chatBubbles.get(playerId);
-    if (bubble) {
-      bubble.setMap(null);
-      this.chatBubbles.delete(playerId);
+    if (this.map3d) {
+      this.map3d.removeChatBubble(playerId);
+    } else {
+      const bubble = this.chatBubbles.get(playerId);
+      if (bubble) {
+        bubble.setMap(null);
+      }
     }
+    this.chatBubbles.delete(playerId);
   }
 
   // Update player's flag on the marker
   updatePlayerFlag(playerId, flag) {
-    const markerData = this.markers.get(playerId);
-    if (!markerData) return;
+    if (this.map3d) {
+      this.map3d.updatePlayerFlag(playerId, flag);
+    } else {
+      const markerData = this.markers.get(playerId);
+      if (!markerData) return;
 
-    const sprite = markerData.element.querySelector('.player-sprite');
-    if (sprite) {
-      sprite.textContent = flag;
+      const sprite = markerData.element.querySelector('.player-sprite');
+      if (sprite) {
+        sprite.textContent = flag;
+      }
+      markerData.flag = flag;
     }
-    markerData.flag = flag;
   }
 
   // OSRS-inspired map style (darker, more game-like)

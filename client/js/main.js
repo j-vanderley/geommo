@@ -7,22 +7,40 @@ class GeoMMO {
     this.chatManager = null;
     this.user = null;
     this.selectedFlag = null;
+    this.authType = null; // 'firebase' or 'wallet'
+    this.walletAddress = null;
+    this.walletUsername = null;
   }
 
   async init() {
-    // Set up login button
+    // Set up Google login button
     document.getElementById('login-btn').addEventListener('click', () => {
       this.login();
+    });
+
+    // Set up Phantom login button
+    document.getElementById('phantom-login-btn').addEventListener('click', () => {
+      this.connectPhantom();
+    });
+
+    // Set up username submit button
+    document.getElementById('username-submit-btn').addEventListener('click', () => {
+      this.submitUsername();
+    });
+
+    // Username input enter key
+    document.getElementById('username-input').addEventListener('keypress', (e) => {
+      if (e.key === 'Enter') this.submitUsername();
     });
 
     // Set up flag grid
     this.setupFlagSelector();
 
-    // Check if already logged in
+    // Check if already logged in with Firebase
     firebase.auth().onAuthStateChanged(async (user) => {
       if (user) {
         this.user = user;
-        // Check if user already has a saved flag
+        this.authType = 'firebase';
         const savedFlag = localStorage.getItem(`flag_${user.uid}`);
         if (savedFlag) {
           this.selectedFlag = savedFlag;
@@ -30,8 +48,89 @@ class GeoMMO {
         } else {
           this.showFlagSelector();
         }
+      } else {
+        // Check for saved wallet session
+        const savedWallet = localStorage.getItem('wallet_address');
+        const savedUsername = localStorage.getItem('wallet_username');
+        if (savedWallet && savedUsername) {
+          this.walletAddress = savedWallet;
+          this.walletUsername = savedUsername;
+          this.authType = 'wallet';
+          const savedFlag = localStorage.getItem(`flag_${savedWallet}`);
+          if (savedFlag) {
+            this.selectedFlag = savedFlag;
+            await this.startGame();
+          } else {
+            this.showFlagSelector();
+          }
+        }
       }
     });
+  }
+
+  // Phantom Wallet Connection
+  async connectPhantom() {
+    try {
+      // Check if Phantom is installed
+      const provider = window.phantom?.solana;
+
+      if (!provider?.isPhantom) {
+        window.open('https://phantom.app/', '_blank');
+        alert('Please install Phantom wallet to continue');
+        return;
+      }
+
+      // Connect to Phantom
+      const response = await provider.connect();
+      this.walletAddress = response.publicKey.toString();
+
+      // Show username selection screen
+      document.getElementById('login-screen').classList.add('hidden');
+      document.getElementById('username-screen').classList.remove('hidden');
+      document.getElementById('wallet-address-display').textContent =
+        `Wallet: ${this.walletAddress.slice(0, 4)}...${this.walletAddress.slice(-4)}`;
+
+      // Pre-fill with saved username if exists
+      const savedUsername = localStorage.getItem('wallet_username');
+      if (savedUsername) {
+        document.getElementById('username-input').value = savedUsername;
+      }
+    } catch (error) {
+      console.error('Phantom connection error:', error);
+      alert('Failed to connect wallet. Please try again.');
+    }
+  }
+
+  async submitUsername() {
+    const input = document.getElementById('username-input');
+    let username = input.value.trim();
+
+    if (!username) {
+      // Use shortened wallet address as default
+      username = `${this.walletAddress.slice(0, 4)}...${this.walletAddress.slice(-4)}`;
+    }
+
+    // Validate username (alphanumeric, 3-20 chars)
+    if (username.length < 3) {
+      alert('Username must be at least 3 characters');
+      return;
+    }
+
+    this.walletUsername = username;
+    this.authType = 'wallet';
+
+    // Save to localStorage
+    localStorage.setItem('wallet_address', this.walletAddress);
+    localStorage.setItem('wallet_username', this.walletUsername);
+
+    // Check for saved flag
+    const savedFlag = localStorage.getItem(`flag_${this.walletAddress}`);
+    if (savedFlag) {
+      this.selectedFlag = savedFlag;
+      await this.startGame();
+    } else {
+      this.showFlagSelector();
+    }
   }
 
   setupFlagSelector() {
@@ -48,13 +147,22 @@ class GeoMMO {
 
   showFlagSelector() {
     document.getElementById('login-screen').classList.add('hidden');
+    document.getElementById('username-screen').classList.add('hidden');
     document.getElementById('flag-screen').classList.remove('hidden');
+  }
+
+  getUserId() {
+    if (this.authType === 'firebase') {
+      return this.user.uid;
+    } else {
+      return this.walletAddress;
+    }
   }
 
   async selectFlag(flag) {
     this.selectedFlag = flag.emoji;
     // Save to localStorage
-    localStorage.setItem(`flag_${this.user.uid}`, flag.emoji);
+    localStorage.setItem(`flag_${this.getUserId()}`, flag.emoji);
 
     // If already in game, update flag on server
     if (this.socket && this.socket.connected) {
@@ -81,6 +189,7 @@ class GeoMMO {
     try {
       const result = await firebase.auth().signInWithPopup(provider);
       this.user = result.user;
+      this.authType = 'firebase';
 
       // Check if user already has a saved flag
       const savedFlag = localStorage.getItem(`flag_${this.user.uid}`);
@@ -99,6 +208,7 @@ class GeoMMO {
   async startGame() {
     // Show game screen
     document.getElementById('login-screen').classList.add('hidden');
+    document.getElementById('username-screen').classList.add('hidden');
     document.getElementById('flag-screen').classList.add('hidden');
     document.getElementById('game-screen').classList.remove('hidden');
 
@@ -143,12 +253,23 @@ class GeoMMO {
     this.socket.on('connect', async () => {
       console.log('Connected to server');
 
-      // Authenticate with Firebase token
-      const token = await this.user.getIdToken();
-      this.socket.emit('player:authenticate', {
-        token,
-        flag: this.selectedFlag
-      });
+      if (this.authType === 'firebase') {
+        // Authenticate with Firebase token
+        const token = await this.user.getIdToken();
+        this.socket.emit('player:authenticate', {
+          token,
+          flag: this.selectedFlag,
+          authType: 'firebase'
+        });
+      } else {
+        // Authenticate with wallet
+        this.socket.emit('player:authenticate', {
+          walletAddress: this.walletAddress,
+          username: this.walletUsername,
+          flag: this.selectedFlag,
+          authType: 'wallet'
+        });
+      }
     });
 
     this.socket.on('disconnect', () => {
