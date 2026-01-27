@@ -41,12 +41,33 @@
     </div>
   </div>
 
-  <!-- Flag Selection Screen -->
-  <div id="flag-screen" class="screen hidden">
-    <div class="flag-selector-box">
-      <h2>Choose Your Flag</h2>
-      <p>Select a country to represent you</p>
-      <div id="flag-grid"></div>
+  <!-- Avatar Customization Screen -->
+  <div id="avatar-screen" class="screen hidden">
+    <div class="avatar-selector-box">
+      <h2>Customize Your Avatar</h2>
+
+      <div class="avatar-preview">
+        <div id="preview-circle" class="preview-circle">
+          <span id="preview-text">:-)</span>
+        </div>
+      </div>
+
+      <div class="avatar-section">
+        <label>Your Symbol (4 chars max)</label>
+        <input type="text" id="avatar-input" class="osrs-input" maxlength="4" placeholder=":-)" value=":-)">
+      </div>
+
+      <div class="avatar-section">
+        <label>Quick Pick</label>
+        <div id="avatar-examples" class="avatar-examples"></div>
+      </div>
+
+      <div class="avatar-section">
+        <label>Your Color</label>
+        <div id="color-options" class="color-options"></div>
+      </div>
+
+      <button id="avatar-submit-btn" class="osrs-btn">Enter Game</button>
     </div>
   </div>
 
@@ -68,7 +89,7 @@
         <div class="panel-header">Player</div>
         <div id="player-name">Loading...</div>
         <div id="player-coords">0.000, 0.000</div>
-        <button id="change-flag-btn" class="osrs-btn small-btn">Change Flag</button>
+        <button id="change-flag-btn" class="osrs-btn small-btn">Change Avatar</button>
       </div>
 
       <!-- Fast Travel (below player info) -->

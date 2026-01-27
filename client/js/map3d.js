@@ -162,15 +162,17 @@ class Map3D {
     this.tileManager.centerLng = lng;
   }
 
-  // Create a player sprite (flag emoji as texture)
+  // Create a player sprite (custom avatar with text and color)
   createPlayerSprite(player, isSelf = false) {
-    const flag = player.flag || '🏳️';
+    const avatar = player.avatar || { text: ':-)', color: '#ffb000' };
+    const avatarText = avatar.text || player.flag || ':-)';
+    const avatarColor = avatar.color || '#ffb000';
     const username = player.username || 'Unknown';
 
     // Create a group to hold sprite
     const group = new THREE.Group();
 
-    // Create canvas for flag sprite with emoji
+    // Create canvas for avatar sprite
     const canvas = document.createElement('canvas');
     canvas.width = 128;
     canvas.height = 128;
@@ -179,19 +181,21 @@ class Map3D {
     // Draw circular background
     ctx.beginPath();
     ctx.arc(64, 64, 56, 0, Math.PI * 2);
-    ctx.fillStyle = 'rgba(0, 0, 0, 0.6)';
+    ctx.fillStyle = 'rgba(0, 0, 0, 0.7)';
     ctx.fill();
 
-    // Draw border
-    ctx.strokeStyle = isSelf ? '#ffb000' : '#5d5447';
+    // Draw border with player's color
+    ctx.strokeStyle = avatarColor;
     ctx.lineWidth = 4;
     ctx.stroke();
 
-    // Draw flag emoji - use large size for clarity
-    ctx.font = '60px "Segoe UI Emoji", "Apple Color Emoji", "Noto Color Emoji", sans-serif';
+    // Draw avatar text - adjust font size based on text length
+    const fontSize = avatarText.length <= 2 ? 48 : avatarText.length === 3 ? 36 : 28;
+    ctx.font = `bold ${fontSize}px "Courier New", monospace`;
     ctx.textAlign = 'center';
     ctx.textBaseline = 'middle';
-    ctx.fillText(flag, 64, 66);
+    ctx.fillStyle = avatarColor;
+    ctx.fillText(avatarText, 64, 66);
 
     // Create sprite texture
     const texture = new THREE.CanvasTexture(canvas);
@@ -222,10 +226,10 @@ class Map3D {
     this.scene.add(group);
 
     // Create HTML name label (stays same size when zooming)
-    const nameLabel = this.createNameLabel(player.id, username, isSelf);
+    const nameLabel = this.createNameLabel(player.id, username, isSelf, avatarColor);
 
     // Store reference
-    this.playerSprites.set(player.id, { sprite, group, canvas, ctx, isSelf, nameLabel });
+    this.playerSprites.set(player.id, { sprite, group, canvas, ctx, isSelf, nameLabel, avatarColor });
 
     // If self, set camera target and load tiles
     if (isSelf) {
@@ -239,10 +243,16 @@ class Map3D {
   }
 
   // Create HTML name label (like chat bubbles, stays same size)
-  createNameLabel(playerId, name, isSelf = false) {
+  createNameLabel(playerId, name, isSelf = false, color = '#ffb000') {
     const label = document.createElement('div');
     label.className = 'player-name-label' + (isSelf ? ' self' : '');
     label.textContent = name;
+
+    // Apply player's color
+    if (!isSelf) {
+      label.style.color = color;
+      label.style.borderColor = color;
+    }
 
     this.container.appendChild(label);
     this.nameLabels.set(playerId, { element: label });
@@ -361,12 +371,17 @@ class Map3D {
     this.removeChatBubble(playerId);
   }
 
-  // Update player's flag
-  updatePlayerFlag(playerId, flag) {
+  // Update player's avatar (text and color)
+  updatePlayerAvatar(playerId, avatar) {
     const playerData = this.playerSprites.get(playerId);
     if (!playerData) return;
 
-    const { ctx, sprite, isSelf } = playerData;
+    const { ctx, sprite, isSelf, nameLabel } = playerData;
+    const avatarText = avatar.text || ':-)';
+    const avatarColor = avatar.color || '#ffb000';
+
+    // Update stored color
+    playerData.avatarColor = avatarColor;
 
     // Redraw canvas
     ctx.clearRect(0, 0, 128, 128);
@@ -374,22 +389,35 @@ class Map3D {
     // Draw circular background
     ctx.beginPath();
     ctx.arc(64, 64, 56, 0, Math.PI * 2);
-    ctx.fillStyle = 'rgba(0, 0, 0, 0.6)';
+    ctx.fillStyle = 'rgba(0, 0, 0, 0.7)';
     ctx.fill();
 
-    // Draw border
-    ctx.strokeStyle = isSelf ? '#ffb000' : '#5d5447';
+    // Draw border with player's color
+    ctx.strokeStyle = avatarColor;
     ctx.lineWidth = 4;
     ctx.stroke();
 
-    // Draw flag emoji
-    ctx.font = '60px "Segoe UI Emoji", "Apple Color Emoji", "Noto Color Emoji", sans-serif';
+    // Draw avatar text
+    const fontSize = avatarText.length <= 2 ? 48 : avatarText.length === 3 ? 36 : 28;
+    ctx.font = `bold ${fontSize}px "Courier New", monospace`;
     ctx.textAlign = 'center';
     ctx.textBaseline = 'middle';
-    ctx.fillText(flag, 64, 66);
+    ctx.fillStyle = avatarColor;
+    ctx.fillText(avatarText, 64, 66);
 
     // Update texture
     sprite.material.map.needsUpdate = true;
+
+    // Update name label color
+    if (nameLabel && !isSelf) {
+      nameLabel.style.color = avatarColor;
+      nameLabel.style.borderColor = avatarColor;
+    }
+  }
+
+  // Legacy: Update player's flag
+  updatePlayerFlag(playerId, flag) {
+    this.updatePlayerAvatar(playerId, { text: flag, color: '#ffb000' });
   }
 
   // Show chat bubble above player

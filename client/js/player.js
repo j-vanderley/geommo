@@ -17,7 +17,8 @@ class PlayerManager {
     this.mapManager.createPlayerMarker(player, true);
 
     // Update UI
-    document.getElementById('player-name').textContent = `${player.flag || '🏳️'} ${player.username}`;
+    const avatarText = player.avatar?.text || player.flag || ':-)';
+    document.getElementById('player-name').textContent = `${avatarText} ${player.username}`;
     this.updatePlayerList();
   }
 
@@ -96,8 +97,13 @@ class PlayerManager {
 
     this.players.forEach((player, id) => {
       const li = document.createElement('li');
-      li.textContent = `${player.flag || '🏳️'} ${player.username}`;
+      const avatarText = player.avatar?.text || player.flag || ':-)';
+      li.textContent = `${avatarText} ${player.username}`;
       li.dataset.playerId = id;
+      // Apply player's color if available
+      if (player.avatar?.color) {
+        li.style.color = player.avatar.color;
+      }
 
       if (id === this.selfSocketId) {
         li.classList.add('self');
@@ -117,30 +123,42 @@ class PlayerManager {
     this.mapManager.showChatBubble(playerId, message);
   }
 
-  // Update self player's flag
-  updateSelfFlag(flag) {
+  // Update self player's avatar
+  updateSelfAvatar(avatar) {
     if (!this.selfPlayer) return;
 
-    this.selfPlayer.flag = flag;
+    this.selfPlayer.avatar = avatar;
+    this.selfPlayer.flag = avatar.text; // Keep flag for compatibility
 
     // Update the marker on the map
-    this.mapManager.updatePlayerFlag(this.selfSocketId, flag);
+    this.mapManager.updatePlayerAvatar(this.selfSocketId, avatar);
 
     // Update UI
-    document.getElementById('player-name').textContent = `${flag} ${this.selfPlayer.username}`;
+    document.getElementById('player-name').textContent = `${avatar.text} ${this.selfPlayer.username}`;
 
     // Update player list
     this.updatePlayerList();
   }
 
-  // Update another player's flag
-  updatePlayerFlag(playerId, flag) {
+  // Update another player's avatar
+  updatePlayerAvatar(playerId, avatar) {
     const player = this.players.get(playerId);
     if (!player) return;
 
-    player.flag = flag;
-    this.mapManager.updatePlayerFlag(playerId, flag);
+    player.avatar = avatar;
+    player.flag = avatar.text; // Keep flag for compatibility
+    this.mapManager.updatePlayerAvatar(playerId, avatar);
     this.updatePlayerList();
+  }
+
+  // Legacy: Update self player's flag (for backward compatibility)
+  updateSelfFlag(flag) {
+    this.updateSelfAvatar({ text: flag, color: '#ffb000' });
+  }
+
+  // Legacy: Update another player's flag (for backward compatibility)
+  updatePlayerFlag(playerId, flag) {
+    this.updatePlayerAvatar(playerId, { text: flag, color: '#ffb000' });
   }
 }
 

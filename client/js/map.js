@@ -359,20 +359,29 @@ class MapManager {
     this.chatBubbles.delete(playerId);
   }
 
-  // Update player's flag on the marker
-  updatePlayerFlag(playerId, flag) {
+  // Update player's avatar on the marker
+  updatePlayerAvatar(playerId, avatar) {
     if (this.map3d) {
-      this.map3d.updatePlayerFlag(playerId, flag);
+      this.map3d.updatePlayerAvatar(playerId, avatar);
     } else {
       const markerData = this.markers.get(playerId);
       if (!markerData) return;
 
       const sprite = markerData.element.querySelector('.player-sprite');
       if (sprite) {
-        sprite.textContent = flag;
+        sprite.textContent = avatar.text || ':-)';
+        if (avatar.color) {
+          sprite.style.borderColor = avatar.color;
+          sprite.style.color = avatar.color;
+        }
       }
-      markerData.flag = flag;
+      markerData.avatar = avatar;
     }
+  }
+
+  // Legacy: Update player's flag on the marker
+  updatePlayerFlag(playerId, flag) {
+    this.updatePlayerAvatar(playerId, { text: flag, color: '#ffb000' });
   }
 
   // OSRS-inspired map style (darker, more game-like)

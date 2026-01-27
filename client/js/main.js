@@ -6,7 +6,7 @@ class GeoMMO {
     this.playerManager = null;
     this.chatManager = null;
     this.user = null;
-    this.selectedFlag = null;
+    this.selectedAvatar = null; // { text: ':-)', color: '#ffb000' }
     this.authType = null; // 'firebase' or 'wallet'
     this.walletAddress = null;
     this.walletUsername = null;
@@ -33,20 +33,20 @@ class GeoMMO {
       if (e.key === 'Enter') this.submitUsername();
     });
 
-    // Set up flag grid
-    this.setupFlagSelector();
+    // Set up avatar customization
+    this.setupAvatarSelector();
 
     // Check if already logged in with Firebase
     firebase.auth().onAuthStateChanged(async (user) => {
       if (user) {
         this.user = user;
         this.authType = 'firebase';
-        const savedFlag = localStorage.getItem(`flag_${user.uid}`);
-        if (savedFlag) {
-          this.selectedFlag = savedFlag;
+        const savedAvatar = localStorage.getItem(`avatar_${user.uid}`);
+        if (savedAvatar) {
+          this.selectedAvatar = JSON.parse(savedAvatar);
           await this.startGame();
         } else {
-          this.showFlagSelector();
+          this.showAvatarSelector();
         }
       } else {
         // Check for saved wallet session
@@ -56,12 +56,12 @@ class GeoMMO {
           this.walletAddress = savedWallet;
           this.walletUsername = savedUsername;
           this.authType = 'wallet';
-          const savedFlag = localStorage.getItem(`flag_${savedWallet}`);
-          if (savedFlag) {
-            this.selectedFlag = savedFlag;
+          const savedAvatar = localStorage.getItem(`avatar_${savedWallet}`);
+          if (savedAvatar) {
+            this.selectedAvatar = JSON.parse(savedAvatar);
             await this.startGame();
           } else {
-            this.showFlagSelector();
+            this.showAvatarSelector();
           }
         }
       }
@@ -123,32 +123,121 @@ class GeoMMO {
     localStorage.setItem('wallet_address', this.walletAddress);
     localStorage.setItem('wallet_username', this.walletUsername);
 
-    // Check for saved flag
-    const savedFlag = localStorage.getItem(`flag_${this.walletAddress}`);
-    if (savedFlag) {
-      this.selectedFlag = savedFlag;
+    // Check for saved avatar
+    const savedAvatar = localStorage.getItem(`avatar_${this.walletAddress}`);
+    if (savedAvatar) {
+      this.selectedAvatar = JSON.parse(savedAvatar);
       await this.startGame();
     } else {
-      this.showFlagSelector();
+      this.showAvatarSelector();
     }
   }
 
-  setupFlagSelector() {
-    const grid = document.getElementById('flag-grid');
-    COUNTRY_FLAGS.forEach(flag => {
+  setupAvatarSelector() {
+    const examplesGrid = document.getElementById('avatar-examples');
+    const colorOptions = document.getElementById('color-options');
+    const avatarInput = document.getElementById('avatar-input');
+    const previewText = document.getElementById('preview-text');
+    const previewCircle = document.getElementById('preview-circle');
+    const submitBtn = document.getElementById('avatar-submit-btn');
+
+    // Current selection state
+    this.avatarSelection = {
+      text: ':-)',
+      color: COLOR_OPTIONS[0].hex,
+      theme: COLOR_OPTIONS[0].theme
+    };
+
+    // Populate avatar examples
+    AVATAR_EXAMPLES.forEach(example => {
       const option = document.createElement('div');
-      option.className = 'flag-option';
-      option.textContent = flag.emoji;
-      option.title = flag.name;
-      option.addEventListener('click', () => this.selectFlag(flag));
-      grid.appendChild(option);
+      option.className = 'avatar-example';
+      option.textContent = example;
+      option.addEventListener('click', () => {
+        avatarInput.value = example;
+        this.updateAvatarPreview();
+      });
+      examplesGrid.appendChild(option);
     });
+
+    // Populate color options
+    COLOR_OPTIONS.forEach((color, index) => {
+      const option = document.createElement('div');
+      option.className = 'color-option' + (index === 0 ? ' selected' : '');
+      option.style.backgroundColor = color.hex;
+      option.setAttribute('data-name', color.name);
+      option.addEventListener('click', () => {
+        document.querySelectorAll('.color-option').forEach(o => o.classList.remove('selected'));
+        option.classList.add('selected');
+        this.avatarSelection.color = color.hex;
+        this.avatarSelection.theme = color.theme;
+        this.updateAvatarPreview();
+      });
+      colorOptions.appendChild(option);
+    });
+
+    // Input change handler
+    avatarInput.addEventListener('input', () => this.updateAvatarPreview());
+
+    // Submit button
+    submitBtn.addEventListener('click', () => this.submitAvatar());
+
+    // Initial preview
+    this.updateAvatarPreview();
   }
 
-  showFlagSelector() {
+  updateAvatarPreview() {
+    const avatarInput = document.getElementById('avatar-input');
+    const previewText = document.getElementById('preview-text');
+    const previewCircle = document.getElementById('preview-circle');
+
+    const text = avatarInput.value || ':-)';
+    this.avatarSelection.text = text.slice(0, 4);
+
+    previewText.textContent = this.avatarSelection.text;
+    previewCircle.style.borderColor = this.avatarSelection.color;
+    previewCircle.style.color = this.avatarSelection.color;
+    previewCircle.style.boxShadow = `0 0 15px ${this.avatarSelection.color}`;
+  }
+
+  async submitAvatar() {
+    const text = this.avatarSelection.text || ':-)';
+    const color = this.avatarSelection.color || '#ffb000';
+    const theme = this.avatarSelection.theme || 'gold';
+
+    this.selectedAvatar = { text, color, theme };
+
+    // Save to localStorage
+    localStorage.setItem(`avatar_${this.getUserId()}`, JSON.stringify(this.selectedAvatar));
+
+    // Apply theme
+    this.applyTheme(theme);
+
+    // If already in game, update avatar on server
+    if (this.socket && this.socket.connected) {
+      this.socket.emit('player:updateAvatar', { avatar: this.selectedAvatar });
+      document.getElementById('avatar-screen').classList.add('hidden');
+      document.getElementById('game-screen').classList.remove('hidden');
+      // Update local player display
+      if (this.playerManager && this.playerManager.selfPlayer) {
+        this.playerManager.updateSelfAvatar(this.selectedAvatar);
+      }
+    } else {
+      await this.startGame();
+    }
+  }
+
+  applyTheme(theme) {
+    // Remove existing theme classes
+    document.body.className = document.body.className.replace(/theme-\w+/g, '');
+    // Add new theme class
+    document.body.classList.add(`theme-${theme}`);
+  }
+
+  showAvatarSelector() {
     document.getElementById('login-screen').classList.add('hidden');
     document.getElementById('username-screen').classList.add('hidden');
-    document.getElementById('flag-screen').classList.remove('hidden');
+    document.getElementById('avatar-screen').classList.remove('hidden');
   }
 
   getUserId() {
@@ -159,28 +248,36 @@ class GeoMMO {
     }
   }
 
-  async selectFlag(flag) {
-    this.selectedFlag = flag.emoji;
-    // Save to localStorage
-    localStorage.setItem(`flag_${this.getUserId()}`, flag.emoji);
+  showChangeAvatarScreen() {
+    document.getElementById('game-screen').classList.add('hidden');
+    document.getElementById('avatar-screen').classList.remove('hidden');
 
-    // If already in game, update flag on server
-    if (this.socket && this.socket.connected) {
-      this.socket.emit('player:updateFlag', { flag: flag.emoji });
-      document.getElementById('flag-screen').classList.add('hidden');
-      document.getElementById('game-screen').classList.remove('hidden');
-      // Update local player display
-      if (this.playerManager && this.playerManager.selfPlayer) {
-        this.playerManager.updateSelfFlag(flag.emoji);
-      }
-    } else {
-      await this.startGame();
+    // Pre-fill current avatar if exists
+    if (this.selectedAvatar) {
+      document.getElementById('avatar-input').value = this.selectedAvatar.text;
+      this.avatarSelection = { ...this.selectedAvatar };
+      this.updateAvatarPreview();
+
+      // Select the current color
+      const colorOptions = document.querySelectorAll('.color-option');
+      colorOptions.forEach(opt => {
+        opt.classList.remove('selected');
+        if (opt.style.backgroundColor === this.selectedAvatar.color ||
+            this.rgbToHex(opt.style.backgroundColor) === this.selectedAvatar.color.toLowerCase()) {
+          opt.classList.add('selected');
+        }
+      });
     }
   }
 
-  showChangeFlagScreen() {
-    document.getElementById('game-screen').classList.add('hidden');
-    document.getElementById('flag-screen').classList.remove('hidden');
+  rgbToHex(rgb) {
+    if (rgb.startsWith('#')) return rgb;
+    const match = rgb.match(/^rgb\((\d+),\s*(\d+),\s*(\d+)\)$/);
+    if (!match) return rgb;
+    return '#' + [match[1], match[2], match[3]].map(x => {
+      const hex = parseInt(x).toString(16);
+      return hex.length === 1 ? '0' + hex : hex;
+    }).join('');
   }
 
   async login() {
@@ -191,13 +288,13 @@ class GeoMMO {
       this.user = result.user;
       this.authType = 'firebase';
 
-      // Check if user already has a saved flag
-      const savedFlag = localStorage.getItem(`flag_${this.user.uid}`);
-      if (savedFlag) {
-        this.selectedFlag = savedFlag;
+      // Check if user already has a saved avatar
+      const savedAvatar = localStorage.getItem(`avatar_${this.user.uid}`);
+      if (savedAvatar) {
+        this.selectedAvatar = JSON.parse(savedAvatar);
         await this.startGame();
       } else {
-        this.showFlagSelector();
+        this.showAvatarSelector();
       }
     } catch (error) {
       console.error('Login error:', error);
@@ -209,8 +306,13 @@ class GeoMMO {
     // Show game screen
     document.getElementById('login-screen').classList.add('hidden');
     document.getElementById('username-screen').classList.add('hidden');
-    document.getElementById('flag-screen').classList.add('hidden');
+    document.getElementById('avatar-screen').classList.add('hidden');
     document.getElementById('game-screen').classList.remove('hidden');
+
+    // Apply theme
+    if (this.selectedAvatar && this.selectedAvatar.theme) {
+      this.applyTheme(this.selectedAvatar.theme);
+    }
 
     // Initialize map
     this.mapManager = new MapManager();
@@ -236,9 +338,9 @@ class GeoMMO {
       this.handleChat(message, type);
     });
 
-    // Set up change flag button
+    // Set up change avatar button
     document.getElementById('change-flag-btn').addEventListener('click', () => {
-      this.showChangeFlagScreen();
+      this.showChangeAvatarScreen();
     });
 
     // Set up fast travel
@@ -314,7 +416,7 @@ class GeoMMO {
         const token = await this.user.getIdToken();
         this.socket.emit('player:authenticate', {
           token,
-          flag: this.selectedFlag,
+          avatar: this.selectedAvatar,
           authType: 'firebase'
         });
       } else {
@@ -322,7 +424,7 @@ class GeoMMO {
         this.socket.emit('player:authenticate', {
           walletAddress: this.walletAddress,
           username: this.walletUsername,
-          flag: this.selectedFlag,
+          avatar: this.selectedAvatar,
           authType: 'wallet'
         });
       }
@@ -366,8 +468,13 @@ class GeoMMO {
       this.playerManager.updatePosition(data.id, data.position);
     });
 
+    this.socket.on('player:avatarUpdated', (data) => {
+      this.playerManager.updatePlayerAvatar(data.id, data.avatar);
+    });
+
+    // Legacy support for flag updates
     this.socket.on('player:flagUpdated', (data) => {
-      this.playerManager.updatePlayerFlag(data.id, data.flag);
+      this.playerManager.updatePlayerAvatar(data.id, { text: data.flag, color: '#ffb000' });
     });
 
     // Chat events

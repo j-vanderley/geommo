@@ -11,48 +11,26 @@ const firebaseConfig = {
 // Initialize Firebase
 firebase.initializeApp(firebaseConfig);
 
-// Available country flags for player avatars
-const COUNTRY_FLAGS = [
-  { code: 'us', emoji: '🇺🇸', name: 'United States' },
-  { code: 'gb', emoji: '🇬🇧', name: 'United Kingdom' },
-  { code: 'ca', emoji: '🇨🇦', name: 'Canada' },
-  { code: 'au', emoji: '🇦🇺', name: 'Australia' },
-  { code: 'de', emoji: '🇩🇪', name: 'Germany' },
-  { code: 'fr', emoji: '🇫🇷', name: 'France' },
-  { code: 'jp', emoji: '🇯🇵', name: 'Japan' },
-  { code: 'kr', emoji: '🇰🇷', name: 'South Korea' },
-  { code: 'cn', emoji: '🇨🇳', name: 'China' },
-  { code: 'in', emoji: '🇮🇳', name: 'India' },
-  { code: 'br', emoji: '🇧🇷', name: 'Brazil' },
-  { code: 'mx', emoji: '🇲🇽', name: 'Mexico' },
-  { code: 'es', emoji: '🇪🇸', name: 'Spain' },
-  { code: 'it', emoji: '🇮🇹', name: 'Italy' },
-  { code: 'nl', emoji: '🇳🇱', name: 'Netherlands' },
-  { code: 'se', emoji: '🇸🇪', name: 'Sweden' },
-  { code: 'no', emoji: '🇳🇴', name: 'Norway' },
-  { code: 'fi', emoji: '🇫🇮', name: 'Finland' },
-  { code: 'pl', emoji: '🇵🇱', name: 'Poland' },
-  { code: 'ru', emoji: '🇷🇺', name: 'Russia' },
-  { code: 'ua', emoji: '🇺🇦', name: 'Ukraine' },
-  { code: 'tr', emoji: '🇹🇷', name: 'Turkey' },
-  { code: 'za', emoji: '🇿🇦', name: 'South Africa' },
-  { code: 'ng', emoji: '🇳🇬', name: 'Nigeria' },
-  { code: 'eg', emoji: '🇪🇬', name: 'Egypt' },
-  { code: 'sa', emoji: '🇸🇦', name: 'Saudi Arabia' },
-  { code: 'ae', emoji: '🇦🇪', name: 'UAE' },
-  { code: 'il', emoji: '🇮🇱', name: 'Israel' },
-  { code: 'th', emoji: '🇹🇭', name: 'Thailand' },
-  { code: 'vn', emoji: '🇻🇳', name: 'Vietnam' },
-  { code: 'ph', emoji: '🇵🇭', name: 'Philippines' },
-  { code: 'id', emoji: '🇮🇩', name: 'Indonesia' },
-  { code: 'my', emoji: '🇲🇾', name: 'Malaysia' },
-  { code: 'sg', emoji: '🇸🇬', name: 'Singapore' },
-  { code: 'nz', emoji: '🇳🇿', name: 'New Zealand' },
-  { code: 'ar', emoji: '🇦🇷', name: 'Argentina' },
-  { code: 'cl', emoji: '🇨🇱', name: 'Chile' },
-  { code: 'co', emoji: '🇨🇴', name: 'Colombia' },
-  { code: 'pt', emoji: '🇵🇹', name: 'Portugal' },
-  { code: 'ie', emoji: '🇮🇪', name: 'Ireland' },
+// Avatar examples (4 characters max)
+const AVATAR_EXAMPLES = [
+  '>:-)', ':-)', ';-)', ':-P', ':-D', ':-O', 'X-D', '^_^',
+  '-_-', 'O_O', '>_<', 'T_T', ':3', ':D', '<3', '!!!',
+  '???', '...', 'lol', 'gg', 'hi', 'brb', 'afk', 'wtf',
+  '(:', '):', '><', '^^', 'uwu', 'owo', ':^)', '8-)',
+];
+
+// Color options for player avatar
+const COLOR_OPTIONS = [
+  { name: 'Gold', hex: '#ffb000', theme: 'gold' },
+  { name: 'Red', hex: '#ff4444', theme: 'red' },
+  { name: 'Blue', hex: '#4488ff', theme: 'blue' },
+  { name: 'Green', hex: '#44ff88', theme: 'green' },
+  { name: 'Purple', hex: '#aa44ff', theme: 'purple' },
+  { name: 'Pink', hex: '#ff66aa', theme: 'pink' },
+  { name: 'Cyan', hex: '#44ffff', theme: 'cyan' },
+  { name: 'Orange', hex: '#ff8844', theme: 'orange' },
+  { name: 'Lime', hex: '#aaff44', theme: 'lime' },
+  { name: 'White', hex: '#ffffff', theme: 'white' },
 ];
 
 // Major cities for fast travel
