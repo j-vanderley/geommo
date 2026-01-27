@@ -75,6 +75,18 @@ export class PlayerManager {
     return player;
   }
 
+  async updateFlag(socketId: string, flag: string): Promise<Player | undefined> {
+    const player = this.players.get(socketId);
+    if (player) {
+      player.flag = flag;
+      player.lastSeen = new Date();
+
+      // Save to Firestore
+      await this.savePlayer(player);
+    }
+    return player;
+  }
+
   private async savePlayer(player: Player): Promise<void> {
     try {
       await this.db.collection('players').doc(player.odId).set({

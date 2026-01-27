@@ -31,12 +31,14 @@ export interface ClientToServerEvents {
   'player:move': (data: { lat: number; lng: number }) => void;
   'chat:send': (data: { message: string; type: 'global' | 'local' }) => void;
   'player:authenticate': (data: { token: string; flag?: string }) => void;
+  'player:updateFlag': (data: { flag: string }) => void;
 }
 
 export interface ServerToClientEvents {
   'player:joined': (data: Player) => void;
   'player:left': (data: { id: string }) => void;
   'player:moved': (data: { id: string; position: Position }) => void;
+  'player:flagUpdated': (data: { id: string; flag: string }) => void;
   'chat:message': (data: ChatMessage) => void;
   'world:state': (data: WorldState) => void;
   'auth:success': (data: { player: Player }) => void;

@@ -55,7 +55,24 @@ class GeoMMO {
     this.selectedFlag = flag.emoji;
     // Save to localStorage
     localStorage.setItem(`flag_${this.user.uid}`, flag.emoji);
-    await this.startGame();
+
+    // If already in game, update flag on server
+    if (this.socket && this.socket.connected) {
+      this.socket.emit('player:updateFlag', { flag: flag.emoji });
+      document.getElementById('flag-screen').classList.add('hidden');
+      document.getElementById('game-screen').classList.remove('hidden');
+      // Update local player display
+      if (this.playerManager && this.playerManager.selfPlayer) {
+        this.playerManager.updateSelfFlag(flag.emoji);
+      }
+    } else {
+      await this.startGame();
+    }
+  }
+
+  showChangeFlagScreen() {
+    document.getElementById('game-screen').classList.add('hidden');
+    document.getElementById('flag-screen').classList.remove('hidden');
   }
 
   async login() {
@@ -107,6 +124,11 @@ class GeoMMO {
     // Set up chat handler
     this.chatManager.onSend((message, type) => {
       this.handleChat(message, type);
+    });
+
+    // Set up change flag button
+    document.getElementById('change-flag-btn').addEventListener('click', () => {
+      this.showChangeFlagScreen();
     });
   }
 
@@ -165,6 +187,10 @@ class GeoMMO {
 
     this.socket.on('player:moved', (data) => {
       this.playerManager.updatePosition(data.id, data.position);
+    });
+
+    this.socket.on('player:flagUpdated', (data) => {
+      this.playerManager.updatePlayerFlag(data.id, data.flag);
     });
 
     // Chat events

@@ -23,6 +23,11 @@ body {
   background: #000;
 }
 
+/* Emoji support */
+.player-sprite, .flag-option, #player-name {
+  font-family: "Apple Color Emoji", "Segoe UI Emoji", "Noto Color Emoji", "Twemoji Mozilla", sans-serif;
+}
+
 /* Screens */
 .screen {
   width: 100vw;
@@ -147,6 +152,18 @@ body {
   color: var(--osrs-text);
   padding: 0 10px 8px;
   font-size: 12px;
+}
+
+#change-flag-btn {
+  margin: 5px 10px 10px;
+  padding: 6px 12px;
+  font-size: 11px;
+  width: calc(100% - 20px);
+}
+
+.small-btn {
+  padding: 6px 12px !important;
+  font-size: 11px !important;
 }
 
 /* Minimap */

@@ -269,6 +269,18 @@ class MapManager {
     }
   }
 
+  // Update player's flag on the marker
+  updatePlayerFlag(playerId, flag) {
+    const markerData = this.markers.get(playerId);
+    if (!markerData) return;
+
+    const sprite = markerData.element.querySelector('.player-sprite');
+    if (sprite) {
+      sprite.textContent = flag;
+    }
+    markerData.flag = flag;
+  }
+
   // OSRS-inspired map style (darker, more game-like)
   getMapStyle() {
     return [

@@ -116,6 +116,32 @@ class PlayerManager {
   showChatBubble(playerId, message) {
     this.mapManager.showChatBubble(playerId, message);
   }
+
+  // Update self player's flag
+  updateSelfFlag(flag) {
+    if (!this.selfPlayer) return;
+
+    this.selfPlayer.flag = flag;
+
+    // Update the marker on the map
+    this.mapManager.updatePlayerFlag(this.selfSocketId, flag);
+
+    // Update UI
+    document.getElementById('player-name').textContent = `${flag} ${this.selfPlayer.username}`;
+
+    // Update player list
+    this.updatePlayerList();
+  }
+
+  // Update another player's flag
+  updatePlayerFlag(playerId, flag) {
+    const player = this.players.get(playerId);
+    if (!player) return;
+
+    player.flag = flag;
+    this.mapManager.updatePlayerFlag(playerId, flag);
+    this.updatePlayerList();
+  }
 }
 
 // Export for use in other modules

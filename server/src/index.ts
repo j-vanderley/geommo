@@ -99,6 +99,19 @@ io.on('connection', (socket) => {
     }
   });
 
+  // Update flag
+  socket.on('player:updateFlag', async (data) => {
+    const player = await playerManager.updateFlag(socket.id, data.flag);
+
+    if (player) {
+      // Broadcast flag change to all other players
+      socket.broadcast.emit('player:flagUpdated', {
+        id: socket.id,
+        flag: player.flag
+      });
+    }
+  });
+
   // Chat messages
   socket.on('chat:send', (data) => {
     const player = playerManager.getPlayer(socket.id);
