@@ -6,6 +6,7 @@ class GeoMMO {
     this.playerManager = null;
     this.chatManager = null;
     this.user = null;
+    this.selectedFlag = null;
   }
 
   async init() {
@@ -14,13 +15,47 @@ class GeoMMO {
       this.login();
     });
 
+    // Set up flag grid
+    this.setupFlagSelector();
+
     // Check if already logged in
     firebase.auth().onAuthStateChanged(async (user) => {
       if (user) {
         this.user = user;
-        await this.startGame();
+        // Check if user already has a saved flag
+        const savedFlag = localStorage.getItem(`flag_${user.uid}`);
+        if (savedFlag) {
+          this.selectedFlag = savedFlag;
+          await this.startGame();
+        } else {
+          this.showFlagSelector();
+        }
       }
     });
+  }
+
+  setupFlagSelector() {
+    const grid = document.getElementById('flag-grid');
+    COUNTRY_FLAGS.forEach(flag => {
+      const option = document.createElement('div');
+      option.className = 'flag-option';
+      option.textContent = flag.emoji;
+      option.title = flag.name;
+      option.addEventListener('click', () => this.selectFlag(flag));
+      grid.appendChild(option);
+    });
+  }
+
+  showFlagSelector() {
+    document.getElementById('login-screen').classList.add('hidden');
+    document.getElementById('flag-screen').classList.remove('hidden');
+  }
+
+  async selectFlag(flag) {
+    this.selectedFlag = flag.emoji;
+    // Save to localStorage
+    localStorage.setItem(`flag_${this.user.uid}`, flag.emoji);
+    await this.startGame();
   }
 
   async login() {
@@ -29,7 +64,15 @@ class GeoMMO {
     try {
       const result = await firebase.auth().signInWithPopup(provider);
       this.user = result.user;
-      await this.startGame();
+
+      // Check if user already has a saved flag
+      const savedFlag = localStorage.getItem(`flag_${this.user.uid}`);
+      if (savedFlag) {
+        this.selectedFlag = savedFlag;
+        await this.startGame();
+      } else {
+        this.showFlagSelector();
+      }
     } catch (error) {
       console.error('Login error:', error);
       alert('Login failed. Please try again.');
@@ -39,6 +82,7 @@ class GeoMMO {
   async startGame() {
     // Show game screen
     document.getElementById('login-screen').classList.add('hidden');
+    document.getElementById('flag-screen').classList.add('hidden');
     document.getElementById('game-screen').classList.remove('hidden');
 
     // Initialize map
@@ -79,7 +123,10 @@ class GeoMMO {
 
       // Authenticate with Firebase token
       const token = await this.user.getIdToken();
-      this.socket.emit('player:authenticate', { token });
+      this.socket.emit('player:authenticate', {
+        token,
+        flag: this.selectedFlag
+      });
     });
 
     this.socket.on('disconnect', () => {

@@ -8,6 +8,7 @@ export interface Player {
   odId: string;
   username: string;
   position: Position;
+  flag: string;
   lastSeen: Date;
 }
 
@@ -29,7 +30,7 @@ export interface WorldState {
 export interface ClientToServerEvents {
   'player:move': (data: { lat: number; lng: number }) => void;
   'chat:send': (data: { message: string; type: 'global' | 'local' }) => void;
-  'player:authenticate': (data: { token: string }) => void;
+  'player:authenticate': (data: { token: string; flag?: string }) => void;
 }
 
 export interface ServerToClientEvents {

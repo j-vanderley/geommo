@@ -65,7 +65,7 @@ io.on('connection', (socket) => {
       const username = decodedToken.name || decodedToken.email || `Player_${odId.slice(0, 6)}`;
 
       // Add player to the game
-      const player = await playerManager.addPlayer(socket.id, odId, username);
+      const player = await playerManager.addPlayer(socket.id, odId, username, data.flag);
 
       // Send success response
       socket.emit('auth:success', { player });

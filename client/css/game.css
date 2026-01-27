@@ -330,15 +330,82 @@ body {
 }
 
 .player-sprite {
-  width: 32px;
-  height: 32px;
-  background: var(--osrs-gold);
-  border: 2px solid var(--osrs-border);
+  width: 40px;
+  height: 40px;
+  font-size: 32px;
+  line-height: 40px;
+  text-align: center;
+  background: rgba(0, 0, 0, 0.5);
+  border: 3px solid var(--osrs-border);
   border-radius: 50%;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.5);
 }
 
 .player-marker.self .player-sprite {
-  background: #00ff00;
+  border-color: var(--osrs-gold);
+  box-shadow: 0 0 10px var(--osrs-gold);
+}
+
+/* Flag Selection Screen */
+#flag-screen {
+  background: linear-gradient(135deg, #1a1a1a 0%, #3d3426 100%);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
+
+.flag-selector-box {
+  background: var(--osrs-bg);
+  border: 3px solid var(--osrs-border);
+  border-radius: 4px;
+  padding: 30px 40px;
+  text-align: center;
+  box-shadow: 0 0 20px rgba(0, 0, 0, 0.5);
+  max-width: 600px;
+  max-height: 80vh;
+  overflow-y: auto;
+}
+
+.flag-selector-box h2 {
+  color: var(--osrs-gold);
+  font-size: 28px;
+  margin-bottom: 10px;
+  text-shadow: 2px 2px 4px #000;
+}
+
+.flag-selector-box p {
+  color: var(--osrs-text);
+  margin-bottom: 20px;
+}
+
+#flag-grid {
+  display: grid;
+  grid-template-columns: repeat(5, 1fr);
+  gap: 10px;
+  padding: 10px;
+}
+
+.flag-option {
+  width: 60px;
+  height: 60px;
+  font-size: 40px;
+  line-height: 60px;
+  text-align: center;
+  background: rgba(0, 0, 0, 0.3);
+  border: 2px solid var(--osrs-border);
+  border-radius: 8px;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.flag-option:hover {
+  background: rgba(255, 176, 0, 0.2);
+  border-color: var(--osrs-gold);
+  transform: scale(1.1);
+}
+
+.flag-option:active {
+  transform: scale(0.95);
 }
 
 /* Scrollbar Styling */

@@ -9,16 +9,20 @@ export class PlayerManager {
     this.db = db;
   }
 
-  async addPlayer(socketId: string, odId: string, username: string, position?: Position): Promise<Player> {
+  async addPlayer(socketId: string, odId: string, username: string, flag?: string, position?: Position): Promise<Player> {
     // Try to load existing player data from Firestore
     const playerDoc = await this.db.collection('players').doc(odId).get();
 
     let playerPosition = position || { lat: 40.7128, lng: -74.0060 }; // Default: NYC
+    let playerFlag = flag || '🏳️'; // Default: white flag
 
     if (playerDoc.exists) {
       const data = playerDoc.data();
       if (data?.position) {
         playerPosition = data.position;
+      }
+      if (data?.flag && !flag) {
+        playerFlag = data.flag;
       }
     }
 
@@ -27,6 +31,7 @@ export class PlayerManager {
       odId,
       username,
       position: playerPosition,
+      flag: playerFlag,
       lastSeen: new Date()
     };
 
@@ -75,6 +80,7 @@ export class PlayerManager {
       await this.db.collection('players').doc(player.odId).set({
         username: player.username,
         position: player.position,
+        flag: player.flag,
         lastSeen: player.lastSeen,
         createdAt: FieldValue.serverTimestamp()
       }, { merge: true });

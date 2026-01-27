@@ -70,9 +70,10 @@ class MapManager {
   createPlayerMarker(player, isSelf = false) {
     const markerElement = document.createElement('div');
     markerElement.className = `player-marker ${isSelf ? 'self' : ''}`;
+    const flag = player.flag || '🏳️';
     markerElement.innerHTML = `
       <div class="name">${player.username}</div>
-      <div class="player-sprite"></div>
+      <div class="player-sprite">${flag}</div>
     `;
 
     const marker = new google.maps.marker.AdvancedMarkerElement({
@@ -81,7 +82,7 @@ class MapManager {
       content: markerElement
     });
 
-    this.markers.set(player.id, { marker, element: markerElement });
+    this.markers.set(player.id, { marker, element: markerElement, flag });
 
     if (isSelf) {
       this.selfMarker = marker;

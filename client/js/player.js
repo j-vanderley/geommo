@@ -17,7 +17,7 @@ class PlayerManager {
     this.mapManager.createPlayerMarker(player, true);
 
     // Update UI
-    document.getElementById('player-name').textContent = player.username;
+    document.getElementById('player-name').textContent = `${player.flag || '🏳️'} ${player.username}`;
     this.updatePlayerList();
   }
 
@@ -96,7 +96,7 @@ class PlayerManager {
 
     this.players.forEach((player, id) => {
       const li = document.createElement('li');
-      li.textContent = player.username;
+      li.textContent = `${player.flag || '🏳️'} ${player.username}`;
       li.dataset.playerId = id;
 
       if (id === this.selfSocketId) {
