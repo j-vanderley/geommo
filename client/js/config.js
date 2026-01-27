@@ -1,12 +1,11 @@
 // Firebase Configuration
-// Replace with your actual Firebase config from Firebase Console
 const firebaseConfig = {
-  apiKey: "YOUR_FIREBASE_API_KEY",
-  authDomain: "YOUR_PROJECT_ID.firebaseapp.com",
-  projectId: "YOUR_PROJECT_ID",
-  storageBucket: "YOUR_PROJECT_ID.appspot.com",
-  messagingSenderId: "YOUR_MESSAGING_SENDER_ID",
-  appId: "YOUR_APP_ID"
+  apiKey: "AIzaSyDAOXqJ_jPqSRrgnUjn_ip3l8fz8CFcYUc",
+  authDomain: "gamenana.firebaseapp.com",
+  projectId: "gamenana",
+  storageBucket: "gamenana.firebasestorage.app",
+  messagingSenderId: "25873003290",
+  appId: "1:25873003290:web:c9d6b90ed658c6c5e632a3"
 };
 
 // Initialize Firebase
