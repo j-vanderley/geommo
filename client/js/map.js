@@ -3,7 +3,7 @@ class MapManager {
   constructor() {
     this.map = null;
     this.minimap = null;
-    this.markers = new Map(); // socketId -> marker
+    this.markers = new Map(); // socketId -> marker overlay
     this.chatBubbles = new Map(); // socketId -> overlay
     this.selfMarker = null;
     this.onMoveCallback = null;
@@ -66,6 +66,53 @@ class MapManager {
     this.onMoveCallback = callback;
   }
 
+  // Custom Player Marker Overlay class
+  createPlayerOverlayClass() {
+    const self = this;
+
+    class PlayerOverlay extends google.maps.OverlayView {
+      constructor(position, element, isSelf) {
+        super();
+        this.position = position;
+        this.element = element;
+        this.isSelf = isSelf;
+      }
+
+      onAdd() {
+        const panes = this.getPanes();
+        panes.overlayMouseTarget.appendChild(this.element);
+      }
+
+      draw() {
+        const overlayProjection = this.getProjection();
+        if (!overlayProjection) return;
+
+        const pos = overlayProjection.fromLatLngToDivPixel(
+          new google.maps.LatLng(this.position.lat, this.position.lng)
+        );
+
+        if (pos) {
+          this.element.style.position = 'absolute';
+          this.element.style.left = `${pos.x - 20}px`;
+          this.element.style.top = `${pos.y - 50}px`;
+        }
+      }
+
+      onRemove() {
+        if (this.element.parentElement) {
+          this.element.parentElement.removeChild(this.element);
+        }
+      }
+
+      setPosition(position) {
+        this.position = position;
+        this.draw();
+      }
+    }
+
+    return PlayerOverlay;
+  }
+
   // Create player marker
   createPlayerMarker(player, isSelf = false) {
     const markerElement = document.createElement('div');
@@ -76,20 +123,18 @@ class MapManager {
       <div class="player-sprite">${flag}</div>
     `;
 
-    const marker = new google.maps.marker.AdvancedMarkerElement({
-      map: this.map,
-      position: player.position,
-      content: markerElement
-    });
+    const PlayerOverlay = this.createPlayerOverlayClass();
+    const overlay = new PlayerOverlay(player.position, markerElement, isSelf);
+    overlay.setMap(this.map);
 
-    this.markers.set(player.id, { marker, element: markerElement, flag });
+    this.markers.set(player.id, { overlay, element: markerElement, flag });
 
     if (isSelf) {
-      this.selfMarker = marker;
+      this.selfMarker = overlay;
       this.centerOn(player.position);
     }
 
-    return marker;
+    return overlay;
   }
 
   // Update player position with animation
@@ -98,21 +143,15 @@ class MapManager {
     if (!markerData) return;
 
     if (animate) {
-      this.animateMarker(markerData.marker, position);
+      this.animateMarker(markerData.overlay, position);
     } else {
-      markerData.marker.position = position;
-    }
-
-    // Update chat bubble position if exists
-    const bubble = this.chatBubbles.get(playerId);
-    if (bubble) {
-      bubble.position = new google.maps.LatLng(position.lat, position.lng);
+      markerData.overlay.setPosition(position);
     }
   }
 
   // Simple animation between positions
-  animateMarker(marker, targetPos) {
-    const currentPos = marker.position;
+  animateMarker(overlay, targetPos) {
+    const currentPos = { ...overlay.position };
     const steps = 20;
     let step = 0;
 
@@ -122,7 +161,7 @@ class MapManager {
       const lat = currentPos.lat + (targetPos.lat - currentPos.lat) * progress;
       const lng = currentPos.lng + (targetPos.lng - currentPos.lng) * progress;
 
-      marker.position = { lat, lng };
+      overlay.setPosition({ lat, lng });
 
       if (step < steps) {
         requestAnimationFrame(animate);
@@ -136,7 +175,7 @@ class MapManager {
   removePlayer(playerId) {
     const markerData = this.markers.get(playerId);
     if (markerData) {
-      markerData.marker.map = null;
+      markerData.overlay.setMap(null);
       this.markers.delete(playerId);
     }
 
@@ -152,7 +191,7 @@ class MapManager {
   // Update self position
   updateSelfPosition(position) {
     if (this.selfMarker) {
-      this.selfMarker.position = position;
+      this.selfMarker.setPosition(position);
     }
     this.minimap.setCenter(position);
 
@@ -189,11 +228,15 @@ class MapManager {
 
       draw() {
         const overlayProjection = this.getProjection();
+        if (!overlayProjection) return;
+
         const pos = overlayProjection.fromLatLngToDivPixel(this.position);
 
-        this.element.style.position = 'absolute';
-        this.element.style.left = `${pos.x - 100}px`;
-        this.element.style.top = `${pos.y - 70}px`;
+        if (pos) {
+          this.element.style.position = 'absolute';
+          this.element.style.left = `${pos.x - 100}px`;
+          this.element.style.top = `${pos.y - 80}px`;
+        }
       }
 
       onRemove() {
@@ -203,8 +246,10 @@ class MapManager {
       }
     }
 
-    const markerPos = markerData.marker.position;
-    const position = new google.maps.LatLng(markerPos.lat, markerPos.lng);
+    const position = new google.maps.LatLng(
+      markerData.overlay.position.lat,
+      markerData.overlay.position.lng
+    );
     const overlay = new ChatBubbleOverlay(position, bubbleElement);
     overlay.setMap(this.map);
 
