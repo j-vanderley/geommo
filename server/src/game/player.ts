@@ -1,4 +1,4 @@
-import { Player, Position } from '../types';
+import { Player, Position, Avatar } from '../types';
 import { Firestore, FieldValue } from '@google-cloud/firestore';
 
 export class PlayerManager {
@@ -9,12 +9,13 @@ export class PlayerManager {
     this.db = db;
   }
 
-  async addPlayer(socketId: string, odId: string, username: string, flag?: string, position?: Position): Promise<Player> {
+  async addPlayer(socketId: string, odId: string, username: string, flag?: string, avatar?: Avatar, position?: Position): Promise<Player> {
     // Try to load existing player data from Firestore
     const playerDoc = await this.db.collection('players').doc(odId).get();
 
     let playerPosition = position || { lat: 40.7128, lng: -74.0060 }; // Default: NYC
     let playerFlag = flag || '🏳️'; // Default: white flag
+    let playerAvatar = avatar || { text: ':-)', color: '#ffb000' }; // Default avatar
 
     if (playerDoc.exists) {
       const data = playerDoc.data();
@@ -24,6 +25,10 @@ export class PlayerManager {
       if (data?.flag && !flag) {
         playerFlag = data.flag;
       }
+      // Load saved avatar from Firestore (server-side takes precedence unless new one provided)
+      if (data?.avatar && !avatar) {
+        playerAvatar = data.avatar;
+      }
     }
 
     const player: Player = {
@@ -32,6 +37,7 @@ export class PlayerManager {
       username,
       position: playerPosition,
       flag: playerFlag,
+      avatar: playerAvatar,
       lastSeen: new Date()
     };
 
@@ -87,12 +93,26 @@ export class PlayerManager {
     return player;
   }
 
+  async updateAvatar(socketId: string, avatar: Avatar): Promise<Player | undefined> {
+    const player = this.players.get(socketId);
+    if (player) {
+      player.avatar = avatar;
+      player.flag = avatar.text; // Keep flag in sync for compatibility
+      player.lastSeen = new Date();
+
+      // Save to Firestore
+      await this.savePlayer(player);
+    }
+    return player;
+  }
+
   private async savePlayer(player: Player): Promise<void> {
     try {
       await this.db.collection('players').doc(player.odId).set({
         username: player.username,
         position: player.position,
         flag: player.flag,
+        avatar: player.avatar,
         lastSeen: player.lastSeen,
         createdAt: FieldValue.serverTimestamp()
       }, { merge: true });

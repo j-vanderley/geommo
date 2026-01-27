@@ -82,7 +82,7 @@ io.on('connection', (socket) => {
       }
 
       // Add player to the game
-      const player = await playerManager.addPlayer(socket.id, odId, username, data.flag);
+      const player = await playerManager.addPlayer(socket.id, odId, username, data.flag, data.avatar);
 
       // Send success response
       socket.emit('auth:success', { player });
@@ -116,7 +116,7 @@ io.on('connection', (socket) => {
     }
   });
 
-  // Update flag
+  // Update flag (legacy)
   socket.on('player:updateFlag', async (data) => {
     const player = await playerManager.updateFlag(socket.id, data.flag);
 
@@ -125,6 +125,19 @@ io.on('connection', (socket) => {
       socket.broadcast.emit('player:flagUpdated', {
         id: socket.id,
         flag: player.flag
+      });
+    }
+  });
+
+  // Update avatar
+  socket.on('player:updateAvatar', async (data) => {
+    const player = await playerManager.updateAvatar(socket.id, data.avatar);
+
+    if (player) {
+      // Broadcast avatar change to all other players
+      socket.broadcast.emit('player:avatarUpdated', {
+        id: socket.id,
+        avatar: player.avatar!
       });
     }
   });

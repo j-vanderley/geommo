@@ -456,6 +456,14 @@ class GeoMMO {
     // Auth events
     this.socket.on('auth:success', (data) => {
       console.log('Authentication successful:', data.player);
+
+      // Sync avatar from server (server has the authoritative copy from Firestore)
+      if (data.player.avatar) {
+        this.selectedAvatar = data.player.avatar;
+        // Update localStorage to match server
+        localStorage.setItem(`avatar_${this.getUserId()}`, JSON.stringify(this.selectedAvatar));
+      }
+
       this.playerManager.setSelf(data.player);
       this.chatManager.addSystemMessage('Welcome to GeoMMO!');
     });
