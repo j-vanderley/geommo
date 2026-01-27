@@ -55,6 +55,30 @@ const COUNTRY_FLAGS = [
   { code: 'ie', emoji: '🇮🇪', name: 'Ireland' },
 ];
 
+// Major cities for fast travel
+const MAJOR_CITIES = [
+  { name: 'New York', lat: 40.758896, lng: -73.985130 },
+  { name: 'London', lat: 51.5074, lng: -0.1278 },
+  { name: 'Paris', lat: 48.8566, lng: 2.3522 },
+  { name: 'Tokyo', lat: 35.6762, lng: 139.6503 },
+  { name: 'Sydney', lat: -33.8688, lng: 151.2093 },
+  { name: 'Los Angeles', lat: 34.0522, lng: -118.2437 },
+  { name: 'Dubai', lat: 25.2048, lng: 55.2708 },
+  { name: 'Singapore', lat: 1.3521, lng: 103.8198 },
+  { name: 'Hong Kong', lat: 22.3193, lng: 114.1694 },
+  { name: 'Berlin', lat: 52.5200, lng: 13.4050 },
+  { name: 'Rome', lat: 41.9028, lng: 12.4964 },
+  { name: 'Moscow', lat: 55.7558, lng: 37.6173 },
+  { name: 'Cairo', lat: 30.0444, lng: 31.2357 },
+  { name: 'Rio de Janeiro', lat: -22.9068, lng: -43.1729 },
+  { name: 'Mumbai', lat: 19.0760, lng: 72.8777 },
+  { name: 'Toronto', lat: 43.6532, lng: -79.3832 },
+  { name: 'Seoul', lat: 37.5665, lng: 126.9780 },
+  { name: 'Bangkok', lat: 13.7563, lng: 100.5018 },
+  { name: 'Amsterdam', lat: 52.3676, lng: 4.9041 },
+  { name: 'San Francisco', lat: 37.7749, lng: -122.4194 },
+];
+
 // Game Configuration
 const GAME_CONFIG = {
   // Default spawn location (NYC Times Square)

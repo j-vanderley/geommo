@@ -233,6 +233,40 @@ body {
   width: calc(100% - 20px);
 }
 
+/* Fast Travel Panel */
+#fast-travel {
+  top: 140px;
+  left: 10px;
+  width: 180px;
+}
+
+#city-select {
+  width: calc(100% - 16px);
+  margin: 8px;
+  padding: 6px 8px;
+  background: rgba(0, 0, 0, 0.5);
+  border: 1px solid var(--osrs-border);
+  color: var(--osrs-text);
+  font-family: inherit;
+  font-size: 12px;
+  cursor: pointer;
+}
+
+#city-select:focus {
+  outline: none;
+  border-color: var(--osrs-gold);
+}
+
+#city-select option {
+  background: var(--osrs-dark);
+  color: var(--osrs-text);
+}
+
+#travel-btn {
+  margin: 0 8px 8px;
+  width: calc(100% - 16px);
+}
+
 .small-btn {
   padding: 6px 12px !important;
   font-size: 11px !important;
@@ -383,6 +417,29 @@ body {
   font-size: 12px;
   animation: fadeIn 0.3s, fadeOut 0.5s 4.5s forwards;
   pointer-events: none;
+}
+
+/* Player Name Labels (HTML overlay - stays same size when zooming) */
+.player-name-label {
+  position: absolute;
+  background: rgba(0, 0, 0, 0.75);
+  color: var(--osrs-text-light);
+  padding: 3px 8px;
+  border-radius: 4px;
+  font-size: 12px;
+  font-family: 'Courier New', monospace;
+  font-weight: bold;
+  pointer-events: none;
+  transform: translate(-50%, -100%);
+  white-space: nowrap;
+  z-index: 150;
+  text-shadow: 1px 1px 2px #000;
+  border: 1px solid var(--osrs-border);
+}
+
+.player-name-label.self {
+  color: var(--osrs-gold);
+  border-color: var(--osrs-gold);
 }
 
 /* Chat Bubbles for 3D View */

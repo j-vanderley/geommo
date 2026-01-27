@@ -240,6 +240,62 @@ class GeoMMO {
     document.getElementById('change-flag-btn').addEventListener('click', () => {
       this.showChangeFlagScreen();
     });
+
+    // Set up fast travel
+    this.setupFastTravel();
+  }
+
+  setupFastTravel() {
+    const select = document.getElementById('city-select');
+    const travelBtn = document.getElementById('travel-btn');
+
+    // Populate city dropdown
+    MAJOR_CITIES.forEach(city => {
+      const option = document.createElement('option');
+      option.value = JSON.stringify({ lat: city.lat, lng: city.lng });
+      option.textContent = city.name;
+      select.appendChild(option);
+    });
+
+    // Handle travel button click
+    travelBtn.addEventListener('click', () => {
+      const selected = select.value;
+      if (!selected) return;
+
+      const { lat, lng } = JSON.parse(selected);
+      this.fastTravelTo(lat, lng);
+    });
+
+    // Also allow double-click/enter on select
+    select.addEventListener('change', () => {
+      // Optional: auto-travel on selection
+    });
+  }
+
+  fastTravelTo(lat, lng) {
+    if (!this.socket || !this.socket.connected) return;
+
+    // Update position
+    const position = { lat, lng };
+
+    // Update local player position
+    this.playerManager.updateSelfPosition(position);
+
+    // Tell the map to update tiles for new location
+    if (this.mapManager.map3d) {
+      this.mapManager.map3d.setCenter(lat, lng);
+      this.mapManager.map3d.tileManager.centerLat = lat;
+      this.mapManager.map3d.tileManager.centerLng = lng;
+      this.mapManager.map3d.tileManager.tiles.clear(); // Clear old tiles
+      this.mapManager.map3d.tileManager.updateTiles(lat, lng);
+    }
+
+    // Send to server
+    this.socket.emit('player:move', { lat, lng });
+
+    // Show system message
+    const cityName = MAJOR_CITIES.find(c => c.lat === lat && c.lng === lng)?.name || 'Unknown';
+    this.chatManager.addSystemMessage(`Teleported to ${cityName}!`);
   }
 
   async connectToServer() {

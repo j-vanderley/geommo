@@ -15,7 +15,7 @@ class Map3D {
     this.tileManager = null;
 
     // Players
-    this.playerSprites = new Map(); // socketId -> { sprite, nameSprite, group }
+    this.playerSprites = new Map(); // socketId -> { sprite, group, nameLabel }
     this.selfPlayerId = null;
 
     // Raycasting
@@ -33,8 +33,9 @@ class Map3D {
     // Animation
     this.animationId = null;
 
-    // Chat bubbles (3D or HTML overlay)
+    // HTML overlays (chat bubbles and name labels)
     this.chatBubbles = new Map();
+    this.nameLabels = new Map();
   }
 
   async init() {
@@ -131,23 +132,8 @@ class Map3D {
       this.cameraController.update();
     }
 
-    // Make all player sprites face the camera (billboarding)
-    this.playerSprites.forEach(({ group }) => {
-      if (group) {
-        // Get camera direction in horizontal plane
-        const cameraDir = new THREE.Vector3();
-        this.camera.getWorldDirection(cameraDir);
-        cameraDir.y = 0;
-        cameraDir.normalize();
-
-        // Rotate group to face camera
-        const angle = Math.atan2(cameraDir.x, cameraDir.z);
-        group.rotation.y = angle + Math.PI;
-      }
-    });
-
-    // Update chat bubble positions
-    this.updateChatBubblePositions();
+    // Update HTML overlay positions (name labels and chat bubbles)
+    this.updateOverlayPositions();
 
     this.renderer.render(this.scene, this.camera);
   }
@@ -178,13 +164,13 @@ class Map3D {
 
   // Create a player sprite (flag emoji as texture)
   createPlayerSprite(player, isSelf = false) {
-    const flag = player.flag || '?';
+    const flag = player.flag || '🏳️';
     const username = player.username || 'Unknown';
 
-    // Create a group to hold sprite and name
+    // Create a group to hold sprite
     const group = new THREE.Group();
 
-    // Create canvas for flag sprite
+    // Create canvas for flag sprite with emoji
     const canvas = document.createElement('canvas');
     canvas.width = 128;
     canvas.height = 128;
@@ -201,15 +187,16 @@ class Map3D {
     ctx.lineWidth = 4;
     ctx.stroke();
 
-    // Draw flag emoji
-    ctx.font = '64px "Apple Color Emoji", "Segoe UI Emoji", "Noto Color Emoji", sans-serif';
+    // Draw flag emoji - use large size for clarity
+    ctx.font = '60px "Segoe UI Emoji", "Apple Color Emoji", "Noto Color Emoji", sans-serif';
     ctx.textAlign = 'center';
     ctx.textBaseline = 'middle';
-    ctx.fillText(flag, 64, 68);
+    ctx.fillText(flag, 64, 66);
 
     // Create sprite texture
     const texture = new THREE.CanvasTexture(canvas);
     texture.colorSpace = THREE.SRGBColorSpace;
+    texture.needsUpdate = true;
 
     // Create sprite material
     const material = new THREE.SpriteMaterial({
@@ -227,11 +214,6 @@ class Map3D {
     sprite.position.y = GAME_CONFIG.view3d.playerSpriteSize / 2;
     group.add(sprite);
 
-    // Create name label
-    const nameSprite = this.createNameSprite(username, isSelf);
-    nameSprite.position.y = GAME_CONFIG.view3d.playerSpriteSize + 0.5;
-    group.add(nameSprite);
-
     // Position group
     const worldPos = this.latLngToWorld(player.position.lat, player.position.lng);
     group.position.set(worldPos.x, 0, worldPos.z);
@@ -239,8 +221,11 @@ class Map3D {
     // Add to scene
     this.scene.add(group);
 
+    // Create HTML name label (stays same size when zooming)
+    const nameLabel = this.createNameLabel(player.id, username, isSelf);
+
     // Store reference
-    this.playerSprites.set(player.id, { sprite, nameSprite, group, canvas, ctx, isSelf });
+    this.playerSprites.set(player.id, { sprite, group, canvas, ctx, isSelf, nameLabel });
 
     // If self, set camera target and load tiles
     if (isSelf) {
@@ -253,37 +238,61 @@ class Map3D {
     return group;
   }
 
-  // Create name label sprite
-  createNameSprite(name, isSelf = false) {
-    const canvas = document.createElement('canvas');
-    canvas.width = 256;
-    canvas.height = 64;
-    const ctx = canvas.getContext('2d');
+  // Create HTML name label (like chat bubbles, stays same size)
+  createNameLabel(playerId, name, isSelf = false) {
+    const label = document.createElement('div');
+    label.className = 'player-name-label' + (isSelf ? ' self' : '');
+    label.textContent = name;
 
-    // Draw background
-    ctx.fillStyle = 'rgba(0, 0, 0, 0.7)';
-    const textWidth = ctx.measureText(name).width + 16;
-    ctx.fillRect((256 - textWidth) / 2, 16, textWidth, 32);
+    this.container.appendChild(label);
+    this.nameLabels.set(playerId, { element: label });
 
-    // Draw text
-    ctx.font = 'bold 24px "Courier New", monospace';
-    ctx.textAlign = 'center';
-    ctx.textBaseline = 'middle';
-    ctx.fillStyle = isSelf ? '#ffb000' : '#ffff00';
-    ctx.fillText(name, 128, 32);
+    return label;
+  }
 
-    const texture = new THREE.CanvasTexture(canvas);
-    texture.colorSpace = THREE.SRGBColorSpace;
+  // Update all HTML overlay positions (names and chat bubbles)
+  updateOverlayPositions() {
+    // Update name labels
+    this.nameLabels.forEach((labelData, playerId) => {
+      const playerData = this.playerSprites.get(playerId);
+      if (!playerData || !labelData.element) return;
 
-    const material = new THREE.SpriteMaterial({
-      map: texture,
-      transparent: true
+      const worldPos = playerData.group.position.clone();
+      worldPos.y += GAME_CONFIG.view3d.playerSpriteSize + 0.5;
+
+      const screenPos = worldPos.clone().project(this.camera);
+      const x = (screenPos.x * 0.5 + 0.5) * this.container.clientWidth;
+      const y = (-screenPos.y * 0.5 + 0.5) * this.container.clientHeight;
+
+      if (screenPos.z < 1) {
+        labelData.element.style.display = 'block';
+        labelData.element.style.left = `${x}px`;
+        labelData.element.style.top = `${y}px`;
+      } else {
+        labelData.element.style.display = 'none';
+      }
     });
 
-    const sprite = new THREE.Sprite(material);
-    sprite.scale.set(4, 1, 1);
+    // Update chat bubbles
+    this.chatBubbles.forEach((bubble, playerId) => {
+      const playerData = this.playerSprites.get(playerId);
+      if (!playerData || !bubble.element) return;
 
-    return sprite;
+      const worldPos = playerData.group.position.clone();
+      worldPos.y += GAME_CONFIG.view3d.playerSpriteSize + 2;
+
+      const screenPos = worldPos.clone().project(this.camera);
+      const x = (screenPos.x * 0.5 + 0.5) * this.container.clientWidth;
+      const y = (-screenPos.y * 0.5 + 0.5) * this.container.clientHeight;
+
+      if (screenPos.z < 1) {
+        bubble.element.style.display = 'block';
+        bubble.element.style.left = `${x}px`;
+        bubble.element.style.top = `${y}px`;
+      } else {
+        bubble.element.style.display = 'none';
+      }
+    });
   }
 
   // Update player position
@@ -340,8 +349,13 @@ class Map3D {
     // Dispose textures and materials
     playerData.sprite.material.map.dispose();
     playerData.sprite.material.dispose();
-    playerData.nameSprite.material.map.dispose();
-    playerData.nameSprite.material.dispose();
+
+    // Remove name label
+    const labelData = this.nameLabels.get(playerId);
+    if (labelData && labelData.element && labelData.element.parentElement) {
+      labelData.element.parentElement.removeChild(labelData.element);
+    }
+    this.nameLabels.delete(playerId);
 
     this.playerSprites.delete(playerId);
     this.removeChatBubble(playerId);
@@ -352,7 +366,7 @@ class Map3D {
     const playerData = this.playerSprites.get(playerId);
     if (!playerData) return;
 
-    const { ctx, canvas, sprite, isSelf } = playerData;
+    const { ctx, sprite, isSelf } = playerData;
 
     // Redraw canvas
     ctx.clearRect(0, 0, 128, 128);
@@ -369,10 +383,10 @@ class Map3D {
     ctx.stroke();
 
     // Draw flag emoji
-    ctx.font = '64px "Apple Color Emoji", "Segoe UI Emoji", "Noto Color Emoji", sans-serif';
+    ctx.font = '60px "Segoe UI Emoji", "Apple Color Emoji", "Noto Color Emoji", sans-serif';
     ctx.textAlign = 'center';
     ctx.textBaseline = 'middle';
-    ctx.fillText(flag, 64, 68);
+    ctx.fillText(flag, 64, 66);
 
     // Update texture
     sprite.material.map.needsUpdate = true;
@@ -390,7 +404,7 @@ class Map3D {
     bubble.className = 'chat-bubble-3d';
     bubble.textContent = message;
 
-    // Store bubble and position data
+    // Store bubble
     this.chatBubbles.set(playerId, {
       element: bubble,
       playerId: playerId
@@ -403,34 +417,6 @@ class Map3D {
     setTimeout(() => {
       this.removeChatBubble(playerId);
     }, GAME_CONFIG.chatBubbleDuration);
-  }
-
-  // Update chat bubble positions (project 3D to 2D)
-  updateChatBubblePositions() {
-    this.chatBubbles.forEach((bubble, playerId) => {
-      const playerData = this.playerSprites.get(playerId);
-      if (!playerData || !bubble.element) return;
-
-      // Get world position above player
-      const worldPos = playerData.group.position.clone();
-      worldPos.y += GAME_CONFIG.view3d.playerSpriteSize + 1.5;
-
-      // Project to screen coordinates
-      const screenPos = worldPos.clone().project(this.camera);
-
-      // Convert to CSS coordinates
-      const x = (screenPos.x * 0.5 + 0.5) * this.container.clientWidth;
-      const y = (-screenPos.y * 0.5 + 0.5) * this.container.clientHeight;
-
-      // Check if in front of camera
-      if (screenPos.z < 1) {
-        bubble.element.style.display = 'block';
-        bubble.element.style.left = `${x}px`;
-        bubble.element.style.top = `${y}px`;
-      } else {
-        bubble.element.style.display = 'none';
-      }
-    });
   }
 
   removeChatBubble(playerId) {
@@ -446,10 +432,19 @@ class Map3D {
     this.onClickCallback = callback;
   }
 
-  // Center view on position
+  // Center view on position (used for fast travel)
   centerOn(lat, lng) {
     const worldPos = this.latLngToWorld(lat, lng);
     this.cameraController.setTarget(worldPos.x, 0, worldPos.z);
+  }
+
+  // Fast travel to a location
+  fastTravelTo(lat, lng) {
+    // Update tiles for new location
+    this.tileManager.updateTiles(lat, lng);
+
+    // Return the lat/lng for the game to update player position
+    return { lat, lng };
   }
 
   // Dispose everything
@@ -463,6 +458,14 @@ class Map3D {
 
     // Remove chat bubbles
     this.chatBubbles.forEach((_, id) => this.removeChatBubble(id));
+
+    // Remove name labels
+    this.nameLabels.forEach((labelData) => {
+      if (labelData.element && labelData.element.parentElement) {
+        labelData.element.parentElement.removeChild(labelData.element);
+      }
+    });
+    this.nameLabels.clear();
 
     // Dispose tile manager
     if (this.tileManager) {
