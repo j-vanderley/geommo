@@ -365,10 +365,10 @@ class WeatherManager {
         <div id="weather-info"></div>
       `;
 
-      // Insert after player info
-      const playerInfo = document.getElementById('player-info');
-      if (playerInfo && playerInfo.parentNode) {
-        playerInfo.parentNode.insertBefore(weatherDisplay, playerInfo.nextSibling);
+      // Insert into left-panels container for flex layout
+      const leftPanels = document.getElementById('left-panels');
+      if (leftPanels) {
+        leftPanels.appendChild(weatherDisplay);
       }
     }
 
