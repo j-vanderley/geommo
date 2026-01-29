@@ -973,6 +973,66 @@ class Geommo {
     this.socket.on('chat:message', (data) => {
       this.chatManager.addMessage(data);
     });
+
+    // Combat events
+    this.socket.on('combat:attacked', (data) => {
+      // We were attacked!
+      if (this.mapManager.skillsManager) {
+        const died = this.mapManager.skillsManager.takeDamage(data.damage);
+        const itemName = this.mapManager.skillsManager.itemTypes[data.itemKey]?.name || 'unknown weapon';
+
+        if (window.chatManager) {
+          window.chatManager.addLogMessage(
+            `⚔️ ${data.attackerName} hit you with ${itemName} for ${data.damage} damage!`,
+            'error'
+          );
+        }
+      }
+    });
+
+    this.socket.on('combat:hit', (data) => {
+      // Our attack hit
+      const target = this.playerManager.getPlayer(data.targetId);
+      if (target && window.chatManager) {
+        window.chatManager.addLogMessage(
+          `⚔️ You hit ${target.username} for ${data.damage} damage!`,
+          'item'
+        );
+      }
+    });
+
+    this.socket.on('combat:died', (data) => {
+      // Someone died
+      if (window.chatManager) {
+        window.chatManager.addLogMessage(
+          `💀 Player was defeated by ${data.killerName}!`,
+          'error'
+        );
+      }
+    });
+  }
+
+  // Attack a player
+  attackPlayer(targetId) {
+    if (!this.socket || !this.socket.connected) return;
+    if (!this.mapManager.skillsManager) return;
+
+    const skillsManager = this.mapManager.skillsManager;
+
+    // Check if we have a weapon selected and can attack
+    if (!skillsManager.attackPlayer(targetId)) {
+      return; // Attack failed (no weapon, no ammo, etc.)
+    }
+
+    const damage = skillsManager.getCombatDamage(skillsManager.selectedCombatItem);
+    const itemKey = skillsManager.selectedCombatItem;
+
+    // Send attack to server
+    this.socket.emit('combat:attack', {
+      targetId,
+      itemKey,
+      damage
+    });
   }
 
   handleMove(position) {
@@ -998,5 +1058,6 @@ class Geommo {
 // Start the game when DOM is ready
 document.addEventListener('DOMContentLoaded', () => {
   const game = new Geommo();
+  window.game = game; // Expose globally for combat system
   game.init();
 });

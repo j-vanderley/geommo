@@ -115,22 +115,6 @@ body {
   margin-bottom: 15px;
 }
 
-.hero-features {
-  display: flex;
-  gap: 20px;
-  justify-content: center;
-  flex-wrap: wrap;
-}
-
-.hero-features .feature {
-  color: var(--osrs-text);
-  font-size: 14px;
-  padding: 5px 12px;
-  background: rgba(255, 176, 0, 0.1);
-  border: 1px solid rgba(255, 176, 0, 0.3);
-  border-radius: 20px;
-}
-
 /* Login Box */
 .login-box {
   background: rgba(73, 64, 52, 0.95);
@@ -517,7 +501,7 @@ body {
 
 /* Players Panel */
 #players-panel {
-  top: 190px; /* 10px gap from minimap (10 + 150 + ~20 padding + 10 gap) */
+  top: 205px; /* 10px gap from minimap (10 + 150 + ~35 padding/header + 10 gap) */
   right: 10px;
   width: 200px;
   max-height: 300px;
@@ -576,6 +560,12 @@ body {
 
 #player-list li.self {
   color: var(--osrs-gold);
+}
+
+#player-list li.attackable:hover {
+  background: rgba(255, 0, 0, 0.15);
+  border-left: 3px solid #ff4444;
+  padding-left: 7px;
 }
 
 /* Chat Container */
@@ -1481,15 +1471,16 @@ body[class*="ui-"] .weather-time {
   border: none;
   border-bottom: 2px solid transparent;
   color: var(--osrs-text);
-  padding: 8px;
-  font-family: inherit;
-  font-size: 12px;
+  padding: 8px 4px;
+  font-family: "Apple Color Emoji", "Segoe UI Emoji", "Noto Color Emoji", sans-serif;
+  font-size: 16px;
   cursor: pointer;
   transition: all 0.2s;
 }
 
 .skills-tab:hover {
   color: var(--osrs-text-light);
+  background: rgba(255, 255, 255, 0.05);
 }
 
 .skills-tab.active {
@@ -1499,9 +1490,157 @@ body[class*="ui-"] .weather-time {
 }
 
 .skills-content,
-.inventory-content {
+.inventory-content,
+.home-content,
+.combat-content {
   padding: 8px;
-  min-height: 285px; /* Fixed height to match 6 rows of inventory (24 slots / 4 cols) */
+  min-height: 285px;
+}
+
+/* Home Tab */
+.home-panel {
+  text-align: center;
+}
+
+.home-section {
+  margin-bottom: 15px;
+}
+
+.home-section h4 {
+  color: var(--osrs-gold);
+  margin-bottom: 10px;
+}
+
+.home-coords {
+  color: var(--osrs-text);
+  font-size: 12px;
+  margin-bottom: 10px;
+}
+
+.home-btn {
+  width: 100%;
+  margin-bottom: 8px;
+}
+
+.home-info {
+  color: #888;
+  font-size: 11px;
+  padding-top: 10px;
+  border-top: 1px solid var(--osrs-border);
+}
+
+/* Combat Tab */
+.combat-panel {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.combat-health {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px;
+  background: rgba(0, 0, 0, 0.3);
+  border-radius: 4px;
+}
+
+.health-label {
+  color: #ff4444;
+  font-weight: bold;
+  font-size: 12px;
+}
+
+.health-bar {
+  flex: 1;
+  height: 12px;
+  background: #333;
+  border-radius: 2px;
+  overflow: hidden;
+}
+
+.health-fill {
+  height: 100%;
+  background: linear-gradient(180deg, #ff6666 0%, #cc0000 100%);
+  transition: width 0.3s ease;
+}
+
+.health-text {
+  color: #ff4444;
+  font-size: 11px;
+  min-width: 50px;
+  text-align: right;
+}
+
+.combat-section h4 {
+  color: var(--osrs-gold);
+  margin-bottom: 8px;
+  font-size: 12px;
+}
+
+.combat-items {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 4px;
+}
+
+.combat-item {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 6px;
+  background: rgba(0, 0, 0, 0.3);
+  border: 2px solid var(--osrs-border);
+  border-radius: 4px;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.combat-item:hover {
+  border-color: var(--osrs-text);
+}
+
+.combat-item.selected {
+  border-color: var(--osrs-gold);
+  background: rgba(255, 176, 0, 0.1);
+}
+
+.combat-item .item-icon {
+  font-size: 20px;
+}
+
+.combat-item .item-count {
+  font-size: 10px;
+  color: var(--osrs-text);
+}
+
+.combat-item .item-level {
+  font-size: 9px;
+  color: var(--osrs-gold);
+}
+
+.combat-info {
+  padding: 8px;
+  background: rgba(0, 0, 0, 0.2);
+  border-radius: 4px;
+  text-align: center;
+}
+
+.combat-info p {
+  color: #888;
+  font-size: 11px;
+  margin-bottom: 5px;
+}
+
+.combat-stats {
+  color: var(--osrs-text) !important;
+}
+
+.no-items {
+  color: #888;
+  font-size: 11px;
+  text-align: center;
+  padding: 20px;
 }
 
 /* Skills Grid - Same layout as inventory */

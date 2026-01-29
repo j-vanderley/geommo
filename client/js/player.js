@@ -119,11 +119,27 @@ class PlayerManager {
 
       if (id === this.selfSocketId) {
         li.classList.add('self');
+      } else {
+        // Add attack indicator if in combat mode
+        li.classList.add('attackable');
       }
 
-      // Click to center on player
-      li.addEventListener('click', () => {
-        this.mapManager.centerOn(player.position);
+      // Click handler - attack if combat mode, otherwise center
+      li.addEventListener('click', (e) => {
+        if (id === this.selfSocketId) {
+          this.mapManager.centerOn(player.position);
+          return;
+        }
+
+        // Check if in combat mode (has weapon selected)
+        const skillsManager = this.mapManager.skillsManager;
+        if (skillsManager && skillsManager.selectedCombatItem && window.game) {
+          // Attack the player
+          window.game.attackPlayer(id);
+        } else {
+          // Just center on player
+          this.mapManager.centerOn(player.position);
+        }
       });
 
       list.appendChild(li);

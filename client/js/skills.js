@@ -59,6 +59,16 @@ class SkillsManager {
       dropRadius: 0.0015       // Radius around player for drops (~150m)
     };
 
+    // Home location
+    this.homePosition = null;
+
+    // Combat system
+    this.selectedCombatItem = null;
+    this.combatHealth = 100;
+    this.maxCombatHealth = 100;
+    this.inCombat = false;
+    this.combatTarget = null;
+
     // Don't load here - wait for setUserId to be called with user's ID
   }
 
@@ -122,12 +132,16 @@ class SkillsManager {
     this.panel.innerHTML = `
       <div class="panel-header">
         <div class="skills-tabs">
-          <button class="skills-tab active" data-tab="skills">Skills</button>
-          <button class="skills-tab" data-tab="inventory">Inventory</button>
+          <button class="skills-tab" data-tab="home" title="Home">🏠</button>
+          <button class="skills-tab active" data-tab="skills" title="Skills">⭐</button>
+          <button class="skills-tab" data-tab="inventory" title="Inventory">📦</button>
+          <button class="skills-tab" data-tab="combat" title="Combat">⚔️</button>
         </div>
       </div>
+      <div id="home-content" class="home-content hidden"></div>
       <div id="skills-content" class="skills-content"></div>
       <div id="inventory-content" class="inventory-content hidden"></div>
+      <div id="combat-content" class="combat-content hidden"></div>
     `;
 
     // Add to UI overlay
@@ -189,8 +203,10 @@ class SkillsManager {
     });
 
     // Update content visibility
+    document.getElementById('home-content').classList.toggle('hidden', tabName !== 'home');
     document.getElementById('skills-content').classList.toggle('hidden', tabName !== 'skills');
     document.getElementById('inventory-content').classList.toggle('hidden', tabName !== 'inventory');
+    document.getElementById('combat-content').classList.toggle('hidden', tabName !== 'combat');
 
     this.updateUI();
   }
@@ -199,8 +215,12 @@ class SkillsManager {
   updateUI() {
     if (this.activeTab === 'skills') {
       this.renderSkills();
-    } else {
+    } else if (this.activeTab === 'inventory') {
       this.renderInventory();
+    } else if (this.activeTab === 'home') {
+      this.renderHome();
+    } else if (this.activeTab === 'combat') {
+      this.renderCombat();
     }
   }
 
@@ -318,6 +338,288 @@ class SkillsManager {
     this.inventorySlots[from] = temp;
     this.renderInventory();
     this.save();
+  }
+
+  // Render home tab
+  renderHome() {
+    const container = document.getElementById('home-content');
+    if (!container) return;
+
+    const hasHome = this.homePosition !== null;
+    const posText = hasHome
+      ? `${this.homePosition.lat.toFixed(4)}, ${this.homePosition.lng.toFixed(4)}`
+      : 'Not set';
+
+    container.innerHTML = `
+      <div class="home-panel">
+        <div class="home-section">
+          <h4>🏠 Home Location</h4>
+          <p class="home-coords">${posText}</p>
+          <button class="osrs-btn small-btn home-btn" id="set-home-btn">
+            ${hasHome ? 'Update Home' : 'Set Home Here'}
+          </button>
+          ${hasHome ? `
+            <button class="osrs-btn small-btn home-btn" id="teleport-home-btn">
+              Teleport Home
+            </button>
+          ` : ''}
+        </div>
+        <div class="home-info">
+          <p>Set your home to respawn here after combat.</p>
+        </div>
+      </div>
+    `;
+
+    // Set home button
+    document.getElementById('set-home-btn')?.addEventListener('click', () => {
+      this.setHomePosition();
+    });
+
+    // Teleport home button
+    document.getElementById('teleport-home-btn')?.addEventListener('click', () => {
+      this.teleportHome();
+    });
+  }
+
+  // Set current position as home
+  setHomePosition() {
+    if (!this.playerPosition) return;
+
+    this.homePosition = { ...this.playerPosition };
+    this.save();
+    this.renderHome();
+
+    if (window.chatManager) {
+      window.chatManager.addLogMessage('🏠 Home location set!', 'info');
+    }
+  }
+
+  // Teleport to home position
+  teleportHome() {
+    if (!this.homePosition || !window.game) return;
+
+    window.game.fastTravelTo(this.homePosition.lat, this.homePosition.lng);
+
+    if (window.chatManager) {
+      window.chatManager.addLogMessage('🏠 Teleported home!', 'info');
+    }
+  }
+
+  // Render combat tab
+  renderCombat() {
+    const container = document.getElementById('combat-content');
+    if (!container) return;
+
+    // Get items that can be used for combat
+    const combatItems = this.getCombatItems();
+
+    let itemsHtml = '';
+    if (combatItems.length === 0) {
+      itemsHtml = '<p class="no-items">No items available for combat. Collect items first!</p>';
+    } else {
+      itemsHtml = '<div class="combat-items">';
+      for (const item of combatItems) {
+        const isSelected = this.selectedCombatItem === item.itemKey;
+        const itemType = this.itemTypes[item.itemKey];
+        const level = this.getCombatLevel(item.itemKey);
+        itemsHtml += `
+          <div class="combat-item ${isSelected ? 'selected' : ''}"
+               data-item="${item.itemKey}"
+               title="${itemType.name} - Level ${level}">
+            <span class="item-icon">${itemType.icon}</span>
+            <span class="item-count">x${item.count}</span>
+            <span class="item-level">Lv${level}</span>
+          </div>
+        `;
+      }
+      itemsHtml += '</div>';
+    }
+
+    // Health display
+    const healthPercent = (this.combatHealth / this.maxCombatHealth) * 100;
+
+    container.innerHTML = `
+      <div class="combat-panel">
+        <div class="combat-health">
+          <span class="health-label">HP</span>
+          <div class="health-bar">
+            <div class="health-fill" style="width: ${healthPercent}%"></div>
+          </div>
+          <span class="health-text">${this.combatHealth}/${this.maxCombatHealth}</span>
+        </div>
+
+        <div class="combat-section">
+          <h4>⚔️ Select Weapon</h4>
+          ${itemsHtml}
+        </div>
+
+        ${this.selectedCombatItem ? `
+          <div class="combat-info">
+            <p>Click on a player to attack!</p>
+            <p class="combat-stats">
+              Damage: ${this.getCombatDamage(this.selectedCombatItem)}<br>
+              Uses 1 ${this.itemTypes[this.selectedCombatItem].name} per attack
+            </p>
+          </div>
+        ` : '<div class="combat-info"><p>Select an item to use as a weapon.</p></div>'}
+      </div>
+    `;
+
+    // Combat item selection
+    container.querySelectorAll('.combat-item').forEach(el => {
+      el.addEventListener('click', () => {
+        const itemKey = el.dataset.item;
+        this.selectCombatItem(itemKey);
+      });
+    });
+  }
+
+  // Get items available for combat (from inventory)
+  getCombatItems() {
+    const items = [];
+    for (const slot of this.inventorySlots) {
+      if (slot && slot.count > 0) {
+        // Check if already in list
+        const existing = items.find(i => i.itemKey === slot.itemKey);
+        if (existing) {
+          existing.count += slot.count;
+        } else {
+          items.push({ itemKey: slot.itemKey, count: slot.count });
+        }
+      }
+    }
+    return items;
+  }
+
+  // Get combat level for an item (based on corresponding skill)
+  getCombatLevel(itemKey) {
+    const item = this.itemTypes[itemKey];
+    if (!item) return 1;
+
+    // Find the skill that matches this item's weather
+    for (const [skillKey, skill] of Object.entries(this.skills)) {
+      if (skill.weather === item.weather) {
+        return this.getLevel(skill.xp);
+      }
+    }
+    return 1;
+  }
+
+  // Get damage for an item
+  getCombatDamage(itemKey) {
+    const level = this.getCombatLevel(itemKey);
+    const item = this.itemTypes[itemKey];
+
+    // Base damage + level bonus + rarity bonus
+    let baseDamage = 5;
+    switch (item?.rarity) {
+      case 'common': baseDamage = 5; break;
+      case 'uncommon': baseDamage = 8; break;
+      case 'rare': baseDamage = 12; break;
+    }
+
+    return baseDamage + Math.floor(level / 2);
+  }
+
+  // Select combat item
+  selectCombatItem(itemKey) {
+    this.selectedCombatItem = itemKey;
+
+    // Update max health based on combat level
+    this.maxCombatHealth = this.getCombatLevel(itemKey) * 10;
+    if (this.combatHealth > this.maxCombatHealth) {
+      this.combatHealth = this.maxCombatHealth;
+    }
+
+    this.renderCombat();
+
+    if (window.chatManager) {
+      const item = this.itemTypes[itemKey];
+      window.chatManager.addLogMessage(`⚔️ Equipped ${item.icon} ${item.name} for combat!`, 'item');
+    }
+  }
+
+  // Attack a player
+  attackPlayer(targetId) {
+    if (!this.selectedCombatItem) {
+      if (window.chatManager) {
+        window.chatManager.addLogMessage('⚔️ Select a weapon first!', 'error');
+      }
+      return false;
+    }
+
+    // Check if we have the item
+    const slotIndex = this.inventorySlots.findIndex(
+      s => s && s.itemKey === this.selectedCombatItem && s.count > 0
+    );
+
+    if (slotIndex === -1) {
+      if (window.chatManager) {
+        window.chatManager.addLogMessage('⚔️ No ammo left!', 'error');
+      }
+      this.selectedCombatItem = null;
+      this.renderCombat();
+      return false;
+    }
+
+    // Consume one item
+    this.inventorySlots[slotIndex].count--;
+    if (this.inventorySlots[slotIndex].count <= 0) {
+      this.inventorySlots[slotIndex] = null;
+    }
+
+    this.save();
+    this.renderCombat();
+
+    return true;
+  }
+
+  // Take damage
+  takeDamage(damage) {
+    this.combatHealth -= damage;
+
+    if (this.combatHealth <= 0) {
+      this.combatHealth = 0;
+      this.die();
+      return true; // Player died
+    }
+
+    this.renderCombat();
+    return false; // Player alive
+  }
+
+  // Player died - respawn at home
+  die() {
+    if (window.chatManager) {
+      window.chatManager.addLogMessage('💀 You have been defeated!', 'error');
+    }
+
+    // Reset health
+    this.combatHealth = this.maxCombatHealth;
+
+    // Respawn at home or default location
+    setTimeout(() => {
+      if (this.homePosition && window.game) {
+        window.game.fastTravelTo(this.homePosition.lat, this.homePosition.lng);
+        if (window.chatManager) {
+          window.chatManager.addLogMessage('🏠 Respawned at home!', 'info');
+        }
+      } else if (window.game) {
+        // Respawn at default location
+        window.game.fastTravelTo(GAME_CONFIG.defaultPosition.lat, GAME_CONFIG.defaultPosition.lng);
+        if (window.chatManager) {
+          window.chatManager.addLogMessage('🏠 Respawned at spawn point!', 'info');
+        }
+      }
+
+      this.renderCombat();
+    }, 1500);
+  }
+
+  // Heal (for later use)
+  heal(amount) {
+    this.combatHealth = Math.min(this.combatHealth + amount, this.maxCombatHealth);
+    this.renderCombat();
   }
 
   // Find slot with item or first empty slot
@@ -659,7 +961,11 @@ class SkillsManager {
   save() {
     const data = {
       skills: {},
-      inventorySlots: this.inventorySlots
+      inventorySlots: this.inventorySlots,
+      homePosition: this.homePosition,
+      selectedCombatItem: this.selectedCombatItem,
+      combatHealth: this.combatHealth,
+      maxCombatHealth: this.maxCombatHealth
     };
 
     for (const [key, skill] of Object.entries(this.skills)) {
@@ -707,6 +1013,24 @@ class SkillsManager {
             slotIndex++;
           }
         }
+      }
+
+      // Load home position
+      if (data.homePosition) {
+        this.homePosition = data.homePosition;
+      }
+
+      // Load combat data
+      if (data.selectedCombatItem) {
+        this.selectedCombatItem = data.selectedCombatItem;
+      }
+      if (data.maxCombatHealth) {
+        this.maxCombatHealth = data.maxCombatHealth;
+      }
+      if (data.combatHealth !== undefined) {
+        this.combatHealth = data.combatHealth;
+      } else {
+        this.combatHealth = this.maxCombatHealth;
       }
     } catch (e) {
       console.error('Failed to load skills data:', e);

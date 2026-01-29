@@ -164,6 +164,31 @@ io.on('connection', (socket) => {
     }
   });
 
+  // Combat attack
+  socket.on('combat:attack', (data) => {
+    const attacker = playerManager.getPlayer(socket.id);
+    const target = playerManager.getPlayer(data.targetId);
+
+    if (!attacker || !target) return;
+
+    // Notify the target they were attacked
+    io.to(data.targetId).emit('combat:attacked', {
+      attackerId: socket.id,
+      attackerName: attacker.username,
+      damage: data.damage,
+      itemKey: data.itemKey
+    });
+
+    // Notify the attacker their attack hit
+    socket.emit('combat:hit', {
+      targetId: data.targetId,
+      damage: data.damage,
+      targetHealth: 0 // Client manages health
+    });
+
+    console.log(`Combat: ${attacker.username} attacked ${target.username} for ${data.damage} damage`);
+  });
+
   // Chat messages
   socket.on('chat:send', (data) => {
     const player = playerManager.getPlayer(socket.id);
@@ -200,5 +225,5 @@ io.on('connection', (socket) => {
 // Start server
 const PORT = process.env.PORT || 8080;
 httpServer.listen(PORT, () => {
-  console.log(`GeoMMO server running on port ${PORT}`);
+  console.log(`Geommo server running on port ${PORT}`);
 });

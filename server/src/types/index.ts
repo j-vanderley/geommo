@@ -32,6 +32,14 @@ export interface WorldState {
   players: Player[];
 }
 
+// Combat attack data
+export interface CombatAttack {
+  attackerId: string;
+  targetId: string;
+  itemKey: string;
+  damage: number;
+}
+
 // Socket.io event types
 export interface ClientToServerEvents {
   'player:move': (data: { lat: number; lng: number }) => void;
@@ -47,6 +55,7 @@ export interface ClientToServerEvents {
   'player:updateFlag': (data: { flag: string }) => void;
   'player:updateAvatar': (data: { avatar: Avatar }) => void;
   'player:updateName': (data: { username: string }) => void;
+  'combat:attack': (data: { targetId: string; itemKey: string; damage: number }) => void;
 }
 
 export interface ServerToClientEvents {
@@ -60,4 +69,7 @@ export interface ServerToClientEvents {
   'world:state': (data: WorldState) => void;
   'auth:success': (data: { player: Player }) => void;
   'auth:error': (data: { message: string }) => void;
+  'combat:attacked': (data: { attackerId: string; attackerName: string; damage: number; itemKey: string }) => void;
+  'combat:hit': (data: { targetId: string; damage: number; targetHealth: number }) => void;
+  'combat:died': (data: { playerId: string; killerName: string }) => void;
 }
