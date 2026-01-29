@@ -487,6 +487,10 @@ class GeoMMO {
     linkEmailBtn.addEventListener('click', () => this.linkEmailAccount());
     linkGoogleBtn.addEventListener('click', () => this.linkGoogleAccount());
     changePasswordBtn.addEventListener('click', () => this.changePassword());
+
+    // Change name button
+    const changeNameBtn = document.getElementById('change-name-btn');
+    changeNameBtn.addEventListener('click', () => this.changeDisplayName());
   }
 
   updateAccountModal() {
@@ -606,6 +610,56 @@ class GeoMMO {
     } catch (error) {
       console.error('Change password error:', error);
       errorEl.textContent = this.getAuthErrorMessage(error.code);
+    }
+  }
+
+  async changeDisplayName() {
+    const newName = document.getElementById('change-name-input').value.trim();
+    const errorEl = document.getElementById('name-error');
+    const successEl = document.getElementById('name-success');
+
+    errorEl.textContent = '';
+    successEl.textContent = '';
+
+    if (!newName) {
+      errorEl.textContent = 'Please enter a display name';
+      return;
+    }
+
+    if (newName.length < 2) {
+      errorEl.textContent = 'Name must be at least 2 characters';
+      return;
+    }
+
+    if (newName.length > 20) {
+      errorEl.textContent = 'Name must be 20 characters or less';
+      return;
+    }
+
+    try {
+      // Update on server
+      if (this.socket && this.socket.connected) {
+        this.socket.emit('player:updateName', { username: newName });
+      }
+
+      // Update local display
+      if (this.playerManager && this.playerManager.selfPlayer) {
+        this.playerManager.selfPlayer.username = newName;
+        const avatarText = this.playerManager.selfPlayer.avatar?.text || ':-)';
+        document.getElementById('player-name').textContent = `${avatarText} ${newName}`;
+        this.playerManager.updatePlayerList();
+
+        // Update name label in 3D view
+        if (this.mapManager && this.mapManager.map3d) {
+          this.mapManager.map3d.updatePlayerName(this.playerManager.selfSocketId, newName);
+        }
+      }
+
+      successEl.textContent = 'Name updated successfully!';
+      document.getElementById('change-name-input').value = '';
+    } catch (error) {
+      console.error('Change name error:', error);
+      errorEl.textContent = 'Failed to update name. Please try again.';
     }
   }
 
@@ -880,6 +934,10 @@ class GeoMMO {
 
     this.socket.on('player:avatarUpdated', (data) => {
       this.playerManager.updatePlayerAvatar(data.id, data.avatar);
+    });
+
+    this.socket.on('player:nameUpdated', (data) => {
+      this.playerManager.updatePlayerName(data.id, data.username);
     });
 
     // Legacy support for flag updates

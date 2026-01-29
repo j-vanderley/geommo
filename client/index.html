@@ -132,49 +132,6 @@
         </div>
       </div>
 
-      <!-- Account Settings Modal -->
-      <div id="account-modal" class="modal hidden">
-        <div class="modal-content">
-          <div class="modal-header">
-            <h3>Account Settings</h3>
-            <button id="account-modal-close" class="modal-close-btn">×</button>
-          </div>
-          <div class="modal-body">
-            <div id="account-info" class="account-section">
-              <h4>Current Account</h4>
-              <p id="account-email">Not signed in with email</p>
-              <p id="account-providers">Linked: None</p>
-            </div>
-
-            <div id="link-email-section" class="account-section hidden">
-              <h4>Link Email Account</h4>
-              <p class="account-hint">Add email/password login to your account</p>
-              <input type="email" id="link-email-input" class="osrs-input" placeholder="Email address">
-              <input type="password" id="link-password-input" class="osrs-input" placeholder="Password (min 6 chars)">
-              <button id="link-email-btn" class="osrs-btn">Link Email</button>
-              <div id="link-error" class="login-error"></div>
-              <div id="link-success" class="login-success"></div>
-            </div>
-
-            <div id="link-google-section" class="account-section hidden">
-              <h4>Link Google Account</h4>
-              <button id="link-google-btn" class="osrs-btn">
-                <img src="https://www.gstatic.com/firebasejs/ui/2.0.0/images/auth/google.svg" alt="Google" style="width:16px;height:16px;">
-                Link Google
-              </button>
-            </div>
-
-            <div id="change-password-section" class="account-section hidden">
-              <h4>Change Password</h4>
-              <input type="password" id="new-password-input" class="osrs-input" placeholder="New password (min 6 chars)">
-              <button id="change-password-btn" class="osrs-btn">Update Password</button>
-              <div id="password-error" class="login-error"></div>
-              <div id="password-success" class="login-success"></div>
-            </div>
-          </div>
-        </div>
-      </div>
-
       <!-- Online Players (right side) -->
       <div id="players-panel" class="ui-panel">
         <div class="panel-header">
@@ -229,6 +186,57 @@
         <div id="chat-input-container">
           <input type="text" id="chat-input" placeholder="Press Enter to chat..." maxlength="200">
           <button id="chat-send" class="osrs-btn">Send</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Account Settings Modal (outside ui-overlay for proper click handling) -->
+    <div id="account-modal" class="modal hidden">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h3>Account Settings</h3>
+          <button id="account-modal-close" class="modal-close-btn">×</button>
+        </div>
+        <div class="modal-body">
+          <div id="account-info" class="account-section">
+            <h4>Current Account</h4>
+            <p id="account-email">Not signed in with email</p>
+            <p id="account-providers">Linked: None</p>
+          </div>
+
+          <div class="account-section">
+            <h4>Change Display Name</h4>
+            <input type="text" id="change-name-input" class="osrs-input" placeholder="New display name" maxlength="20">
+            <button id="change-name-btn" class="osrs-btn">Update Name</button>
+            <div id="name-error" class="login-error"></div>
+            <div id="name-success" class="login-success"></div>
+          </div>
+
+          <div id="link-email-section" class="account-section hidden">
+            <h4>Link Email Account</h4>
+            <p class="account-hint">Add email/password login to your account</p>
+            <input type="email" id="link-email-input" class="osrs-input" placeholder="Email address">
+            <input type="password" id="link-password-input" class="osrs-input" placeholder="Password (min 6 chars)">
+            <button id="link-email-btn" class="osrs-btn">Link Email</button>
+            <div id="link-error" class="login-error"></div>
+            <div id="link-success" class="login-success"></div>
+          </div>
+
+          <div id="link-google-section" class="account-section hidden">
+            <h4>Link Google Account</h4>
+            <button id="link-google-btn" class="osrs-btn">
+              <img src="https://www.gstatic.com/firebasejs/ui/2.0.0/images/auth/google.svg" alt="Google" style="width:16px;height:16px;">
+              Link Google
+            </button>
+          </div>
+
+          <div id="change-password-section" class="account-section hidden">
+            <h4>Change Password</h4>
+            <input type="password" id="new-password-input" class="osrs-input" placeholder="New password (min 6 chars)">
+            <button id="change-password-btn" class="osrs-btn">Update Password</button>
+            <div id="password-error" class="login-error"></div>
+            <div id="password-success" class="login-success"></div>
+          </div>
         </div>
       </div>
     </div>

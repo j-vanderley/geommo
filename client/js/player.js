@@ -151,6 +151,21 @@ class PlayerManager {
     this.updatePlayerList();
   }
 
+  // Update another player's name
+  updatePlayerName(playerId, username) {
+    const player = this.players.get(playerId);
+    if (!player) return;
+
+    player.username = username;
+
+    // Update name label in 3D view
+    if (this.mapManager.map3d) {
+      this.mapManager.map3d.updatePlayerName(playerId, username);
+    }
+
+    this.updatePlayerList();
+  }
+
   // Legacy: Update self player's flag (for backward compatibility)
   updateSelfFlag(flag) {
     this.updateSelfAvatar({ text: flag, color: '#ffb000' });

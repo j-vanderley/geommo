@@ -46,6 +46,7 @@ export interface ClientToServerEvents {
   }) => void;
   'player:updateFlag': (data: { flag: string }) => void;
   'player:updateAvatar': (data: { avatar: Avatar }) => void;
+  'player:updateName': (data: { username: string }) => void;
 }
 
 export interface ServerToClientEvents {
@@ -54,6 +55,7 @@ export interface ServerToClientEvents {
   'player:moved': (data: { id: string; position: Position }) => void;
   'player:flagUpdated': (data: { id: string; flag: string }) => void;
   'player:avatarUpdated': (data: { id: string; avatar: Avatar }) => void;
+  'player:nameUpdated': (data: { id: string; username: string }) => void;
   'chat:message': (data: ChatMessage) => void;
   'world:state': (data: WorldState) => void;
   'auth:success': (data: { player: Player }) => void;

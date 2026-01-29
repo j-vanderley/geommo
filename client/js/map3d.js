@@ -26,9 +26,9 @@ class Map3D {
     // Click callback
     this.onClickCallback = null;
 
-    // Center position (for coordinate conversion)
-    this.centerLat = 0;
-    this.centerLng = 0;
+    // Center position (for coordinate conversion) - use default position
+    this.centerLat = GAME_CONFIG.defaultPosition.lat;
+    this.centerLng = GAME_CONFIG.defaultPosition.lng;
 
     // Animation
     this.animationId = null;
@@ -424,6 +424,14 @@ class Map3D {
   // Legacy: Update player's flag
   updatePlayerFlag(playerId, flag) {
     this.updatePlayerAvatar(playerId, { text: flag, color: '#ffb000' });
+  }
+
+  // Update player's display name
+  updatePlayerName(playerId, newName) {
+    const labelData = this.nameLabels.get(playerId);
+    if (labelData && labelData.element) {
+      labelData.element.textContent = newName;
+    }
   }
 
   // Show chat bubble above player

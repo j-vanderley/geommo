@@ -151,6 +151,19 @@ io.on('connection', (socket) => {
     }
   });
 
+  // Update display name
+  socket.on('player:updateName', async (data) => {
+    const player = await playerManager.updateUsername(socket.id, data.username);
+
+    if (player) {
+      // Broadcast name change to all other players
+      socket.broadcast.emit('player:nameUpdated', {
+        id: socket.id,
+        username: player.username
+      });
+    }
+  });
+
   // Chat messages
   socket.on('chat:send', (data) => {
     const player = playerManager.getPlayer(socket.id);

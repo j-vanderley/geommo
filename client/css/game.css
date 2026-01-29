@@ -1167,7 +1167,8 @@ body[class*="ui-"] .info-content strong {
   display: flex;
   justify-content: center;
   align-items: center;
-  z-index: 1000;
+  z-index: 2000;
+  pointer-events: auto; /* Override parent's pointer-events: none */
 }
 
 .modal.hidden {
@@ -1273,9 +1274,8 @@ body[class*="ui-"] .info-content strong {
 
 /* Weather Panel */
 #weather-display {
-  top: 250px;
-  left: 10px;
-  width: 180px;
+  /* Positioned by flex container when inside #left-panels */
+  /* Width inherited from #left-panels .ui-panel */
 }
 
 #weather-info {
