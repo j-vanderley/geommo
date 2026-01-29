@@ -39,6 +39,13 @@ class Map3D {
 
     // Dropped items on the ground
     this.droppedItems = new Map(); // id -> { sprite, group }
+
+    // NPCs
+    this.npcSprites = new Map(); // npcId -> { sprite, group, particles, nameLabel, healthBar }
+    this.npcInteractionCallback = null;
+
+    // Particle systems
+    this.particleSystems = new Map(); // entityId -> particleSystem
   }
 
   async init() {
@@ -162,6 +169,12 @@ class Map3D {
 
     // Update dropped items animation
     this.updateDroppedItems();
+
+    // Update particle systems
+    this.updateParticleSystems();
+
+    // Update NPC overlays
+    this.updateNPCOverlays();
 
     this.renderer.render(this.scene, this.camera);
   }
@@ -648,6 +661,378 @@ class Map3D {
     });
   }
 
+  // Create an NPC sprite
+  createNPC(npc, position) {
+    // Get cosmetic data for the NPC
+    const cosmetic = window.skillsManager?.cosmeticTypes[npc.cosmetic];
+    const aura = window.skillsManager?.cosmeticTypes[npc.aura];
+    const color = npc.color || '#ff6600';
+
+    // Create a group for the NPC
+    const group = new THREE.Group();
+
+    // Create canvas for NPC sprite
+    const canvas = document.createElement('canvas');
+    canvas.width = 128;
+    canvas.height = 128;
+    const ctx = canvas.getContext('2d');
+
+    // Draw glowing circular background
+    const gradient = ctx.createRadialGradient(64, 64, 20, 64, 64, 60);
+    gradient.addColorStop(0, color);
+    gradient.addColorStop(0.5, this.hexToRgba(color, 0.6));
+    gradient.addColorStop(1, this.hexToRgba(color, 0.2));
+    ctx.fillStyle = gradient;
+    ctx.beginPath();
+    ctx.arc(64, 64, 56, 0, Math.PI * 2);
+    ctx.fill();
+
+    // Draw border
+    ctx.strokeStyle = '#ffffff';
+    ctx.lineWidth = 3;
+    ctx.stroke();
+
+    // Draw cosmetic icon
+    const icon = cosmetic?.icon || '👤';
+    ctx.font = 'bold 48px Arial';
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.fillStyle = '#ffffff';
+    ctx.fillText(icon, 64, 64);
+
+    // Create sprite texture
+    const texture = new THREE.CanvasTexture(canvas);
+    texture.colorSpace = THREE.SRGBColorSpace;
+    texture.needsUpdate = true;
+
+    // Create sprite
+    const material = new THREE.SpriteMaterial({ map: texture, transparent: true });
+    const sprite = new THREE.Sprite(material);
+    sprite.scale.set(6, 6, 1); // Larger than players
+    sprite.position.y = 3;
+    group.add(sprite);
+
+    // Position group
+    const worldPos = this.latLngToWorld(position.lat, position.lng);
+    group.position.set(worldPos.x, 0, worldPos.z);
+
+    // Add to scene
+    this.scene.add(group);
+
+    // Create particle system for aura
+    let particles = null;
+    if (aura && aura.particle) {
+      particles = this.createParticleSystem(npc.id, aura.particle, color, group);
+    }
+
+    // Create NPC name label
+    const nameLabel = this.createNPCLabel(npc.id, npc.name, npc.title, color);
+
+    // Create health bar
+    const healthBar = this.createNPCHealthBar(npc.id);
+
+    // Store reference
+    this.npcSprites.set(npc.id, {
+      sprite, group, canvas, ctx, particles, nameLabel, healthBar, npc,
+      health: npc.health, maxHealth: npc.maxHealth
+    });
+
+    // Make NPC clickable
+    group.userData = { type: 'npc', npcId: npc.id };
+
+    return group;
+  }
+
+  // Create NPC name label
+  createNPCLabel(npcId, name, title, color) {
+    const label = document.createElement('div');
+    label.className = 'npc-name-label';
+    label.innerHTML = `<span class="npc-name">${name}</span><span class="npc-title">${title}</span>`;
+    label.style.color = color;
+    label.style.borderColor = color;
+    this.container.appendChild(label);
+    return label;
+  }
+
+  // Create NPC health bar
+  createNPCHealthBar(npcId) {
+    const bar = document.createElement('div');
+    bar.className = 'npc-health-bar';
+    bar.innerHTML = `<div class="npc-health-fill" style="width: 100%"></div>`;
+    this.container.appendChild(bar);
+    return bar;
+  }
+
+  // Update NPC health display
+  updateNPCHealth(npcId, health, maxHealth) {
+    const npcData = this.npcSprites.get(npcId);
+    if (!npcData) return;
+
+    npcData.health = health;
+    const percent = (health / maxHealth) * 100;
+    const fill = npcData.healthBar.querySelector('.npc-health-fill');
+    if (fill) {
+      fill.style.width = `${percent}%`;
+      // Color based on health
+      if (percent > 60) fill.style.background = '#4CAF50';
+      else if (percent > 30) fill.style.background = '#ffcc00';
+      else fill.style.background = '#f44336';
+    }
+  }
+
+  // Remove NPC
+  removeNPC(npcId) {
+    const npcData = this.npcSprites.get(npcId);
+    if (!npcData) return;
+
+    this.scene.remove(npcData.group);
+    npcData.sprite.material.map.dispose();
+    npcData.sprite.material.dispose();
+
+    // Remove particles
+    if (npcData.particles) {
+      this.removeParticleSystem(npcId);
+    }
+
+    // Remove labels
+    if (npcData.nameLabel && npcData.nameLabel.parentElement) {
+      npcData.nameLabel.parentElement.removeChild(npcData.nameLabel);
+    }
+    if (npcData.healthBar && npcData.healthBar.parentElement) {
+      npcData.healthBar.parentElement.removeChild(npcData.healthBar);
+    }
+
+    this.npcSprites.delete(npcId);
+  }
+
+  // Create particle system
+  createParticleSystem(entityId, type, color, parentGroup) {
+    const particleCount = 30;
+    const geometry = new THREE.BufferGeometry();
+    const positions = new Float32Array(particleCount * 3);
+    const colors = new Float32Array(particleCount * 3);
+    const sizes = new Float32Array(particleCount);
+    const velocities = [];
+
+    // Parse color
+    const colorObj = new THREE.Color(color);
+
+    for (let i = 0; i < particleCount; i++) {
+      // Random position around center
+      const angle = Math.random() * Math.PI * 2;
+      const radius = 1 + Math.random() * 2;
+      positions[i * 3] = Math.cos(angle) * radius;
+      positions[i * 3 + 1] = Math.random() * 4;
+      positions[i * 3 + 2] = Math.sin(angle) * radius;
+
+      // Color variation
+      colors[i * 3] = colorObj.r * (0.8 + Math.random() * 0.2);
+      colors[i * 3 + 1] = colorObj.g * (0.8 + Math.random() * 0.2);
+      colors[i * 3 + 2] = colorObj.b * (0.8 + Math.random() * 0.2);
+
+      sizes[i] = 0.2 + Math.random() * 0.3;
+
+      // Velocity based on particle type
+      velocities.push({
+        x: (Math.random() - 0.5) * 0.02,
+        y: type === 'fire' || type === 'holy' ? 0.02 + Math.random() * 0.02 : (Math.random() - 0.5) * 0.01,
+        z: (Math.random() - 0.5) * 0.02
+      });
+    }
+
+    geometry.setAttribute('position', new THREE.BufferAttribute(positions, 3));
+    geometry.setAttribute('color', new THREE.BufferAttribute(colors, 3));
+    geometry.setAttribute('size', new THREE.BufferAttribute(sizes, 1));
+
+    const material = new THREE.PointsMaterial({
+      size: 0.5,
+      vertexColors: true,
+      transparent: true,
+      opacity: 0.8,
+      blending: THREE.AdditiveBlending
+    });
+
+    const particles = new THREE.Points(geometry, material);
+    parentGroup.add(particles);
+
+    // Store particle system data
+    this.particleSystems.set(entityId, {
+      points: particles,
+      velocities: velocities,
+      type: type,
+      parent: parentGroup
+    });
+
+    return particles;
+  }
+
+  // Update particle systems
+  updateParticleSystems() {
+    this.particleSystems.forEach((system, entityId) => {
+      const positions = system.points.geometry.attributes.position;
+      const velocities = system.velocities;
+
+      for (let i = 0; i < positions.count; i++) {
+        positions.array[i * 3] += velocities[i].x;
+        positions.array[i * 3 + 1] += velocities[i].y;
+        positions.array[i * 3 + 2] += velocities[i].z;
+
+        // Reset particle if too far
+        const y = positions.array[i * 3 + 1];
+        if (y > 6 || y < 0) {
+          const angle = Math.random() * Math.PI * 2;
+          const radius = 1 + Math.random() * 2;
+          positions.array[i * 3] = Math.cos(angle) * radius;
+          positions.array[i * 3 + 1] = Math.random() * 2;
+          positions.array[i * 3 + 2] = Math.sin(angle) * radius;
+        }
+      }
+
+      positions.needsUpdate = true;
+    });
+  }
+
+  // Remove particle system
+  removeParticleSystem(entityId) {
+    const system = this.particleSystems.get(entityId);
+    if (!system) return;
+
+    system.parent.remove(system.points);
+    system.points.geometry.dispose();
+    system.points.material.dispose();
+    this.particleSystems.delete(entityId);
+  }
+
+  // Update player cosmetics (visual appearance)
+  updatePlayerCosmetics(playerId, cosmeticsData) {
+    const playerData = this.playerSprites.get(playerId);
+    if (!playerData) return;
+
+    const { ctx, sprite, isSelf, group } = playerData;
+
+    // Get base avatar data
+    const player = window.playerManager?.getPlayer(playerId);
+    const avatar = player?.avatar || { text: ':-)', color: '#ffb000' };
+    let avatarText = avatar.text;
+    let avatarColor = avatar.color;
+
+    // Apply skin cosmetic (changes color/icon)
+    if (cosmeticsData.skin) {
+      avatarColor = cosmeticsData.skin.color;
+      avatarText = cosmeticsData.skin.icon;
+    }
+
+    // Redraw canvas with cosmetics
+    ctx.clearRect(0, 0, 128, 128);
+
+    // Draw circular background
+    ctx.beginPath();
+    ctx.arc(64, 64, 56, 0, Math.PI * 2);
+    ctx.fillStyle = 'rgba(0, 0, 0, 0.7)';
+    ctx.fill();
+
+    // Draw border with color
+    ctx.strokeStyle = avatarColor;
+    ctx.lineWidth = 4;
+    ctx.stroke();
+
+    // Draw hat if equipped (above avatar)
+    if (cosmeticsData.hat) {
+      ctx.font = 'bold 24px Arial';
+      ctx.fillStyle = cosmeticsData.hat.color;
+      ctx.fillText(cosmeticsData.hat.icon, 64, 25);
+    }
+
+    // Draw main avatar
+    const fontSize = avatarText.length <= 2 ? 48 : avatarText.length === 3 ? 36 : 28;
+    ctx.font = `bold ${fontSize}px "Courier New", monospace`;
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.fillStyle = avatarColor;
+    ctx.fillText(avatarText, 64, 66);
+
+    // Draw held item if equipped (to the side)
+    if (cosmeticsData.held) {
+      ctx.font = 'bold 20px Arial';
+      ctx.fillStyle = cosmeticsData.held.color;
+      ctx.fillText(cosmeticsData.held.icon, 100, 80);
+    }
+
+    // Update texture
+    sprite.material.map.needsUpdate = true;
+
+    // Update or create aura particle system
+    if (cosmeticsData.aura) {
+      // Remove existing particles
+      this.removeParticleSystem(playerId);
+      // Create new particle system
+      this.createParticleSystem(playerId, cosmeticsData.aura.particle, cosmeticsData.aura.color, group);
+    } else {
+      // Remove particles if aura unequipped
+      this.removeParticleSystem(playerId);
+    }
+  }
+
+  // Helper: Convert hex to rgba
+  hexToRgba(hex, alpha) {
+    const r = parseInt(hex.slice(1, 3), 16);
+    const g = parseInt(hex.slice(3, 5), 16);
+    const b = parseInt(hex.slice(5, 7), 16);
+    return `rgba(${r}, ${g}, ${b}, ${alpha})`;
+  }
+
+  // Set NPC interaction callback
+  setNPCInteractionCallback(callback) {
+    this.npcInteractionCallback = callback;
+  }
+
+  // Check if click hit an NPC
+  checkNPCClick(event) {
+    const rect = this.renderer.domElement.getBoundingClientRect();
+    this.mouse.x = ((event.clientX - rect.left) / rect.width) * 2 - 1;
+    this.mouse.y = -((event.clientY - rect.top) / rect.height) * 2 + 1;
+
+    this.raycaster.setFromCamera(this.mouse, this.camera);
+
+    // Check NPCs
+    for (const [npcId, npcData] of this.npcSprites) {
+      const intersects = this.raycaster.intersectObject(npcData.sprite);
+      if (intersects.length > 0) {
+        return npcId;
+      }
+    }
+    return null;
+  }
+
+  // Update NPC overlay positions
+  updateNPCOverlays() {
+    this.npcSprites.forEach((npcData, npcId) => {
+      if (!npcData.nameLabel || !npcData.healthBar) return;
+
+      const worldPos = npcData.group.position.clone();
+
+      // Name label position (above NPC)
+      const nameLabelPos = worldPos.clone();
+      nameLabelPos.y += 8;
+      const screenPos = nameLabelPos.project(this.camera);
+      const x = (screenPos.x * 0.5 + 0.5) * this.container.clientWidth;
+      const y = (-screenPos.y * 0.5 + 0.5) * this.container.clientHeight;
+
+      if (screenPos.z < 1) {
+        npcData.nameLabel.style.display = 'block';
+        npcData.nameLabel.style.left = `${x}px`;
+        npcData.nameLabel.style.top = `${y}px`;
+
+        npcData.healthBar.style.display = 'block';
+        npcData.healthBar.style.left = `${x}px`;
+        npcData.healthBar.style.top = `${y + 35}px`;
+      } else {
+        npcData.nameLabel.style.display = 'none';
+        npcData.healthBar.style.display = 'none';
+      }
+    });
+  }
+
   // Dispose everything
   dispose() {
     if (this.animationId) {
@@ -662,6 +1047,12 @@ class Map3D {
 
     // Remove dropped items
     this.droppedItems.forEach((_, id) => this.removeDroppedItem(id));
+
+    // Remove NPCs
+    this.npcSprites.forEach((_, id) => this.removeNPC(id));
+
+    // Remove particle systems
+    this.particleSystems.forEach((_, id) => this.removeParticleSystem(id));
 
     // Remove name labels
     this.nameLabels.forEach((labelData) => {

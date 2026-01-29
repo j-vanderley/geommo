@@ -728,6 +728,56 @@ body {
   border-color: var(--osrs-gold);
 }
 
+/* NPC Name Labels */
+.npc-name-label {
+  position: absolute;
+  background: rgba(0, 0, 0, 0.85);
+  padding: 6px 12px;
+  border-radius: 6px;
+  font-family: 'Courier New', monospace;
+  pointer-events: none;
+  transform: translate(-50%, -100%);
+  white-space: nowrap;
+  z-index: 160;
+  text-align: center;
+  border: 2px solid;
+}
+
+.npc-name-label .npc-name {
+  display: block;
+  font-size: 14px;
+  font-weight: bold;
+  text-shadow: 0 0 10px currentColor;
+}
+
+.npc-name-label .npc-title {
+  display: block;
+  font-size: 10px;
+  opacity: 0.8;
+  font-style: italic;
+}
+
+/* NPC Health Bar */
+.npc-health-bar {
+  position: absolute;
+  width: 80px;
+  height: 8px;
+  background: rgba(0, 0, 0, 0.8);
+  border: 1px solid #444;
+  border-radius: 4px;
+  transform: translate(-50%, 0);
+  pointer-events: none;
+  z-index: 160;
+  overflow: hidden;
+}
+
+.npc-health-fill {
+  height: 100%;
+  background: linear-gradient(180deg, #4CAF50 0%, #388E3C 100%);
+  transition: width 0.3s ease-out;
+  border-radius: 3px;
+}
+
 /* Chat Bubbles for 3D View */
 .chat-bubble-3d {
   position: absolute;
@@ -1641,6 +1691,348 @@ body[class*="ui-"] .weather-time {
   font-size: 11px;
   text-align: center;
   padding: 20px;
+}
+
+/* Cosmetics Tab */
+.cosmetics-content {
+  padding: 5px;
+  overflow-y: auto;
+  max-height: 250px;
+}
+
+.cosmetics-panel {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.light-balance {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 10px;
+  background: linear-gradient(180deg, rgba(255, 255, 150, 0.2) 0%, rgba(255, 200, 0, 0.15) 100%);
+  border: 2px solid #ffcc00;
+  border-radius: 6px;
+}
+
+.light-icon {
+  font-size: 24px;
+}
+
+.light-amount {
+  font-size: 22px;
+  font-weight: bold;
+  color: #ffcc00;
+  text-shadow: 0 0 10px rgba(255, 200, 0, 0.5);
+}
+
+.light-label {
+  color: #aaa;
+  font-size: 12px;
+}
+
+.cosmetics-section h4 {
+  color: var(--osrs-gold);
+  font-size: 11px;
+  margin-bottom: 6px;
+  text-transform: uppercase;
+}
+
+.cosmetic-slots {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 4px;
+}
+
+.cosmetic-slot {
+  background: rgba(0, 0, 0, 0.4);
+  border: 1px solid var(--osrs-border);
+  border-radius: 4px;
+  padding: 6px 4px;
+  text-align: center;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.cosmetic-slot:hover {
+  background: rgba(255, 176, 0, 0.2);
+  border-color: var(--osrs-gold);
+}
+
+.cosmetic-slot.equipped {
+  background: rgba(100, 255, 100, 0.15);
+  border-color: #4CAF50;
+}
+
+.cosmetic-slot .slot-icon {
+  font-size: 18px;
+  display: block;
+}
+
+.cosmetic-slot .slot-name {
+  font-size: 9px;
+  color: #aaa;
+  display: block;
+  margin-top: 2px;
+}
+
+.cosmetic-slot .slot-item {
+  font-size: 8px;
+  color: #4CAF50;
+  display: block;
+  margin-top: 1px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.owned-cosmetics {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  max-height: 80px;
+  overflow-y: auto;
+}
+
+.owned-cosmetic {
+  background: rgba(0, 0, 0, 0.4);
+  border: 1px solid var(--osrs-border);
+  border-radius: 4px;
+  padding: 4px 8px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  transition: all 0.2s;
+  position: relative;
+}
+
+.owned-cosmetic:hover {
+  background: rgba(255, 176, 0, 0.2);
+  border-color: var(--osrs-gold);
+}
+
+.owned-cosmetic.equipped {
+  background: rgba(100, 255, 100, 0.15);
+  border-color: #4CAF50;
+}
+
+.owned-cosmetic .cosmetic-icon {
+  font-size: 14px;
+}
+
+.owned-cosmetic .cosmetic-name {
+  font-size: 10px;
+  color: #ccc;
+}
+
+.owned-cosmetic .equipped-badge {
+  position: absolute;
+  top: -4px;
+  right: -4px;
+  background: #4CAF50;
+  color: #fff;
+  font-size: 8px;
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: bold;
+}
+
+.trade-section {
+  padding: 8px;
+  background: rgba(0, 0, 0, 0.2);
+  border-radius: 4px;
+}
+
+.trade-section h4 {
+  color: var(--osrs-gold);
+  font-size: 11px;
+  margin-bottom: 6px;
+}
+
+.trade-items {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  margin-bottom: 8px;
+}
+
+.trade-item {
+  background: rgba(0, 0, 0, 0.4);
+  border: 1px solid var(--osrs-border);
+  border-radius: 4px;
+  padding: 4px 6px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 3px;
+  transition: all 0.2s;
+}
+
+.trade-item:hover {
+  background: rgba(255, 200, 0, 0.2);
+  border-color: #ffcc00;
+}
+
+.trade-item .item-icon {
+  font-size: 12px;
+}
+
+.trade-item .item-count {
+  font-size: 9px;
+  color: #aaa;
+}
+
+.trade-item .item-value {
+  font-size: 9px;
+  color: #ffcc00;
+}
+
+#sell-all-btn {
+  width: 100%;
+  padding: 6px !important;
+  font-size: 11px !important;
+}
+
+/* NPC Dialog */
+.npc-dialog {
+  position: fixed;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  background: rgba(73, 64, 52, 0.98);
+  border: 3px solid var(--osrs-gold);
+  border-radius: 8px;
+  padding: 20px;
+  z-index: 1000;
+  min-width: 300px;
+  max-width: 400px;
+  box-shadow: 0 0 30px rgba(0, 0, 0, 0.8);
+}
+
+.npc-dialog-header {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 15px;
+  padding-bottom: 10px;
+  border-bottom: 1px solid var(--osrs-border);
+}
+
+.npc-portrait {
+  font-size: 40px;
+  width: 60px;
+  height: 60px;
+  background: rgba(0, 0, 0, 0.3);
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.npc-info h3 {
+  color: var(--osrs-gold);
+  font-size: 16px;
+  margin-bottom: 2px;
+}
+
+.npc-info .npc-title {
+  color: #aaa;
+  font-size: 11px;
+  font-style: italic;
+}
+
+.npc-dialog-content {
+  margin-bottom: 15px;
+}
+
+.npc-dialog-content p {
+  color: var(--osrs-text);
+  font-size: 12px;
+  margin-bottom: 10px;
+  line-height: 1.4;
+}
+
+.npc-shop-item {
+  background: rgba(0, 0, 0, 0.3);
+  border: 2px solid var(--osrs-border);
+  border-radius: 6px;
+  padding: 12px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 10px;
+}
+
+.npc-shop-item:hover {
+  border-color: var(--osrs-gold);
+}
+
+.npc-shop-item .shop-icon {
+  font-size: 32px;
+}
+
+.npc-shop-item .shop-details {
+  flex: 1;
+}
+
+.npc-shop-item .shop-name {
+  color: #fff;
+  font-size: 14px;
+  font-weight: bold;
+}
+
+.npc-shop-item .shop-type {
+  color: #aaa;
+  font-size: 10px;
+  text-transform: uppercase;
+}
+
+.npc-shop-item .shop-price {
+  color: #ffcc00;
+  font-size: 14px;
+  font-weight: bold;
+}
+
+.npc-dialog-actions {
+  display: flex;
+  gap: 10px;
+}
+
+.npc-dialog-actions button {
+  flex: 1;
+  padding: 10px !important;
+}
+
+.npc-buy-btn {
+  background: linear-gradient(180deg, #5d8a3a 0%, #3d6426 100%) !important;
+  border-color: #4a7a2e !important;
+}
+
+.npc-buy-btn:hover {
+  background: linear-gradient(180deg, #6d9a4a 0%, #4d7436 100%) !important;
+}
+
+.npc-buy-btn:disabled {
+  background: #333 !important;
+  border-color: #555 !important;
+  color: #666 !important;
+  cursor: not-allowed;
+}
+
+.npc-fight-btn {
+  background: linear-gradient(180deg, #8a3a3a 0%, #642626 100%) !important;
+  border-color: #7a2e2e !important;
+}
+
+.npc-fight-btn:hover {
+  background: linear-gradient(180deg, #9a4a4a 0%, #743636 100%) !important;
 }
 
 /* Skills Grid - Same layout as inventory */

@@ -99,9 +99,34 @@ class MapManager {
     // Restart animation with new hook
     this.map3d.animate();
 
-    // Set up click handler
+    // Set up click handler with NPC detection
     this.map3d.onClick2D((latLng) => {
       this.handleMapClick(latLng);
+    });
+
+    // Set up NPC click handling
+    this.setupNPCInteraction();
+
+    // Initialize NPCs after a short delay to ensure everything is ready
+    setTimeout(() => {
+      if (this.skillsManager) {
+        this.skillsManager.initNPCs();
+      }
+    }, 1000);
+  }
+
+  // Set up NPC interaction handling
+  setupNPCInteraction() {
+    if (!this.map3d) return;
+
+    // Add click listener for NPCs
+    this.map3d.renderer.domElement.addEventListener('click', (event) => {
+      // Check if clicking on an NPC
+      const npcId = this.map3d.checkNPCClick(event);
+      if (npcId && this.skillsManager) {
+        // Show NPC dialog
+        this.skillsManager.showNPCDialog(npcId);
+      }
     });
   }
 
