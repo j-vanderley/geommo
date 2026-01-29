@@ -21,11 +21,9 @@ class SkillsManager {
       lightningshard: { name: 'Lightning Shard', weather: 'storm', icon: '⚡', rarity: 'rare' }
     };
 
-    // Inventory (item counts)
-    this.inventory = {};
-    for (const key in this.itemTypes) {
-      this.inventory[key] = 0;
-    }
+    // Inventory - 24 slots, each slot can hold one item type
+    // Format: [{ itemKey, count }, null, null, ...]
+    this.inventorySlots = new Array(24).fill(null);
 
     // XP table (OSRS-style exponential)
     this.xpTable = this.generateXPTable(99);
@@ -180,26 +178,124 @@ class SkillsManager {
 
     let html = '<div class="inventory-grid">';
 
-    for (const [key, item] of Object.entries(this.itemTypes)) {
-      const count = this.inventory[key] || 0;
-      const hasItem = count > 0;
+    for (let i = 0; i < 24; i++) {
+      const slot = this.inventorySlots[i];
+      const hasItem = slot && slot.count > 0;
+      const item = hasItem ? this.itemTypes[slot.itemKey] : null;
 
       html += `
-        <div class="inventory-slot ${hasItem ? 'has-item' : ''}" title="${item.name}">
-          <span class="item-icon">${item.icon}</span>
-          ${hasItem ? `<span class="item-count">${count}</span>` : ''}
+        <div class="inventory-slot ${hasItem ? 'has-item' : ''}"
+             data-slot="${i}"
+             ${hasItem ? `title="${item.name}"` : ''}
+             draggable="${hasItem}">
+          ${hasItem ? `<span class="item-icon">${item.icon}</span>` : ''}
+          ${hasItem ? `<span class="item-count">${slot.count}</span>` : ''}
         </div>
       `;
     }
 
-    // Fill remaining slots (28 total like OSRS)
-    const filledSlots = Object.keys(this.itemTypes).length;
-    for (let i = filledSlots; i < 28; i++) {
-      html += '<div class="inventory-slot empty"></div>';
-    }
-
     html += '</div>';
     container.innerHTML = html;
+
+    // Set up drag and drop
+    this.setupDragAndDrop();
+  }
+
+  // Set up drag and drop for inventory
+  setupDragAndDrop() {
+    const slots = document.querySelectorAll('.inventory-slot');
+    let draggedSlot = null;
+
+    slots.forEach(slot => {
+      slot.addEventListener('dragstart', (e) => {
+        if (!slot.classList.contains('has-item')) {
+          e.preventDefault();
+          return;
+        }
+        draggedSlot = parseInt(slot.dataset.slot);
+        slot.classList.add('dragging');
+        e.dataTransfer.effectAllowed = 'move';
+      });
+
+      slot.addEventListener('dragend', () => {
+        slot.classList.remove('dragging');
+        draggedSlot = null;
+      });
+
+      slot.addEventListener('dragover', (e) => {
+        e.preventDefault();
+        e.dataTransfer.dropEffect = 'move';
+        slot.classList.add('drag-over');
+      });
+
+      slot.addEventListener('dragleave', () => {
+        slot.classList.remove('drag-over');
+      });
+
+      slot.addEventListener('drop', (e) => {
+        e.preventDefault();
+        slot.classList.remove('drag-over');
+
+        const targetSlot = parseInt(slot.dataset.slot);
+        if (draggedSlot !== null && draggedSlot !== targetSlot) {
+          this.swapSlots(draggedSlot, targetSlot);
+        }
+      });
+    });
+  }
+
+  // Swap two inventory slots
+  swapSlots(from, to) {
+    const temp = this.inventorySlots[to];
+    this.inventorySlots[to] = this.inventorySlots[from];
+    this.inventorySlots[from] = temp;
+    this.renderInventory();
+    this.save();
+  }
+
+  // Find slot with item or first empty slot
+  findSlotForItem(itemKey) {
+    // First try to stack with existing
+    for (let i = 0; i < this.inventorySlots.length; i++) {
+      const slot = this.inventorySlots[i];
+      if (slot && slot.itemKey === itemKey) {
+        return i;
+      }
+    }
+    // Find first empty slot
+    for (let i = 0; i < this.inventorySlots.length; i++) {
+      if (!this.inventorySlots[i]) {
+        return i;
+      }
+    }
+    return -1; // Inventory full
+  }
+
+  // Add item to inventory
+  addItem(itemKey, count = 1) {
+    const slotIndex = this.findSlotForItem(itemKey);
+    if (slotIndex === -1) {
+      this.showNotification('Inventory full!', 'error');
+      return false;
+    }
+
+    if (this.inventorySlots[slotIndex]) {
+      this.inventorySlots[slotIndex].count += count;
+    } else {
+      this.inventorySlots[slotIndex] = { itemKey, count };
+    }
+    return true;
+  }
+
+  // Get total count of an item
+  getItemCount(itemKey) {
+    let total = 0;
+    for (const slot of this.inventorySlots) {
+      if (slot && slot.itemKey === itemKey) {
+        total += slot.count;
+      }
+    }
+    return total;
   }
 
   // Get skill key for weather type
@@ -297,10 +393,11 @@ class SkillsManager {
     }
 
     if (Math.random() < dropChance) {
-      this.inventory[itemKey] = (this.inventory[itemKey] || 0) + 1;
-      this.showNotification(`${item.icon} Found: ${item.name}!`, 'item');
-      this.updateUI();
-      this.save();
+      if (this.addItem(itemKey, 1)) {
+        this.showNotification(`${item.icon} Found: ${item.name}!`, 'item');
+        this.updateUI();
+        this.save();
+      }
     }
   }
 
@@ -339,7 +436,7 @@ class SkillsManager {
   save() {
     const data = {
       skills: {},
-      inventory: this.inventory
+      inventorySlots: this.inventorySlots
     };
 
     for (const [key, skill] of Object.entries(this.skills)) {
@@ -366,11 +463,21 @@ class SkillsManager {
         }
       }
 
-      // Load inventory
-      if (data.inventory) {
+      // Load inventory slots (new format)
+      if (data.inventorySlots) {
+        this.inventorySlots = data.inventorySlots;
+        // Ensure 24 slots
+        while (this.inventorySlots.length < 24) {
+          this.inventorySlots.push(null);
+        }
+      }
+      // Migration from old format
+      else if (data.inventory) {
+        let slotIndex = 0;
         for (const [key, count] of Object.entries(data.inventory)) {
-          if (key in this.inventory) {
-            this.inventory[key] = count;
+          if (count > 0 && slotIndex < 24) {
+            this.inventorySlots[slotIndex] = { itemKey: key, count };
+            slotIndex++;
           }
         }
       }

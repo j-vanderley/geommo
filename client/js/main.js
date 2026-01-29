@@ -363,6 +363,26 @@ class GeoMMO {
 
     // Set up fast travel
     this.setupFastTravel();
+
+    // Set up info panel toggle
+    this.setupInfoPanel();
+  }
+
+  setupInfoPanel() {
+    const infoButton = document.getElementById('info-button');
+    const infoToggle = document.getElementById('info-toggle');
+    const infoPanel = document.getElementById('info-panel');
+    const infoClose = document.getElementById('info-close');
+
+    infoToggle.addEventListener('click', () => {
+      infoButton.classList.add('hidden');
+      infoPanel.classList.remove('hidden');
+    });
+
+    infoClose.addEventListener('click', () => {
+      infoPanel.classList.add('hidden');
+      infoButton.classList.remove('hidden');
+    });
   }
 
   setupFastTravel() {

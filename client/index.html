@@ -115,9 +115,41 @@
         <ul id="player-list"></ul>
       </div>
 
-      <!-- 3D Controls Hint (bottom right) -->
-      <div id="controls-hint">
-        <strong>Camera:</strong> Right-click drag to rotate | Scroll to zoom | Arrow keys to rotate
+      <!-- Info Button (near player info) -->
+      <div id="info-button" class="ui-panel">
+        <button id="info-toggle" class="info-toggle-btn">i</button>
+      </div>
+
+      <!-- Info Panel (collapsible) -->
+      <div id="info-panel" class="ui-panel hidden">
+        <div class="panel-header">
+          Game Info
+          <button id="info-close" class="info-close-btn">×</button>
+        </div>
+        <div class="info-content">
+          <h4>Welcome to GeoMMO!</h4>
+          <p>Explore the real world map with other players in this MMO adventure.</p>
+
+          <h4>Controls</h4>
+          <ul>
+            <li><strong>Move:</strong> Click on the map</li>
+            <li><strong>Rotate Camera:</strong> Right-click drag</li>
+            <li><strong>Zoom:</strong> Scroll wheel</li>
+            <li><strong>Arrow Keys:</strong> Rotate camera</li>
+          </ul>
+
+          <h4>Weather Skills</h4>
+          <p>Gain XP in weather skills by being in different weather conditions. Collect rare items that drop randomly!</p>
+
+          <h4>Fast Travel</h4>
+          <p>Use the Fast Travel panel to teleport to major cities around the world.</p>
+
+          <h4>Chat</h4>
+          <ul>
+            <li><strong>Global:</strong> Chat with all players</li>
+            <li><strong>Local:</strong> Chat with nearby players</li>
+          </ul>
+        </div>
       </div>
 
       <!-- Chat Box (bottom left) -->
