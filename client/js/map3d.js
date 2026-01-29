@@ -517,8 +517,8 @@ class Map3D {
 
     // Create sprite - larger size for visibility
     const sprite = new THREE.Sprite(material);
-    sprite.scale.set(3, 3, 1);
-    sprite.position.y = 1; // Above ground
+    sprite.scale.set(4, 4, 1); // Even larger for better visibility
+    sprite.position.y = 50; // Start high in the sky for fall animation
 
     // Create group
     const group = new THREE.Group();
@@ -528,10 +528,14 @@ class Map3D {
     const worldPos = this.latLngToWorld(position.lat, position.lng);
     group.position.set(worldPos.x, 0, worldPos.z);
 
-    // Add bobbing animation data
+    // Add falling animation data
     group.userData = {
-      baseY: 1,
-      bobOffset: Math.random() * Math.PI * 2
+      baseY: 1.5,
+      bobOffset: Math.random() * Math.PI * 2,
+      falling: true,
+      fallStartTime: performance.now(),
+      fallDuration: 1500, // 1.5 seconds to fall
+      bounceCount: 0
     };
 
     // Add to scene
@@ -558,14 +562,58 @@ class Map3D {
     this.droppedItems.delete(id);
   }
 
-  // Update dropped items (bobbing animation) - called in animate loop
+  // Update dropped items (falling + bobbing animation) - called in animate loop
   updateDroppedItems() {
-    const time = performance.now() / 1000;
+    const time = performance.now();
+    const timeSec = time / 1000;
+
     this.droppedItems.forEach((itemData) => {
       if (itemData.group && itemData.group.userData) {
-        const bobOffset = itemData.group.userData.bobOffset || 0;
-        itemData.group.children[0].position.y = 1 + Math.sin(time * 2 + bobOffset) * 0.25;
-        itemData.group.children[0].material.rotation += 0.01; // Slow spin
+        const userData = itemData.group.userData;
+        const sprite = itemData.group.children[0];
+
+        if (userData.falling) {
+          // Falling animation
+          const elapsed = time - userData.fallStartTime;
+          const progress = Math.min(elapsed / userData.fallDuration, 1);
+
+          // Easing for natural fall (accelerate down)
+          const fallEase = progress * progress;
+          const startY = 50;
+          const groundY = userData.baseY;
+
+          if (progress < 1) {
+            // Still falling
+            sprite.position.y = startY - (startY - groundY) * fallEase;
+          } else {
+            // Landed - do bounce
+            const bounceTime = elapsed - userData.fallDuration;
+            const bounceDuration = 300; // 300ms per bounce
+            const bounceHeight = Math.max(0, 3 - userData.bounceCount * 1.5); // Decreasing bounce height
+
+            if (bounceHeight > 0.2 && bounceTime < bounceDuration) {
+              // Bouncing up and down
+              const bounceProgress = bounceTime / bounceDuration;
+              const bounceEase = Math.sin(bounceProgress * Math.PI);
+              sprite.position.y = groundY + bounceHeight * bounceEase;
+            } else if (bounceHeight > 0.2) {
+              // Start next bounce
+              userData.bounceCount++;
+              userData.fallStartTime = time - userData.fallDuration;
+            } else {
+              // Done bouncing - switch to bobbing
+              userData.falling = false;
+              sprite.position.y = groundY;
+            }
+          }
+        } else {
+          // Normal bobbing animation
+          const bobOffset = userData.bobOffset || 0;
+          sprite.position.y = userData.baseY + Math.sin(timeSec * 2 + bobOffset) * 0.3;
+        }
+
+        // Slow spin always
+        sprite.material.rotation += 0.015;
       }
     });
   }

@@ -166,6 +166,49 @@ body {
   min-height: 18px;
 }
 
+.login-success {
+  color: #6bff6b;
+  font-size: 12px;
+  margin-top: 5px;
+  min-height: 18px;
+}
+
+/* Forgot password button */
+.text-btn {
+  background: transparent;
+  border: none;
+  color: var(--osrs-text);
+  font-size: 12px;
+  cursor: pointer;
+  padding: 5px;
+  text-decoration: underline;
+  font-family: inherit;
+}
+
+.text-btn:hover {
+  color: var(--osrs-text-light);
+}
+
+/* Social login buttons */
+.social-login-buttons {
+  display: flex;
+  justify-content: center;
+  gap: 15px;
+  margin-top: 10px;
+}
+
+.social-btn {
+  width: 50px;
+  height: 50px;
+  padding: 10px;
+  border-radius: 50%;
+}
+
+.social-btn img {
+  width: 24px;
+  height: 24px;
+}
+
 /* Username input */
 .osrs-input {
   width: 100%;
@@ -268,14 +311,17 @@ body {
 
 .player-buttons {
   display: flex;
+  flex-direction: column;
   gap: 5px;
-  padding: 0 10px 10px;
+  padding: 8px 10px 10px;
 }
 
 .player-buttons .osrs-btn {
-  flex: 1;
+  width: 100%;
   font-size: 11px;
-  padding: 6px 8px;
+  padding: 8px 12px;
+  margin: 0;
+  box-sizing: border-box;
 }
 
 .logout-btn {
@@ -285,13 +331,6 @@ body {
 
 .logout-btn:hover {
   background: linear-gradient(180deg, #7b5454 0%, #5a3838 100%) !important;
-}
-
-#change-flag-btn {
-  margin: 5px 10px 10px;
-  padding: 6px 12px;
-  font-size: 11px;
-  width: calc(100% - 20px);
 }
 
 /* Fast Travel Panel */
@@ -1102,6 +1141,103 @@ body[class*="ui-"] .info-content strong {
   color: var(--ui-text);
 }
 
+/* Modal Styles */
+.modal {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.8);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  z-index: 1000;
+}
+
+.modal.hidden {
+  display: none;
+}
+
+.modal-content {
+  background: var(--osrs-bg);
+  border: 3px solid var(--osrs-border);
+  border-radius: 4px;
+  width: 90%;
+  max-width: 400px;
+  max-height: 80vh;
+  overflow-y: auto;
+}
+
+.modal-header {
+  background: linear-gradient(180deg, #5d5447 0%, #3d3426 100%);
+  color: var(--osrs-gold);
+  padding: 12px 15px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.modal-header h3 {
+  margin: 0;
+  font-size: 16px;
+}
+
+.modal-close-btn {
+  background: transparent;
+  border: none;
+  color: var(--osrs-text);
+  font-size: 24px;
+  cursor: pointer;
+  line-height: 1;
+  padding: 0 5px;
+}
+
+.modal-close-btn:hover {
+  color: var(--osrs-text-light);
+}
+
+.modal-body {
+  padding: 15px;
+}
+
+.account-section {
+  margin-bottom: 20px;
+  padding-bottom: 15px;
+  border-bottom: 1px solid var(--osrs-border);
+}
+
+.account-section:last-child {
+  border-bottom: none;
+  margin-bottom: 0;
+}
+
+.account-section h4 {
+  color: var(--osrs-gold);
+  font-size: 14px;
+  margin: 0 0 10px 0;
+}
+
+.account-section p {
+  color: var(--osrs-text);
+  font-size: 12px;
+  margin: 5px 0;
+}
+
+.account-hint {
+  color: var(--osrs-text) !important;
+  opacity: 0.7;
+  font-style: italic;
+}
+
+.account-section .osrs-input {
+  margin-bottom: 10px;
+}
+
+.account-section .osrs-btn {
+  width: 100%;
+}
+
 /* Scrollbar Styling */
 ::-webkit-scrollbar {
   width: 8px;
@@ -1202,6 +1338,7 @@ body[class*="ui-"] .weather-time {
 .skills-content,
 .inventory-content {
   padding: 8px;
+  min-height: 285px; /* Fixed height to match 6 rows of inventory (24 slots / 4 cols) */
 }
 
 /* Skills Grid - Same layout as inventory */

@@ -51,9 +51,9 @@ class SkillsManager {
     // Config for dropped items
     this.dropConfig = {
       despawnTime: 60000,      // 60 seconds to despawn
-      maxDistance: 0.002,      // Max lat/lng distance before despawn (~200m)
-      pickupDistance: 0.00008, // Distance to pick up item (~8m)
-      dropRadius: 0.0003       // Radius around player for drops (~30m)
+      maxDistance: 0.003,      // Max lat/lng distance before despawn (~300m)
+      pickupDistance: 0.0002,  // Distance to pick up item (~20m) - easier pickup
+      dropRadius: 0.0015       // Radius around player for drops (~150m)
     };
 
     // Load saved data

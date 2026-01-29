@@ -32,6 +32,11 @@ class GeoMMO {
       if (e.key === 'Enter') this.emailLogin();
     });
 
+    // Set up forgot password button
+    document.getElementById('forgot-password-btn').addEventListener('click', () => {
+      this.forgotPassword();
+    });
+
     // Set up Phantom login button
     document.getElementById('phantom-login-btn').addEventListener('click', () => {
       this.connectPhantom();
@@ -315,6 +320,8 @@ class GeoMMO {
 
   async login() {
     const provider = new firebase.auth.GoogleAuthProvider();
+    const errorEl = document.getElementById('login-error');
+    errorEl.textContent = '';
 
     try {
       const result = await firebase.auth().signInWithPopup(provider);
@@ -331,7 +338,7 @@ class GeoMMO {
       }
     } catch (error) {
       console.error('Login error:', error);
-      alert('Login failed. Please try again.');
+      errorEl.textContent = this.getAuthErrorMessage(error.code);
     }
   }
 
@@ -407,8 +414,198 @@ class GeoMMO {
         return 'Password is too weak';
       case 'auth/invalid-credential':
         return 'Invalid email or password';
+      case 'auth/popup-closed-by-user':
+        return 'Sign-in popup was closed';
+      case 'auth/popup-blocked':
+        return 'Sign-in popup was blocked. Allow popups and try again.';
+      case 'auth/cancelled-popup-request':
+        return 'Sign-in was cancelled';
+      case 'auth/network-request-failed':
+        return 'Network error. Check your connection.';
+      case 'auth/too-many-requests':
+        return 'Too many attempts. Please wait and try again.';
+      case 'auth/operation-not-allowed':
+        return 'This sign-in method is not enabled.';
+      case 'auth/credential-already-in-use':
+        return 'This account is already linked to another user.';
+      case 'auth/provider-already-linked':
+        return 'This provider is already linked to your account.';
+      case 'auth/requires-recent-login':
+        return 'Please log out and log back in to perform this action.';
       default:
-        return 'Authentication failed. Please try again.';
+        return `Authentication failed: ${code || 'Unknown error'}`;
+    }
+  }
+
+  async forgotPassword() {
+    const email = document.getElementById('email-input').value.trim();
+    const errorEl = document.getElementById('login-error');
+    const successEl = document.getElementById('login-success');
+
+    errorEl.textContent = '';
+    successEl.textContent = '';
+
+    if (!email) {
+      errorEl.textContent = 'Please enter your email address';
+      return;
+    }
+
+    try {
+      await firebase.auth().sendPasswordResetEmail(email);
+      successEl.textContent = 'Password reset email sent! Check your inbox.';
+    } catch (error) {
+      console.error('Password reset error:', error);
+      errorEl.textContent = this.getAuthErrorMessage(error.code);
+    }
+  }
+
+  // Account Settings Modal
+  setupAccountSettings() {
+    const modal = document.getElementById('account-modal');
+    const openBtn = document.getElementById('account-settings-btn');
+    const closeBtn = document.getElementById('account-modal-close');
+    const linkEmailBtn = document.getElementById('link-email-btn');
+    const linkGoogleBtn = document.getElementById('link-google-btn');
+    const changePasswordBtn = document.getElementById('change-password-btn');
+
+    openBtn.addEventListener('click', () => {
+      this.updateAccountModal();
+      modal.classList.remove('hidden');
+    });
+
+    closeBtn.addEventListener('click', () => {
+      modal.classList.add('hidden');
+    });
+
+    // Close on background click
+    modal.addEventListener('click', (e) => {
+      if (e.target === modal) {
+        modal.classList.add('hidden');
+      }
+    });
+
+    linkEmailBtn.addEventListener('click', () => this.linkEmailAccount());
+    linkGoogleBtn.addEventListener('click', () => this.linkGoogleAccount());
+    changePasswordBtn.addEventListener('click', () => this.changePassword());
+  }
+
+  updateAccountModal() {
+    const user = firebase.auth().currentUser;
+    const emailEl = document.getElementById('account-email');
+    const providersEl = document.getElementById('account-providers');
+    const linkEmailSection = document.getElementById('link-email-section');
+    const linkGoogleSection = document.getElementById('link-google-section');
+
+    // Clear previous messages
+    document.getElementById('link-error').textContent = '';
+    document.getElementById('link-success').textContent = '';
+    document.getElementById('password-error').textContent = '';
+    document.getElementById('password-success').textContent = '';
+
+    if (!user) {
+      emailEl.textContent = 'Not signed in';
+      providersEl.textContent = 'Linked: None';
+      linkEmailSection.classList.add('hidden');
+      linkGoogleSection.classList.add('hidden');
+      return;
+    }
+
+    // Get linked providers
+    const providers = user.providerData.map(p => {
+      switch (p.providerId) {
+        case 'password': return 'Email';
+        case 'google.com': return 'Google';
+        default: return p.providerId;
+      }
+    });
+
+    emailEl.textContent = user.email ? `Email: ${user.email}` : 'No email linked';
+    providersEl.textContent = `Linked: ${providers.length > 0 ? providers.join(', ') : 'None'}`;
+
+    // Show/hide link sections based on what's already linked
+    const hasEmail = providers.includes('Email');
+    const hasGoogle = providers.includes('Google');
+
+    linkEmailSection.classList.toggle('hidden', hasEmail);
+    linkGoogleSection.classList.toggle('hidden', hasGoogle);
+
+    // Only show change password if email is linked
+    document.getElementById('change-password-section').classList.toggle('hidden', !hasEmail);
+  }
+
+  async linkEmailAccount() {
+    const email = document.getElementById('link-email-input').value.trim();
+    const password = document.getElementById('link-password-input').value;
+    const errorEl = document.getElementById('link-error');
+    const successEl = document.getElementById('link-success');
+
+    errorEl.textContent = '';
+    successEl.textContent = '';
+
+    if (!email || !password) {
+      errorEl.textContent = 'Please enter email and password';
+      return;
+    }
+
+    if (password.length < 6) {
+      errorEl.textContent = 'Password must be at least 6 characters';
+      return;
+    }
+
+    try {
+      const credential = firebase.auth.EmailAuthProvider.credential(email, password);
+      await firebase.auth().currentUser.linkWithCredential(credential);
+      successEl.textContent = 'Email account linked successfully!';
+      this.updateAccountModal();
+    } catch (error) {
+      console.error('Link email error:', error);
+      errorEl.textContent = this.getAuthErrorMessage(error.code);
+    }
+  }
+
+  async linkGoogleAccount() {
+    const errorEl = document.getElementById('link-error');
+    const successEl = document.getElementById('link-success');
+
+    errorEl.textContent = '';
+    successEl.textContent = '';
+
+    try {
+      const provider = new firebase.auth.GoogleAuthProvider();
+      await firebase.auth().currentUser.linkWithPopup(provider);
+      successEl.textContent = 'Google account linked successfully!';
+      this.updateAccountModal();
+    } catch (error) {
+      console.error('Link Google error:', error);
+      errorEl.textContent = this.getAuthErrorMessage(error.code);
+    }
+  }
+
+  async changePassword() {
+    const newPassword = document.getElementById('new-password-input').value;
+    const errorEl = document.getElementById('password-error');
+    const successEl = document.getElementById('password-success');
+
+    errorEl.textContent = '';
+    successEl.textContent = '';
+
+    if (!newPassword) {
+      errorEl.textContent = 'Please enter a new password';
+      return;
+    }
+
+    if (newPassword.length < 6) {
+      errorEl.textContent = 'Password must be at least 6 characters';
+      return;
+    }
+
+    try {
+      await firebase.auth().currentUser.updatePassword(newPassword);
+      successEl.textContent = 'Password updated successfully!';
+      document.getElementById('new-password-input').value = '';
+    } catch (error) {
+      console.error('Change password error:', error);
+      errorEl.textContent = this.getAuthErrorMessage(error.code);
     }
   }
 
@@ -448,6 +645,7 @@ class GeoMMO {
       document.getElementById('email-input').value = '';
       document.getElementById('password-input').value = '';
       document.getElementById('login-error').textContent = '';
+      document.getElementById('login-success').textContent = '';
 
       // Reload page to reset all state cleanly
       window.location.reload();
@@ -509,6 +707,9 @@ class GeoMMO {
 
     // Set up players panel minimize
     this.setupPlayersPanel();
+
+    // Set up account settings modal
+    this.setupAccountSettings();
   }
 
   setupPlayersPanel() {
@@ -636,6 +837,13 @@ class GeoMMO {
       }
 
       this.playerManager.setSelf(data.player);
+
+      // Immediately update position to ensure character is visible
+      // This triggers proper camera positioning and coordinate display
+      if (data.player.position) {
+        this.playerManager.updateSelfPosition(data.player.position);
+      }
+
       this.chatManager.addSystemMessage('Welcome to GeoMMO!');
     });
 

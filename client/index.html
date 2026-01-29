@@ -19,11 +19,6 @@
     <div class="login-box">
       <h1>GeoMMO</h1>
       <p>A Google Maps MMO Adventure</p>
-      <button id="login-btn" class="osrs-btn">
-        <img src="https://www.gstatic.com/firebasejs/ui/2.0.0/images/auth/google.svg" alt="Google">
-        Sign in with Google
-      </button>
-      <div class="login-divider"><span>or</span></div>
       <div class="email-form">
         <input type="email" id="email-input" class="osrs-input" placeholder="Email address">
         <input type="password" id="password-input" class="osrs-input" placeholder="Password">
@@ -31,13 +26,19 @@
           <button id="email-login-btn" class="osrs-btn email-btn">Sign In</button>
           <button id="email-register-btn" class="osrs-btn email-btn">Register</button>
         </div>
+        <button id="forgot-password-btn" class="text-btn">Forgot Password?</button>
         <div id="login-error" class="login-error"></div>
+        <div id="login-success" class="login-success"></div>
       </div>
-      <div class="login-divider"><span>or</span></div>
-      <button id="phantom-login-btn" class="osrs-btn phantom-btn">
-        <img src="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 128 128'%3E%3Crect fill='%235d47a3' width='128' height='128' rx='20'/%3E%3Ctext x='64' y='80' text-anchor='middle' fill='white' font-size='48' font-family='sans-serif'%3EP%3C/text%3E%3C/svg%3E" alt="Phantom" style="width:20px;height:20px;">
-        Connect Phantom Wallet
-      </button>
+      <div class="login-divider"><span>or connect with</span></div>
+      <div class="social-login-buttons">
+        <button id="login-btn" class="osrs-btn social-btn" title="Sign in with Google">
+          <img src="https://www.gstatic.com/firebasejs/ui/2.0.0/images/auth/google.svg" alt="Google">
+        </button>
+        <button id="phantom-login-btn" class="osrs-btn social-btn phantom-btn" title="Connect Phantom Wallet">
+          <img src="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 128 128'%3E%3Crect fill='%235d47a3' width='128' height='128' rx='20'/%3E%3Ctext x='64' y='80' text-anchor='middle' fill='white' font-size='48' font-family='sans-serif'%3EP%3C/text%3E%3C/svg%3E" alt="Phantom">
+        </button>
+      </div>
     </div>
   </div>
 
@@ -109,7 +110,51 @@
         <div id="player-coords">0.000, 0.000</div>
         <div class="player-buttons">
           <button id="change-flag-btn" class="osrs-btn small-btn">Change Avatar</button>
+          <button id="account-settings-btn" class="osrs-btn small-btn">Account</button>
           <button id="logout-btn" class="osrs-btn small-btn logout-btn">Logout</button>
+        </div>
+      </div>
+
+      <!-- Account Settings Modal -->
+      <div id="account-modal" class="modal hidden">
+        <div class="modal-content">
+          <div class="modal-header">
+            <h3>Account Settings</h3>
+            <button id="account-modal-close" class="modal-close-btn">×</button>
+          </div>
+          <div class="modal-body">
+            <div id="account-info" class="account-section">
+              <h4>Current Account</h4>
+              <p id="account-email">Not signed in with email</p>
+              <p id="account-providers">Linked: None</p>
+            </div>
+
+            <div id="link-email-section" class="account-section hidden">
+              <h4>Link Email Account</h4>
+              <p class="account-hint">Add email/password login to your account</p>
+              <input type="email" id="link-email-input" class="osrs-input" placeholder="Email address">
+              <input type="password" id="link-password-input" class="osrs-input" placeholder="Password (min 6 chars)">
+              <button id="link-email-btn" class="osrs-btn">Link Email</button>
+              <div id="link-error" class="login-error"></div>
+              <div id="link-success" class="login-success"></div>
+            </div>
+
+            <div id="link-google-section" class="account-section hidden">
+              <h4>Link Google Account</h4>
+              <button id="link-google-btn" class="osrs-btn">
+                <img src="https://www.gstatic.com/firebasejs/ui/2.0.0/images/auth/google.svg" alt="Google" style="width:16px;height:16px;">
+                Link Google
+              </button>
+            </div>
+
+            <div id="change-password-section" class="account-section hidden">
+              <h4>Change Password</h4>
+              <input type="password" id="new-password-input" class="osrs-input" placeholder="New password (min 6 chars)">
+              <button id="change-password-btn" class="osrs-btn">Update Password</button>
+              <div id="password-error" class="login-error"></div>
+              <div id="password-success" class="login-success"></div>
+            </div>
+          </div>
         </div>
       </div>
 
