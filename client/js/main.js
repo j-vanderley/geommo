@@ -836,6 +836,11 @@ class GeoMMO {
         localStorage.setItem(`avatar_${this.getUserId()}`, JSON.stringify(this.selectedAvatar));
       }
 
+      // Set user ID for skills/inventory (per-account storage)
+      if (this.mapManager.skillsManager) {
+        this.mapManager.skillsManager.setUserId(this.getUserId());
+      }
+
       this.playerManager.setSelf(data.player);
 
       // Immediately update position to ensure character is visible

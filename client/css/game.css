@@ -35,7 +35,9 @@ body {
   position: absolute;
   top: 0;
   left: 0;
+  z-index: 500; /* Above game UI panels */
 }
+
 
 .hidden {
   display: none !important;
@@ -246,6 +248,7 @@ body {
 /* Game Screen */
 #game-screen {
   position: relative;
+  z-index: 1; /* Game screen is the base layer, login screens are above */
 }
 
 #map {

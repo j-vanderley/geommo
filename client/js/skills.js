@@ -1,6 +1,9 @@
 // Skills & Inventory System
 class SkillsManager {
   constructor() {
+    // User ID for per-account storage
+    this.userId = null;
+
     // Skills - one for each weather type
     this.skills = {
       sunbathing: { name: 'Sunbathing', weather: 'clear', xp: 0, icon: '☀️' },
@@ -56,8 +59,7 @@ class SkillsManager {
       dropRadius: 0.0015       // Radius around player for drops (~150m)
     };
 
-    // Load saved data
-    this.load();
+    // Don't load here - wait for setUserId to be called with user's ID
   }
 
   // Generate XP table for levels 1-99
@@ -612,7 +614,39 @@ class SkillsManager {
     }, 3000);
   }
 
-  // Save to localStorage
+  // Set user ID for per-account storage
+  setUserId(userId) {
+    // If switching users, reset data first
+    if (this.userId && this.userId !== userId) {
+      this.reset();
+    }
+    this.userId = userId;
+    this.load(); // Load data for this user
+    this.updateUI();
+  }
+
+  // Reset skills and inventory to defaults
+  reset() {
+    // Reset skills
+    for (const skill of Object.values(this.skills)) {
+      skill.xp = 0;
+    }
+    // Reset inventory
+    this.inventorySlots = new Array(24).fill(null);
+    // Clear dropped items
+    for (const item of [...this.droppedItems]) {
+      this.removeDroppedItem(item);
+    }
+    this.droppedItems = [];
+  }
+
+  // Get storage key for current user
+  getStorageKey() {
+    if (!this.userId) return 'geommo_skills';
+    return `geommo_skills_${this.userId}`;
+  }
+
+  // Save to localStorage (per-user)
   save() {
     const data = {
       skills: {},
@@ -623,13 +657,17 @@ class SkillsManager {
       data.skills[key] = skill.xp;
     }
 
-    localStorage.setItem('geommo_skills', JSON.stringify(data));
+    localStorage.setItem(this.getStorageKey(), JSON.stringify(data));
   }
 
-  // Load from localStorage
+  // Load from localStorage (per-user)
   load() {
-    const saved = localStorage.getItem('geommo_skills');
-    if (!saved) return;
+    const saved = localStorage.getItem(this.getStorageKey());
+    if (!saved) {
+      // No saved data for this user - start fresh
+      this.reset();
+      return;
+    }
 
     try {
       const data = JSON.parse(saved);
