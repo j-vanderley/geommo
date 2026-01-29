@@ -4,6 +4,9 @@ class MapManager {
     // 3D rendering
     this.map3d = null;
 
+    // Weather system
+    this.weatherManager = null;
+
     // Google Maps (minimap only)
     this.minimap = null;
 
@@ -16,6 +19,9 @@ class MapManager {
 
     // API key (extracted from page)
     this.apiKey = 'AIzaSyA215L_qSgleCyUM7brvtNUIXKx0GxEErA';
+
+    // Current player position for weather
+    this.currentPosition = null;
   }
 
   async init() {
@@ -56,6 +62,21 @@ class MapManager {
     // Create 3D manager
     this.map3d = new Map3D(container, this.apiKey);
     await this.map3d.init();
+
+    // Initialize weather manager
+    this.weatherManager = new WeatherManager(this.map3d);
+    await this.weatherManager.init();
+
+    // Hook into the animation loop for weather updates
+    const originalAnimate = this.map3d.animate.bind(this.map3d);
+    this.map3d.animate = () => {
+      originalAnimate();
+      if (this.weatherManager) {
+        this.weatherManager.update();
+      }
+    };
+    // Restart animation with new hook
+    this.map3d.animate();
 
     // Set up click handler
     this.map3d.onClick2D((latLng) => {
@@ -113,6 +134,11 @@ class MapManager {
         this.selfMarker = sprite;
         this.selfPlayerId = player.id;
         this.centerOn(player.position);
+
+        // Fetch weather for initial position
+        if (this.weatherManager) {
+          this.weatherManager.fetchWeather(player.position.lat, player.position.lng);
+        }
       }
 
       return sprite;
@@ -275,6 +301,12 @@ class MapManager {
     // Update coordinates display
     document.getElementById('player-coords').textContent =
       `${position.lat.toFixed(6)}, ${position.lng.toFixed(6)}`;
+
+    // Update weather for new position
+    this.currentPosition = position;
+    if (this.weatherManager) {
+      this.weatherManager.fetchWeather(position.lat, position.lng);
+    }
   }
 
   // Show chat bubble above player

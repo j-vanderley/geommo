@@ -918,3 +918,41 @@ body[class*="ui-"] .chat-bubble-3d {
 ::-webkit-scrollbar-thumb:hover {
   background: var(--osrs-tan);
 }
+
+/* Weather Panel */
+#weather-display {
+  top: 250px;
+  left: 10px;
+  width: 180px;
+}
+
+#weather-info {
+  padding: 8px 10px;
+}
+
+.weather-temp {
+  color: var(--osrs-text-light);
+  font-size: 16px;
+  font-weight: bold;
+  margin-bottom: 4px;
+}
+
+.weather-time {
+  color: var(--osrs-text);
+  font-size: 12px;
+}
+
+/* Theme support for weather panel */
+body[class*="ui-"] #weather-display {
+  background: var(--ui-background);
+  border-color: var(--ui-border);
+  border-radius: var(--ui-radius);
+}
+
+body[class*="ui-"] .weather-temp {
+  color: var(--ui-text);
+}
+
+body[class*="ui-"] .weather-time {
+  color: var(--ui-text-muted);
+}
