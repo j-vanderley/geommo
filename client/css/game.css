@@ -293,11 +293,26 @@ body {
   align-items: center;
 }
 
-/* Player Info */
-#player-info {
+/* Left Side Panels Container */
+#left-panels {
+  position: absolute;
   top: 10px;
   left: 10px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  pointer-events: none;
+}
+
+#left-panels .ui-panel {
+  position: relative;
   width: 180px;
+  pointer-events: auto;
+}
+
+/* Player Info */
+#player-info {
+  /* Positioned by flex container */
 }
 
 #player-name {
@@ -338,9 +353,7 @@ body {
 
 /* Fast Travel Panel */
 #fast-travel {
-  top: 140px;
-  left: 10px;
-  width: 180px;
+  /* Positioned by flex container */
 }
 
 #city-select {
@@ -1019,8 +1032,7 @@ body[class*="ui-"] .chat-bubble-3d {
 
 /* Info Button */
 #info-button {
-  top: 10px;
-  left: 200px;
+  /* Positioned by flex container */
   width: 32px;
   height: 32px;
   padding: 0;

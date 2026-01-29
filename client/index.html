@@ -103,15 +103,32 @@
         <div id="minimap"></div>
       </div>
 
-      <!-- Player Info (top left) -->
-      <div id="player-info" class="ui-panel">
-        <div class="panel-header">Player</div>
-        <div id="player-name">Loading...</div>
-        <div id="player-coords">0.000, 0.000</div>
-        <div class="player-buttons">
-          <button id="change-flag-btn" class="osrs-btn small-btn">Change Avatar</button>
-          <button id="account-settings-btn" class="osrs-btn small-btn">Account</button>
-          <button id="logout-btn" class="osrs-btn small-btn logout-btn">Logout</button>
+      <!-- Left Side Panels Container -->
+      <div id="left-panels">
+        <!-- Player Info -->
+        <div id="player-info" class="ui-panel">
+          <div class="panel-header">Player</div>
+          <div id="player-name">Loading...</div>
+          <div id="player-coords">0.000, 0.000</div>
+          <div class="player-buttons">
+            <button id="change-flag-btn" class="osrs-btn small-btn">Change Avatar</button>
+            <button id="account-settings-btn" class="osrs-btn small-btn">Account</button>
+            <button id="logout-btn" class="osrs-btn small-btn logout-btn">Logout</button>
+          </div>
+        </div>
+
+        <!-- Fast Travel -->
+        <div id="fast-travel" class="ui-panel">
+          <div class="panel-header">Fast Travel</div>
+          <select id="city-select" class="osrs-select">
+            <option value="">Select a city...</option>
+          </select>
+          <button id="travel-btn" class="osrs-btn small-btn">Travel</button>
+        </div>
+
+        <!-- Info Button -->
+        <div id="info-button" class="ui-panel">
+          <button id="info-toggle" class="info-toggle-btn">i</button>
         </div>
       </div>
 
@@ -158,15 +175,6 @@
         </div>
       </div>
 
-      <!-- Fast Travel (below player info) -->
-      <div id="fast-travel" class="ui-panel">
-        <div class="panel-header">Fast Travel</div>
-        <select id="city-select" class="osrs-select">
-          <option value="">Select a city...</option>
-        </select>
-        <button id="travel-btn" class="osrs-btn small-btn">Travel</button>
-      </div>
-
       <!-- Online Players (right side) -->
       <div id="players-panel" class="ui-panel">
         <div class="panel-header">
@@ -174,11 +182,6 @@
           <button class="players-minimize-btn">▼</button>
         </div>
         <ul id="player-list"></ul>
-      </div>
-
-      <!-- Info Button (near player info) -->
-      <div id="info-button" class="ui-panel">
-        <button id="info-toggle" class="info-toggle-btn">i</button>
       </div>
 
       <!-- Info Panel (collapsible) -->
