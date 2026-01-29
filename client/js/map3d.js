@@ -42,49 +42,71 @@ class Map3D {
   }
 
   async init() {
-    // Create scene
-    this.scene = new THREE.Scene();
-    this.scene.background = new THREE.Color(0x1a1a1a);
+    try {
+      // Check if container has valid dimensions
+      if (!this.container.clientWidth || !this.container.clientHeight) {
+        console.warn('Map3D: Container has no dimensions, waiting for layout...');
+        await new Promise(resolve => setTimeout(resolve, 100));
+      }
 
-    // Create camera
-    const aspect = this.container.clientWidth / this.container.clientHeight;
-    this.camera = new THREE.PerspectiveCamera(60, aspect, 0.1, 2000);
+      // Create scene
+      this.scene = new THREE.Scene();
+      this.scene.background = new THREE.Color(0x1a1a1a);
 
-    // Create renderer
-    this.renderer = new THREE.WebGLRenderer({ antialias: true });
-    this.renderer.setSize(this.container.clientWidth, this.container.clientHeight);
-    this.renderer.setPixelRatio(window.devicePixelRatio);
-    this.container.appendChild(this.renderer.domElement);
+      // Create camera
+      const aspect = this.container.clientWidth / this.container.clientHeight || 1;
+      this.camera = new THREE.PerspectiveCamera(60, aspect, 0.1, 2000);
 
-    // Create camera controller
-    this.cameraController = new OSRSCamera(this.camera, this.renderer.domElement);
+      // Create renderer with error handling
+      try {
+        this.renderer = new THREE.WebGLRenderer({ antialias: true });
+      } catch (webglError) {
+        console.error('WebGL not available:', webglError);
+        throw new Error('WebGL is required but not available');
+      }
 
-    // Create invisible ground plane for raycasting
-    const groundGeometry = new THREE.PlaneGeometry(10000, 10000);
-    const groundMaterial = new THREE.MeshBasicMaterial({
-      visible: false,
-      side: THREE.DoubleSide
-    });
-    this.groundPlane = new THREE.Mesh(groundGeometry, groundMaterial);
-    this.groundPlane.rotation.x = -Math.PI / 2;
-    this.groundPlane.position.y = 0;
-    this.scene.add(this.groundPlane);
+      this.renderer.setSize(this.container.clientWidth || 800, this.container.clientHeight || 600);
+      this.renderer.setPixelRatio(window.devicePixelRatio);
+      this.container.appendChild(this.renderer.domElement);
 
-    // Add ambient light
-    const ambientLight = new THREE.AmbientLight(0xffffff, 1.0);
-    this.scene.add(ambientLight);
+      // Create camera controller
+      this.cameraController = new OSRSCamera(this.camera, this.renderer.domElement);
 
-    // Create tile manager
-    this.tileManager = new TileManager();
-    this.tileManager.setScene(this.scene);
+      // Create invisible ground plane for raycasting
+      const groundGeometry = new THREE.PlaneGeometry(10000, 10000);
+      const groundMaterial = new THREE.MeshBasicMaterial({
+        visible: false,
+        side: THREE.DoubleSide
+      });
+      this.groundPlane = new THREE.Mesh(groundGeometry, groundMaterial);
+      this.groundPlane.rotation.x = -Math.PI / 2;
+      this.groundPlane.position.y = 0;
+      this.scene.add(this.groundPlane);
 
-    // Bind events
-    this.bindEvents();
+      // Add ambient light
+      const ambientLight = new THREE.AmbientLight(0xffffff, 1.0);
+      this.scene.add(ambientLight);
 
-    // Start animation loop
-    this.animate();
+      // Create tile manager
+      this.tileManager = new TileManager();
+      this.tileManager.setScene(this.scene);
 
-    return this;
+      // Load initial tiles at default position
+      console.log('Map3D: Loading initial tiles at', this.centerLat, this.centerLng);
+      this.tileManager.updateTiles(this.centerLat, this.centerLng);
+
+      // Bind events
+      this.bindEvents();
+
+      // Start animation loop
+      this.animate();
+
+      console.log('Map3D: Initialization complete');
+      return this;
+    } catch (error) {
+      console.error('Map3D initialization failed:', error);
+      throw error;
+    }
   }
 
   bindEvents() {

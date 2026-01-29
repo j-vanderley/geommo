@@ -9,6 +9,14 @@ class PlayerManager {
 
   // Set the local player
   setSelf(player) {
+    // Clean up old self player if reconnecting with a new socket ID
+    if (this.selfSocketId && this.selfSocketId !== player.id) {
+      console.log(`Reconnect detected: cleaning up old player ${this.selfSocketId}`);
+      // Remove old self from players map and map markers
+      this.players.delete(this.selfSocketId);
+      this.mapManager.removePlayer(this.selfSocketId);
+    }
+
     this.selfPlayer = player;
     this.selfSocketId = player.id;
     this.players.set(player.id, player);
@@ -41,12 +49,16 @@ class PlayerManager {
     const player = this.players.get(playerId);
     if (!player) return;
 
+    // Don't process if this is removing our own old socket (reconnect case)
+    // The server already handles this, we just need to clean up locally
+    const isSelfOldConnection = (playerId !== this.selfSocketId && player.odId === this.selfPlayer?.odId);
+
     this.players.delete(playerId);
     this.mapManager.removePlayer(playerId);
     this.updatePlayerList();
 
-    // Show system message
-    if (window.chatManager) {
+    // Show system message (but not for our own old connection)
+    if (window.chatManager && !isSelfOldConnection) {
       window.chatManager.addSystemMessage(`${player.username} left the game`);
     }
   }

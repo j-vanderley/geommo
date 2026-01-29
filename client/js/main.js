@@ -655,6 +655,12 @@ class GeoMMO {
         }
       }
 
+      // Update local storage for wallet users
+      if (this.authType === 'wallet') {
+        this.walletUsername = newName;
+        localStorage.setItem('wallet_username', newName);
+      }
+
       successEl.textContent = 'Name updated successfully!';
       document.getElementById('change-name-input').value = '';
     } catch (error) {
@@ -888,6 +894,13 @@ class GeoMMO {
         this.selectedAvatar = data.player.avatar;
         // Update localStorage to match server
         localStorage.setItem(`avatar_${this.getUserId()}`, JSON.stringify(this.selectedAvatar));
+      }
+
+      // Sync username from server (server has the authoritative copy from Firestore)
+      // This ensures display name persists across sessions
+      if (data.player.username && this.authType === 'wallet') {
+        this.walletUsername = data.player.username;
+        localStorage.setItem('wallet_username', data.player.username);
       }
 
       // Set user ID for skills/inventory (per-account storage)

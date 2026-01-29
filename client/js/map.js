@@ -62,9 +62,21 @@ class MapManager {
   async init3D() {
     const container = document.getElementById('map');
 
-    // Create 3D manager
-    this.map3d = new Map3D(container, this.apiKey);
-    await this.map3d.init();
+    if (!container) {
+      console.error('Map container not found');
+      return this.init2D();
+    }
+
+    try {
+      // Create 3D manager
+      this.map3d = new Map3D(container, this.apiKey);
+      await this.map3d.init();
+    } catch (error) {
+      console.error('Failed to initialize 3D view:', error);
+      // Fall back to 2D
+      this.map3d = null;
+      return this.init2D();
+    }
 
     // Initialize weather manager
     this.weatherManager = new WeatherManager(this.map3d);

@@ -26,6 +26,7 @@ export class PlayerManager {
     let playerPosition = position || { lat: 40.7128, lng: -74.0060 }; // Default: NYC
     let playerFlag = flag || '🏳️'; // Default: white flag
     let playerAvatar = avatar || { text: ':-)', color: '#ffb000' }; // Default avatar
+    let playerUsername = username; // Default to provided username
 
     if (playerDoc.exists) {
       const data = playerDoc.data();
@@ -39,12 +40,16 @@ export class PlayerManager {
       if (data?.avatar && !avatar) {
         playerAvatar = data.avatar;
       }
+      // Load saved username from Firestore (persisted display name)
+      if (data?.username) {
+        playerUsername = data.username;
+      }
     }
 
     const player: Player = {
       id: socketId,
       odId,
-      username,
+      username: playerUsername,
       position: playerPosition,
       flag: playerFlag,
       avatar: playerAvatar,
