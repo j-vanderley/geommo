@@ -412,6 +412,50 @@ class GeoMMO {
     }
   }
 
+  async logout() {
+    try {
+      // Disconnect socket
+      if (this.socket) {
+        this.socket.disconnect();
+        this.socket = null;
+      }
+
+      // Sign out from Firebase if using Firebase auth
+      if (this.authType === 'firebase') {
+        await firebase.auth().signOut();
+      }
+
+      // Clear wallet session if using wallet auth
+      if (this.authType === 'wallet') {
+        localStorage.removeItem('wallet_address');
+        localStorage.removeItem('wallet_username');
+        this.walletAddress = null;
+        this.walletUsername = null;
+      }
+
+      // Reset state
+      this.user = null;
+      this.authType = null;
+      this.selectedAvatar = null;
+
+      // Show login screen
+      document.getElementById('game-screen').classList.add('hidden');
+      document.getElementById('avatar-screen').classList.add('hidden');
+      document.getElementById('username-screen').classList.add('hidden');
+      document.getElementById('login-screen').classList.remove('hidden');
+
+      // Clear login form
+      document.getElementById('email-input').value = '';
+      document.getElementById('password-input').value = '';
+      document.getElementById('login-error').textContent = '';
+
+      // Reload page to reset all state cleanly
+      window.location.reload();
+    } catch (error) {
+      console.error('Logout error:', error);
+    }
+  }
+
   async startGame() {
     // Show game screen
     document.getElementById('login-screen').classList.add('hidden');
@@ -450,6 +494,11 @@ class GeoMMO {
     // Set up change avatar button
     document.getElementById('change-flag-btn').addEventListener('click', () => {
       this.showChangeAvatarScreen();
+    });
+
+    // Set up logout button
+    document.getElementById('logout-btn').addEventListener('click', () => {
+      this.logout();
     });
 
     // Set up fast travel

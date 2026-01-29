@@ -36,6 +36,9 @@ class Map3D {
     // HTML overlays (chat bubbles and name labels)
     this.chatBubbles = new Map();
     this.nameLabels = new Map();
+
+    // Dropped items on the ground
+    this.droppedItems = new Map(); // id -> { sprite, group }
   }
 
   async init() {
@@ -134,6 +137,9 @@ class Map3D {
 
     // Update HTML overlay positions (name labels and chat bubbles)
     this.updateOverlayPositions();
+
+    // Update dropped items animation
+    this.updateDroppedItems();
 
     this.renderer.render(this.scene, this.camera);
   }
@@ -475,6 +481,95 @@ class Map3D {
     return { lat, lng };
   }
 
+  // Create a dropped item sprite on the ground
+  createDroppedItem(id, item, position) {
+    // Create canvas for item sprite
+    const canvas = document.createElement('canvas');
+    canvas.width = 64;
+    canvas.height = 64;
+    const ctx = canvas.getContext('2d');
+
+    // Draw glowing background
+    const gradient = ctx.createRadialGradient(32, 32, 0, 32, 32, 32);
+    gradient.addColorStop(0, 'rgba(255, 255, 100, 0.8)');
+    gradient.addColorStop(0.5, 'rgba(255, 200, 50, 0.4)');
+    gradient.addColorStop(1, 'rgba(255, 150, 0, 0)');
+    ctx.fillStyle = gradient;
+    ctx.fillRect(0, 0, 64, 64);
+
+    // Draw item icon
+    ctx.font = 'bold 32px Arial';
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.fillStyle = '#ffffff';
+    ctx.fillText(item.icon, 32, 32);
+
+    // Create sprite texture
+    const texture = new THREE.CanvasTexture(canvas);
+    texture.colorSpace = THREE.SRGBColorSpace;
+    texture.needsUpdate = true;
+
+    // Create sprite material
+    const material = new THREE.SpriteMaterial({
+      map: texture,
+      transparent: true
+    });
+
+    // Create sprite - larger size for visibility
+    const sprite = new THREE.Sprite(material);
+    sprite.scale.set(3, 3, 1);
+    sprite.position.y = 1; // Above ground
+
+    // Create group
+    const group = new THREE.Group();
+    group.add(sprite);
+
+    // Position in world
+    const worldPos = this.latLngToWorld(position.lat, position.lng);
+    group.position.set(worldPos.x, 0, worldPos.z);
+
+    // Add bobbing animation data
+    group.userData = {
+      baseY: 1,
+      bobOffset: Math.random() * Math.PI * 2
+    };
+
+    // Add to scene
+    this.scene.add(group);
+
+    // Store reference
+    this.droppedItems.set(id, { sprite, group, canvas });
+
+    return group;
+  }
+
+  // Remove a dropped item
+  removeDroppedItem(id) {
+    const itemData = this.droppedItems.get(id);
+    if (!itemData) return;
+
+    // Remove from scene
+    this.scene.remove(itemData.group);
+
+    // Dispose resources
+    itemData.sprite.material.map.dispose();
+    itemData.sprite.material.dispose();
+
+    this.droppedItems.delete(id);
+  }
+
+  // Update dropped items (bobbing animation) - called in animate loop
+  updateDroppedItems() {
+    const time = performance.now() / 1000;
+    this.droppedItems.forEach((itemData) => {
+      if (itemData.group && itemData.group.userData) {
+        const bobOffset = itemData.group.userData.bobOffset || 0;
+        itemData.group.children[0].position.y = 1 + Math.sin(time * 2 + bobOffset) * 0.25;
+        itemData.group.children[0].material.rotation += 0.01; // Slow spin
+      }
+    });
+  }
+
   // Dispose everything
   dispose() {
     if (this.animationId) {
@@ -486,6 +581,9 @@ class Map3D {
 
     // Remove chat bubbles
     this.chatBubbles.forEach((_, id) => this.removeChatBubble(id));
+
+    // Remove dropped items
+    this.droppedItems.forEach((_, id) => this.removeDroppedItem(id));
 
     // Remove name labels
     this.nameLabels.forEach((labelData) => {

@@ -73,6 +73,7 @@ class MapManager {
     // Initialize skills manager and connect to weather
     this.skillsManager = new SkillsManager();
     this.skillsManager.init();
+    this.skillsManager.setMap3D(this.map3d);
     this.weatherManager.skillsManager = this.skillsManager;
 
     // Hook into the animation loop for weather updates
@@ -314,6 +315,11 @@ class MapManager {
     this.currentPosition = position;
     if (this.weatherManager) {
       this.weatherManager.fetchWeather(position.lat, position.lng);
+    }
+
+    // Update skills manager with player position (for dropped items)
+    if (this.skillsManager) {
+      this.skillsManager.setPlayerPosition(position);
     }
   }
 

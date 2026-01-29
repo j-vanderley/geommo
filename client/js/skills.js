@@ -25,17 +25,36 @@ class SkillsManager {
     // Format: [{ itemKey, count }, null, null, ...]
     this.inventorySlots = new Array(24).fill(null);
 
+    // Dropped items on the ground (client-side only)
+    // Format: [{ id, itemKey, position: {lat, lng}, worldPos: {x,z}, createdAt, sprite }]
+    this.droppedItems = [];
+    this.droppedItemId = 0;
+
     // XP table (OSRS-style exponential)
     this.xpTable = this.generateXPTable(99);
 
     // Timers
     this.xpInterval = null;
     this.itemCheckInterval = null;
+    this.droppedItemCheckInterval = null;
     this.currentWeather = 'clear';
 
     // UI elements
     this.panel = null;
     this.activeTab = 'skills';
+    this.tooltip = null;
+
+    // References to game objects (set by map.js)
+    this.map3d = null;
+    this.playerPosition = null;
+
+    // Config for dropped items
+    this.dropConfig = {
+      despawnTime: 60000,      // 60 seconds to despawn
+      maxDistance: 0.002,      // Max lat/lng distance before despawn (~200m)
+      pickupDistance: 0.00008, // Distance to pick up item (~8m)
+      dropRadius: 0.0003       // Radius around player for drops (~30m)
+    };
 
     // Load saved data
     this.load();
@@ -82,7 +101,14 @@ class SkillsManager {
   // Initialize UI
   init() {
     this.createPanel();
+    this.createTooltip();
     this.updateUI();
+
+    // Start dropped item check interval
+    this.droppedItemCheckInterval = setInterval(() => {
+      this.updateDroppedItems();
+    }, 1000);
+
     return this;
   }
 
@@ -116,6 +142,41 @@ class SkillsManager {
     });
   }
 
+  // Create tooltip element
+  createTooltip() {
+    this.tooltip = document.createElement('div');
+    this.tooltip.id = 'skill-tooltip';
+    this.tooltip.className = 'skill-tooltip hidden';
+    document.body.appendChild(this.tooltip);
+  }
+
+  // Show tooltip
+  showTooltip(skill, element) {
+    const level = this.getLevel(skill.xp);
+    const progress = this.getLevelProgress(skill.xp);
+    const xpToNext = this.getXPForNextLevel(skill.xp);
+
+    this.tooltip.innerHTML = `
+      <div class="tooltip-header">${skill.icon} ${skill.name}</div>
+      <div class="tooltip-level">Level ${level}</div>
+      <div class="tooltip-xp">XP: ${Math.floor(skill.xp).toLocaleString()}</div>
+      <div class="tooltip-progress-bar">
+        <div class="tooltip-progress-fill" style="width: ${progress * 100}%"></div>
+      </div>
+      <div class="tooltip-next">${xpToNext > 0 ? `${xpToNext.toLocaleString()} XP to next level` : 'MAX LEVEL'}</div>
+    `;
+
+    const rect = element.getBoundingClientRect();
+    this.tooltip.style.left = `${rect.left}px`;
+    this.tooltip.style.top = `${rect.bottom + 5}px`;
+    this.tooltip.classList.remove('hidden');
+  }
+
+  // Hide tooltip
+  hideTooltip() {
+    this.tooltip.classList.add('hidden');
+  }
+
   // Switch between tabs
   switchTab(tabName) {
     this.activeTab = tabName;
@@ -141,34 +202,38 @@ class SkillsManager {
     }
   }
 
-  // Render skills tab
+  // Render skills tab as grid (same layout as inventory)
   renderSkills() {
     const container = document.getElementById('skills-content');
     if (!container) return;
 
     let html = '<div class="skills-grid">';
+    const skillEntries = Object.entries(this.skills);
 
-    for (const [key, skill] of Object.entries(this.skills)) {
+    // Render skills in grid format (same as inventory)
+    for (const [key, skill] of skillEntries) {
       const level = this.getLevel(skill.xp);
-      const progress = this.getLevelProgress(skill.xp);
       const isActive = this.getSkillForWeather(this.currentWeather) === key;
 
       html += `
-        <div class="skill-box ${isActive ? 'active' : ''}">
-          <div class="skill-icon">${skill.icon}</div>
-          <div class="skill-info">
-            <div class="skill-name">${skill.name}</div>
-            <div class="skill-level">Lv. ${level}</div>
-            <div class="skill-progress-bar">
-              <div class="skill-progress-fill" style="width: ${progress * 100}%"></div>
-            </div>
-          </div>
+        <div class="skill-slot ${isActive ? 'active' : ''}" data-skill="${key}">
+          <span class="skill-slot-icon">${skill.icon}</span>
+          <span class="skill-slot-level">lvl:${level}</span>
         </div>
       `;
     }
 
     html += '</div>';
     container.innerHTML = html;
+
+    // Add hover listeners for tooltips
+    container.querySelectorAll('.skill-slot[data-skill]').forEach(slot => {
+      const skillKey = slot.dataset.skill;
+      const skill = this.skills[skillKey];
+
+      slot.addEventListener('mouseenter', () => this.showTooltip(skill, slot));
+      slot.addEventListener('mouseleave', () => this.hideTooltip());
+    });
   }
 
   // Render inventory tab
@@ -377,8 +442,10 @@ class SkillsManager {
     this.save();
   }
 
-  // Check for random item drop
+  // Check for random item drop - now drops on ground instead of inventory
   checkItemDrop() {
+    if (!this.playerPosition) return;
+
     const itemKey = this.getItemForWeather(this.currentWeather);
     const item = this.itemTypes[itemKey];
     if (!item) return;
@@ -393,34 +460,147 @@ class SkillsManager {
     }
 
     if (Math.random() < dropChance) {
-      if (this.addItem(itemKey, 1)) {
-        this.showNotification(`${item.icon} Found: ${item.name}!`, 'item');
-        this.updateUI();
-        this.save();
-      }
+      this.dropItemOnGround(itemKey);
     }
   }
 
-  // Show notification
+  // Drop an item on the ground near the player
+  dropItemOnGround(itemKey) {
+    if (!this.playerPosition || !this.map3d) return;
+
+    const item = this.itemTypes[itemKey];
+    if (!item) return;
+
+    // Random position near player
+    const angle = Math.random() * Math.PI * 2;
+    const distance = this.dropConfig.dropRadius * (0.5 + Math.random() * 0.5);
+
+    const dropPosition = {
+      lat: this.playerPosition.lat + Math.cos(angle) * distance,
+      lng: this.playerPosition.lng + Math.sin(angle) * distance
+    };
+
+    // Create dropped item
+    const droppedItem = {
+      id: ++this.droppedItemId,
+      itemKey,
+      position: dropPosition,
+      createdAt: Date.now(),
+      sprite: null
+    };
+
+    // Create 3D sprite for the item
+    if (this.map3d) {
+      droppedItem.sprite = this.map3d.createDroppedItem(droppedItem.id, item, dropPosition);
+    }
+
+    this.droppedItems.push(droppedItem);
+
+    // Show notification
+    this.showNotification(`${item.icon} ${item.name} dropped nearby!`, 'item');
+  }
+
+  // Update dropped items (check despawn, distance, pickup)
+  updateDroppedItems() {
+    if (!this.playerPosition) return;
+
+    const now = Date.now();
+    const toRemove = [];
+
+    for (const droppedItem of this.droppedItems) {
+      // Check despawn time
+      if (now - droppedItem.createdAt > this.dropConfig.despawnTime) {
+        toRemove.push(droppedItem);
+        continue;
+      }
+
+      // Check distance from player
+      const dist = this.getDistance(this.playerPosition, droppedItem.position);
+
+      // Too far - despawn
+      if (dist > this.dropConfig.maxDistance) {
+        toRemove.push(droppedItem);
+        continue;
+      }
+
+      // Close enough to pick up
+      if (dist < this.dropConfig.pickupDistance) {
+        this.pickupDroppedItem(droppedItem);
+        toRemove.push(droppedItem);
+      }
+    }
+
+    // Remove items
+    for (const item of toRemove) {
+      this.removeDroppedItem(item);
+    }
+  }
+
+  // Pick up a dropped item
+  pickupDroppedItem(droppedItem) {
+    const item = this.itemTypes[droppedItem.itemKey];
+    if (!item) return;
+
+    if (this.addItem(droppedItem.itemKey, 1)) {
+      this.showNotification(`${item.icon} Picked up: ${item.name}!`, 'item');
+      this.updateUI();
+      this.save();
+    }
+  }
+
+  // Remove a dropped item
+  removeDroppedItem(droppedItem) {
+    // Remove 3D sprite
+    if (this.map3d && droppedItem.sprite) {
+      this.map3d.removeDroppedItem(droppedItem.id);
+    }
+
+    // Remove from array
+    const index = this.droppedItems.indexOf(droppedItem);
+    if (index > -1) {
+      this.droppedItems.splice(index, 1);
+    }
+  }
+
+  // Calculate distance between two lat/lng positions
+  getDistance(pos1, pos2) {
+    const latDiff = pos1.lat - pos2.lat;
+    const lngDiff = pos1.lng - pos2.lng;
+    return Math.sqrt(latDiff * latDiff + lngDiff * lngDiff);
+  }
+
+  // Update player position (called from map.js)
+  setPlayerPosition(position) {
+    this.playerPosition = position;
+  }
+
+  // Set map3d reference (called from map.js)
+  setMap3D(map3d) {
+    this.map3d = map3d;
+  }
+
+  // Show notification - now at center top
   showNotification(message, type = 'info') {
     const notification = document.createElement('div');
     notification.className = `skill-notification ${type}`;
     notification.textContent = message;
 
-    // Position near skills panel
+    // Position at center top
     notification.style.cssText = `
       position: fixed;
-      bottom: 280px;
-      right: 20px;
+      top: 80px;
+      left: 50%;
+      transform: translateX(-50%);
       background: rgba(0, 0, 0, 0.9);
-      border: 2px solid ${type === 'levelup' ? '#ffb000' : '#00ff00'};
-      color: ${type === 'levelup' ? '#ffb000' : '#00ff00'};
-      padding: 10px 15px;
+      border: 2px solid ${type === 'levelup' ? '#ffb000' : type === 'error' ? '#ff4444' : '#00ff00'};
+      color: ${type === 'levelup' ? '#ffb000' : type === 'error' ? '#ff4444' : '#00ff00'};
+      padding: 12px 20px;
       border-radius: 4px;
       font-family: 'Courier New', monospace;
       font-size: 14px;
       z-index: 1000;
-      animation: slideIn 0.3s ease-out, fadeOut 0.5s ease-in 2.5s forwards;
+      animation: notificationSlideDown 0.3s ease-out, notificationFadeOut 0.5s ease-in 2.5s forwards;
+      white-space: nowrap;
     `;
 
     document.body.appendChild(notification);
@@ -493,6 +673,18 @@ class SkillsManager {
       total += this.getLevel(skill.xp);
     }
     return total;
+  }
+
+  // Cleanup
+  dispose() {
+    this.stopWeatherXP();
+    if (this.droppedItemCheckInterval) {
+      clearInterval(this.droppedItemCheckInterval);
+    }
+    // Remove all dropped items
+    for (const item of [...this.droppedItems]) {
+      this.removeDroppedItem(item);
+    }
   }
 }
 
