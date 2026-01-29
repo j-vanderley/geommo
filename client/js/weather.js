@@ -20,6 +20,9 @@ class WeatherManager {
     // Weather state
     this.isDay = true;
     this.weatherType = 'clear'; // clear, rain, snow, storm, cloudy
+
+    // Skills manager reference (set externally)
+    this.skillsManager = null;
   }
 
   async init() {
@@ -164,6 +167,7 @@ class WeatherManager {
     if (!this.currentWeather) return;
 
     const weatherType = this.getWeatherType(this.currentWeather.weatherCode);
+    const weatherChanged = this.weatherType !== weatherType;
     this.weatherType = weatherType;
     this.isDay = this.currentWeather.isDay;
 
@@ -175,6 +179,11 @@ class WeatherManager {
 
     // Update UI
     this.updateWeatherUI();
+
+    // Notify skills manager of weather (start XP gain)
+    if (this.skillsManager) {
+      this.skillsManager.startWeatherXP(weatherType);
+    }
   }
 
   applyDayNight() {

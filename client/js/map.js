@@ -7,6 +7,9 @@ class MapManager {
     // Weather system
     this.weatherManager = null;
 
+    // Skills system
+    this.skillsManager = null;
+
     // Google Maps (minimap only)
     this.minimap = null;
 
@@ -66,6 +69,11 @@ class MapManager {
     // Initialize weather manager
     this.weatherManager = new WeatherManager(this.map3d);
     await this.weatherManager.init();
+
+    // Initialize skills manager and connect to weather
+    this.skillsManager = new SkillsManager();
+    this.skillsManager.init();
+    this.weatherManager.skillsManager = this.skillsManager;
 
     // Hook into the animation loop for weather updates
     const originalAnimate = this.map3d.animate.bind(this.map3d);
