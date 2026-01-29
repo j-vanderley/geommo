@@ -1,5 +1,5 @@
 // Main Game Entry Point
-class GeoMMO {
+class Geommo {
   constructor() {
     this.socket = null;
     this.mapManager = null;
@@ -55,18 +55,13 @@ class GeoMMO {
     // Set up avatar customization
     this.setupAvatarSelector();
 
-    // Check if already logged in with Firebase
+    // Check if already logged in with Firebase (but don't auto-login)
     firebase.auth().onAuthStateChanged(async (user) => {
       if (user) {
+        // Store user info but don't auto-login - show continue button instead
         this.user = user;
         this.authType = 'firebase';
-        const savedAvatar = localStorage.getItem(`avatar_${user.uid}`);
-        if (savedAvatar) {
-          this.selectedAvatar = JSON.parse(savedAvatar);
-          await this.startGame();
-        } else {
-          this.showAvatarSelector();
-        }
+        this.showContinueOption(user.displayName || user.email || 'your account');
       } else {
         // Check for saved wallet session
         const savedWallet = localStorage.getItem('wallet_address');
@@ -75,16 +70,32 @@ class GeoMMO {
           this.walletAddress = savedWallet;
           this.walletUsername = savedUsername;
           this.authType = 'wallet';
-          const savedAvatar = localStorage.getItem(`avatar_${savedWallet}`);
-          if (savedAvatar) {
-            this.selectedAvatar = JSON.parse(savedAvatar);
-            await this.startGame();
-          } else {
-            this.showAvatarSelector();
-          }
+          this.showContinueOption(savedUsername);
         }
       }
     });
+  }
+
+  // Show continue option for returning users
+  showContinueOption(username) {
+    const continueSection = document.getElementById('continue-section');
+    const continueBtn = document.getElementById('continue-btn');
+    const continueUser = document.getElementById('continue-username');
+
+    if (continueSection && continueBtn && continueUser) {
+      continueUser.textContent = username;
+      continueSection.classList.remove('hidden');
+
+      continueBtn.addEventListener('click', async () => {
+        const savedAvatar = localStorage.getItem(`avatar_${this.getUserId()}`);
+        if (savedAvatar) {
+          this.selectedAvatar = JSON.parse(savedAvatar);
+          await this.startGame();
+        } else {
+          this.showAvatarSelector();
+        }
+      });
+    }
   }
 
   // Phantom Wallet Connection
@@ -916,7 +927,7 @@ class GeoMMO {
         this.playerManager.updateSelfPosition(data.player.position);
       }
 
-      this.chatManager.addSystemMessage('Welcome to GeoMMO!');
+      this.chatManager.addSystemMessage('Welcome to Geommo!');
     });
 
     this.socket.on('auth:error', (data) => {
@@ -986,6 +997,6 @@ class GeoMMO {
 
 // Start the game when DOM is ready
 document.addEventListener('DOMContentLoaded', () => {
-  const game = new GeoMMO();
+  const game = new Geommo();
   game.init();
 });

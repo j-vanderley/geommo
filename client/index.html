@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>GeoMMO - Google Maps MMO</title>
+  <title>Geommo - Google Maps MMO</title>
   <link rel="stylesheet" href="css/game.css">
   <!-- Firebase SDK -->
   <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
@@ -16,28 +16,48 @@
 <body>
   <!-- Login Screen -->
   <div id="login-screen" class="screen">
-    <div class="login-box">
-      <h1>GeoMMO</h1>
-      <p>A Google Maps MMO Adventure</p>
-      <div class="email-form">
-        <input type="email" id="email-input" class="osrs-input" placeholder="Email address">
-        <input type="password" id="password-input" class="osrs-input" placeholder="Password">
-        <div class="email-form-buttons">
-          <button id="email-login-btn" class="osrs-btn email-btn">Sign In</button>
-          <button id="email-register-btn" class="osrs-btn email-btn">Register</button>
+    <div class="login-container">
+      <div class="login-hero">
+        <div class="hero-globe">🌍</div>
+        <h1 class="hero-title">Geommo</h1>
+        <p class="hero-tagline">Explore the real world in an MMO adventure</p>
+        <div class="hero-features">
+          <span class="feature">🗺️ Real Maps</span>
+          <span class="feature">⚔️ Skills & Items</span>
+          <span class="feature">💬 Global Chat</span>
         </div>
-        <button id="forgot-password-btn" class="text-btn">Forgot Password?</button>
-        <div id="login-error" class="login-error"></div>
-        <div id="login-success" class="login-success"></div>
       </div>
-      <div class="login-divider"><span>or connect with</span></div>
-      <div class="social-login-buttons">
-        <button id="login-btn" class="osrs-btn social-btn" title="Sign in with Google">
-          <img src="https://www.gstatic.com/firebasejs/ui/2.0.0/images/auth/google.svg" alt="Google">
-        </button>
-        <button id="phantom-login-btn" class="osrs-btn social-btn phantom-btn" title="Connect Phantom Wallet">
-          <img src="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 128 128'%3E%3Crect fill='%235d47a3' width='128' height='128' rx='20'/%3E%3Ctext x='64' y='80' text-anchor='middle' fill='white' font-size='48' font-family='sans-serif'%3EP%3C/text%3E%3C/svg%3E" alt="Phantom">
-        </button>
+      <div class="login-box">
+        <h2>Welcome</h2>
+
+        <!-- Continue section for returning users -->
+        <div id="continue-section" class="continue-section hidden">
+          <p class="continue-text">Continue as</p>
+          <p id="continue-username" class="continue-username"></p>
+          <button id="continue-btn" class="osrs-btn continue-btn">Play Now</button>
+          <div class="login-divider"><span>or sign in as someone else</span></div>
+        </div>
+
+        <div class="email-form">
+          <input type="email" id="email-input" class="osrs-input" placeholder="Email address">
+          <input type="password" id="password-input" class="osrs-input" placeholder="Password">
+          <div class="email-form-buttons">
+            <button id="email-login-btn" class="osrs-btn email-btn">Sign In</button>
+            <button id="email-register-btn" class="osrs-btn email-btn">Register</button>
+          </div>
+          <button id="forgot-password-btn" class="text-btn">Forgot Password?</button>
+          <div id="login-error" class="login-error"></div>
+          <div id="login-success" class="login-success"></div>
+        </div>
+        <div class="login-divider"><span>or connect with</span></div>
+        <div class="social-login-buttons">
+          <button id="login-btn" class="osrs-btn social-btn" title="Sign in with Google">
+            <img src="https://www.gstatic.com/firebasejs/ui/2.0.0/images/auth/google.svg" alt="Google">
+          </button>
+          <button id="phantom-login-btn" class="osrs-btn social-btn phantom-btn" title="Connect Phantom Wallet">
+            <img src="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 128 128'%3E%3Crect fill='%235d47a3' width='128' height='128' rx='20'/%3E%3Ctext x='64' y='80' text-anchor='middle' fill='white' font-size='48' font-family='sans-serif'%3EP%3C/text%3E%3C/svg%3E" alt="Phantom">
+          </button>
+        </div>
       </div>
     </div>
   </div>
@@ -148,7 +168,7 @@
           <button id="info-close" class="info-close-btn">×</button>
         </div>
         <div class="info-content">
-          <h4>Welcome to GeoMMO!</h4>
+          <h4>Welcome to Geommo!</h4>
           <p>Explore the real world map with other players in this MMO adventure.</p>
 
           <h4>Controls</h4>
@@ -180,9 +200,11 @@
           <div class="chat-tabs">
             <button class="chat-tab active" data-type="global">Global</button>
             <button class="chat-tab" data-type="local">Local</button>
+            <button class="chat-tab" data-type="log">Log</button>
           </div>
         </div>
         <div id="chat-messages"></div>
+        <div id="chat-messages-log" class="hidden"></div>
         <div id="chat-input-container">
           <input type="text" id="chat-input" placeholder="Press Enter to chat..." maxlength="200">
           <button id="chat-send" class="osrs-btn">Send</button>

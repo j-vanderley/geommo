@@ -3,6 +3,7 @@ class ChatManager {
   constructor(playerManager) {
     this.playerManager = playerManager;
     this.currentType = 'global';
+    this.currentView = 'global'; // Which messages container is visible
     this.onSendCallback = null;
 
     this.initUI();
@@ -39,11 +40,28 @@ class ChatManager {
   }
 
   switchTab(type) {
-    this.currentType = type;
-
     document.querySelectorAll('.chat-tab').forEach(tab => {
       tab.classList.toggle('active', tab.dataset.type === type);
     });
+
+    const chatMessages = document.getElementById('chat-messages');
+    const logMessages = document.getElementById('chat-messages-log');
+    const inputContainer = document.getElementById('chat-input-container');
+
+    if (type === 'log') {
+      // Show log, hide chat messages and input
+      chatMessages.classList.add('hidden');
+      logMessages.classList.remove('hidden');
+      inputContainer.classList.add('hidden');
+      this.currentView = 'log';
+    } else {
+      // Show chat messages and input, hide log
+      chatMessages.classList.remove('hidden');
+      logMessages.classList.add('hidden');
+      inputContainer.classList.remove('hidden');
+      this.currentType = type;
+      this.currentView = type;
+    }
   }
 
   onSend(callback) {
@@ -96,6 +114,29 @@ class ChatManager {
 
     messagesContainer.appendChild(messageEl);
     messagesContainer.scrollTop = messagesContainer.scrollHeight;
+  }
+
+  // Add a log message (for game events like level ups, item drops, pickups)
+  addLogMessage(text, type = 'info') {
+    const logContainer = document.getElementById('chat-messages-log');
+    if (!logContainer) return;
+
+    const messageEl = document.createElement('div');
+    messageEl.className = `log-message ${type}`;
+
+    // Add timestamp
+    const now = new Date();
+    const time = now.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' });
+
+    messageEl.innerHTML = `<span class="log-time">[${time}]</span> ${text}`;
+
+    logContainer.appendChild(messageEl);
+    logContainer.scrollTop = logContainer.scrollHeight;
+
+    // Keep only last 100 log messages
+    while (logContainer.children.length > 100) {
+      logContainer.removeChild(logContainer.firstChild);
+    }
   }
 }
 

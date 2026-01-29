@@ -434,9 +434,13 @@ class SkillsManager {
 
     const newLevel = this.getLevel(skill.xp);
 
-    // Level up notification
+    // Level up - show notification and log
     if (newLevel > oldLevel) {
       this.showNotification(`${skill.icon} ${skill.name} leveled up to ${newLevel}!`, 'levelup');
+      // Also add to game log
+      if (window.chatManager) {
+        window.chatManager.addLogMessage(`${skill.icon} ${skill.name} leveled up to ${newLevel}!`, 'levelup');
+      }
     }
 
     // Update UI
@@ -498,8 +502,10 @@ class SkillsManager {
 
     this.droppedItems.push(droppedItem);
 
-    // Show notification
-    this.showNotification(`${item.icon} ${item.name} dropped nearby!`, 'item');
+    // Log to game log (no popup notification for drops)
+    if (window.chatManager) {
+      window.chatManager.addLogMessage(`${item.icon} ${item.name} dropped nearby!`, 'item');
+    }
   }
 
   // Update dropped items (check despawn, distance, pickup)
@@ -544,7 +550,10 @@ class SkillsManager {
     if (!item) return;
 
     if (this.addItem(droppedItem.itemKey, 1)) {
-      this.showNotification(`${item.icon} Picked up: ${item.name}!`, 'item');
+      // Log to game log (no popup notification for pickups)
+      if (window.chatManager) {
+        window.chatManager.addLogMessage(`${item.icon} Picked up: ${item.name}!`, 'pickup');
+      }
       this.updateUI();
       this.save();
     }
