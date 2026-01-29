@@ -126,6 +126,46 @@ body {
   background: linear-gradient(180deg, #7d67b3 0%, #4d3690 100%);
 }
 
+/* Email login form */
+.email-form {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin-top: 15px;
+}
+
+.email-form .osrs-input {
+  width: 100%;
+  box-sizing: border-box;
+}
+
+.email-form-buttons {
+  display: flex;
+  gap: 10px;
+}
+
+.email-form-buttons .osrs-btn {
+  flex: 1;
+  padding: 10px 15px;
+  font-size: 14px;
+}
+
+.email-btn {
+  background: linear-gradient(180deg, #4a6fa5 0%, #2d4a6f 100%);
+  border-color: #5a8fcc;
+}
+
+.email-btn:hover {
+  background: linear-gradient(180deg, #5a7fb5 0%, #3d5a7f 100%);
+}
+
+.login-error {
+  color: #ff6b6b;
+  font-size: 12px;
+  margin-top: 5px;
+  min-height: 18px;
+}
+
 /* Username input */
 .osrs-input {
   width: 100%;
@@ -290,11 +330,43 @@ body {
   right: 10px;
   width: 200px;
   max-height: 300px;
+  transition: max-height 0.3s ease;
+}
+
+#players-panel.minimized {
+  max-height: 32px;
+  overflow: hidden;
+}
+
+#players-panel .panel-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  cursor: pointer;
+}
+
+.players-minimize-btn {
+  background: transparent;
+  border: none;
+  color: var(--osrs-text);
+  font-size: 16px;
+  cursor: pointer;
+  padding: 0 5px;
+  line-height: 1;
+  transition: transform 0.3s;
+}
+
+.players-minimize-btn:hover {
+  color: var(--osrs-text-light);
+}
+
+#players-panel.minimized .players-minimize-btn {
+  transform: rotate(180deg);
 }
 
 #player-list {
   list-style: none;
-  max-height: 260px;
+  max-height: 220px;
   overflow-y: auto;
 }
 
@@ -1174,10 +1246,10 @@ body[class*="ui-"] .weather-time {
   transition: width 0.3s ease;
 }
 
-/* Inventory Grid - 6 columns x 4 rows = 24 slots */
+/* Inventory Grid - 4 columns x 6 rows = 24 slots */
 .inventory-grid {
   display: grid;
-  grid-template-columns: repeat(6, 1fr);
+  grid-template-columns: repeat(4, 1fr);
   gap: 3px;
 }
 

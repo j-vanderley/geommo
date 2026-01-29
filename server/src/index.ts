@@ -81,6 +81,15 @@ io.on('connection', (socket) => {
         username = decodedToken.name || decodedToken.email || `Player_${odId.slice(0, 6)}`;
       }
 
+      // Check for existing connection with same odId (prevents duplicates on reconnect)
+      const existingSocketId = playerManager.findExistingConnection(odId, socket.id);
+      if (existingSocketId) {
+        console.log(`Removing duplicate connection for ${odId}: ${existingSocketId}`);
+        playerManager.removePlayer(existingSocketId);
+        // Notify all clients to remove the old player
+        io.emit('player:left', { id: existingSocketId });
+      }
+
       // Add player to the game
       const player = await playerManager.addPlayer(socket.id, odId, username, data.flag, data.avatar);
 

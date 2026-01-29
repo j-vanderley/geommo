@@ -24,6 +24,16 @@
         Sign in with Google
       </button>
       <div class="login-divider"><span>or</span></div>
+      <div class="email-form">
+        <input type="email" id="email-input" class="osrs-input" placeholder="Email address">
+        <input type="password" id="password-input" class="osrs-input" placeholder="Password">
+        <div class="email-form-buttons">
+          <button id="email-login-btn" class="osrs-btn email-btn">Sign In</button>
+          <button id="email-register-btn" class="osrs-btn email-btn">Register</button>
+        </div>
+        <div id="login-error" class="login-error"></div>
+      </div>
+      <div class="login-divider"><span>or</span></div>
       <button id="phantom-login-btn" class="osrs-btn phantom-btn">
         <img src="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 128 128'%3E%3Crect fill='%235d47a3' width='128' height='128' rx='20'/%3E%3Ctext x='64' y='80' text-anchor='middle' fill='white' font-size='48' font-family='sans-serif'%3EP%3C/text%3E%3C/svg%3E" alt="Phantom" style="width:20px;height:20px;">
         Connect Phantom Wallet
@@ -111,7 +121,10 @@
 
       <!-- Online Players (right side) -->
       <div id="players-panel" class="ui-panel">
-        <div class="panel-header">Online (<span id="player-count">0</span>)</div>
+        <div class="panel-header">
+          Online (<span id="player-count">0</span>)
+          <button class="players-minimize-btn">▼</button>
+        </div>
         <ul id="player-list"></ul>
       </div>
 

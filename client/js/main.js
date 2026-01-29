@@ -18,6 +18,20 @@ class GeoMMO {
       this.login();
     });
 
+    // Set up email login buttons
+    document.getElementById('email-login-btn').addEventListener('click', () => {
+      this.emailLogin();
+    });
+
+    document.getElementById('email-register-btn').addEventListener('click', () => {
+      this.emailRegister();
+    });
+
+    // Email form enter key
+    document.getElementById('password-input').addEventListener('keypress', (e) => {
+      if (e.key === 'Enter') this.emailLogin();
+    });
+
     // Set up Phantom login button
     document.getElementById('phantom-login-btn').addEventListener('click', () => {
       this.connectPhantom();
@@ -321,6 +335,83 @@ class GeoMMO {
     }
   }
 
+  async emailLogin() {
+    const email = document.getElementById('email-input').value.trim();
+    const password = document.getElementById('password-input').value;
+    const errorEl = document.getElementById('login-error');
+
+    errorEl.textContent = '';
+
+    if (!email || !password) {
+      errorEl.textContent = 'Please enter email and password';
+      return;
+    }
+
+    try {
+      const result = await firebase.auth().signInWithEmailAndPassword(email, password);
+      this.user = result.user;
+      this.authType = 'firebase';
+
+      const savedAvatar = localStorage.getItem(`avatar_${this.user.uid}`);
+      if (savedAvatar) {
+        this.selectedAvatar = JSON.parse(savedAvatar);
+        await this.startGame();
+      } else {
+        this.showAvatarSelector();
+      }
+    } catch (error) {
+      console.error('Email login error:', error);
+      errorEl.textContent = this.getAuthErrorMessage(error.code);
+    }
+  }
+
+  async emailRegister() {
+    const email = document.getElementById('email-input').value.trim();
+    const password = document.getElementById('password-input').value;
+    const errorEl = document.getElementById('login-error');
+
+    errorEl.textContent = '';
+
+    if (!email || !password) {
+      errorEl.textContent = 'Please enter email and password';
+      return;
+    }
+
+    if (password.length < 6) {
+      errorEl.textContent = 'Password must be at least 6 characters';
+      return;
+    }
+
+    try {
+      const result = await firebase.auth().createUserWithEmailAndPassword(email, password);
+      this.user = result.user;
+      this.authType = 'firebase';
+      this.showAvatarSelector();
+    } catch (error) {
+      console.error('Registration error:', error);
+      errorEl.textContent = this.getAuthErrorMessage(error.code);
+    }
+  }
+
+  getAuthErrorMessage(code) {
+    switch (code) {
+      case 'auth/email-already-in-use':
+        return 'Email already registered. Try signing in.';
+      case 'auth/invalid-email':
+        return 'Invalid email address';
+      case 'auth/user-not-found':
+        return 'No account found with this email';
+      case 'auth/wrong-password':
+        return 'Incorrect password';
+      case 'auth/weak-password':
+        return 'Password is too weak';
+      case 'auth/invalid-credential':
+        return 'Invalid email or password';
+      default:
+        return 'Authentication failed. Please try again.';
+    }
+  }
+
   async startGame() {
     // Show game screen
     document.getElementById('login-screen').classList.add('hidden');
@@ -366,6 +457,18 @@ class GeoMMO {
 
     // Set up info panel toggle
     this.setupInfoPanel();
+
+    // Set up players panel minimize
+    this.setupPlayersPanel();
+  }
+
+  setupPlayersPanel() {
+    const panel = document.getElementById('players-panel');
+    const header = panel.querySelector('.panel-header');
+
+    header.addEventListener('click', () => {
+      panel.classList.toggle('minimized');
+    });
   }
 
   setupInfoPanel() {

@@ -9,6 +9,16 @@ export class PlayerManager {
     this.db = db;
   }
 
+  // Find if a player with the same odId is already connected (different socket)
+  findExistingConnection(odId: string, newSocketId: string): string | null {
+    for (const [socketId, player] of this.players) {
+      if (player.odId === odId && socketId !== newSocketId) {
+        return socketId;
+      }
+    }
+    return null;
+  }
+
   async addPlayer(socketId: string, odId: string, username: string, flag?: string, avatar?: Avatar, position?: Position): Promise<Player> {
     // Try to load existing player data from Firestore
     const playerDoc = await this.db.collection('players').doc(odId).get();
