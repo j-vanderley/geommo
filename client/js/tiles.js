@@ -1,12 +1,16 @@
 // Tile Loading System - OpenStreetMap tiles on ground plane
 class TileManager {
   constructor() {
-    this.tiles = new Map(); // key: "z_x_y" -> { mesh, loading, texture }
+    this.tiles = new Map(); // key: "z_x_y" -> { mesh, loading, texture, loadId }
     this.zoom = GAME_CONFIG.view3d.tileZoom;
     this.tilesPerSide = GAME_CONFIG.view3d.tilesPerSide;
     this.scene = null;
     this.centerLat = 0;
     this.centerLng = 0;
+    this.isInitialized = false;
+
+    // Load generation - increments on each fast travel to cancel stale loads
+    this.loadGeneration = 0;
 
     // Calculate world scale: how many world units per degree of latitude
     // This determines the overall scale of the 3D world
@@ -15,6 +19,35 @@ class TileManager {
 
   setScene(scene) {
     this.scene = scene;
+  }
+
+  // Set new center point (call before updateTiles when fast traveling)
+  setCenter(lat, lng) {
+    // Clear all existing tiles first
+    this.clearAllTiles();
+
+    // Update center
+    this.centerLat = lat;
+    this.centerLng = lng;
+    this.isInitialized = true;
+
+    // Increment generation to invalidate any in-flight tile loads
+    this.loadGeneration++;
+  }
+
+  // Clear all tiles from scene and memory
+  clearAllTiles() {
+    for (const [key, tile] of this.tiles.entries()) {
+      if (tile.mesh) {
+        this.scene.remove(tile.mesh);
+        tile.mesh.geometry.dispose();
+        tile.mesh.material.dispose();
+      }
+      if (tile.texture) {
+        tile.texture.dispose();
+      }
+    }
+    this.tiles.clear();
   }
 
   // Standard Web Mercator: lat/lng to tile coordinates
@@ -140,11 +173,13 @@ class TileManager {
     if (!this.scene) return;
 
     // Set center on first call
-    if (this.centerLat === 0 && this.centerLng === 0) {
+    if (!this.isInitialized) {
       this.centerLat = playerLat;
       this.centerLng = playerLng;
+      this.isInitialized = true;
     }
 
+    const currentGeneration = this.loadGeneration;
     const halfTiles = Math.floor(this.tilesPerSide / 2);
     const baseTile = this.latLngToTileCoords(playerLat, playerLng, this.zoom);
     const neededTiles = new Set();
@@ -157,28 +192,40 @@ class TileManager {
         const key = `${this.zoom}_${tileX}_${tileY}`;
         neededTiles.add(key);
 
-        if (this.tiles.has(key)) continue;
+        // Skip if already loaded or loading for this generation
+        const existing = this.tiles.get(key);
+        if (existing && existing.loadGeneration === currentGeneration) continue;
 
-        // Mark as loading
-        this.tiles.set(key, { mesh: null, loading: true, texture: null });
+        // Mark as loading with current generation
+        this.tiles.set(key, { mesh: null, loading: true, texture: null, loadGeneration: currentGeneration });
 
         // Load texture and create mesh
         this.loadTileTexture(tileX, tileY, this.zoom).then(texture => {
-          if (!this.tiles.has(key)) {
+          // Check if this load is still valid (same generation)
+          if (this.loadGeneration !== currentGeneration) {
+            texture.dispose();
+            return;
+          }
+
+          // Check if tile entry still exists
+          const tileEntry = this.tiles.get(key);
+          if (!tileEntry || tileEntry.loadGeneration !== currentGeneration) {
             texture.dispose();
             return;
           }
 
           const mesh = this.createTileMesh(tileX, tileY, this.zoom, texture);
           this.scene.add(mesh);
-          this.tiles.set(key, { mesh, loading: false, texture });
+          this.tiles.set(key, { mesh, loading: false, texture, loadGeneration: currentGeneration });
+        }).catch(err => {
+          console.warn(`Failed to load tile ${key}:`, err);
         });
       }
     }
 
-    // Remove distant tiles
+    // Remove tiles that are no longer needed
     for (const [key, tile] of this.tiles.entries()) {
-      if (!neededTiles.has(key)) {
+      if (!neededTiles.has(key) || tile.loadGeneration !== currentGeneration) {
         if (tile.mesh) {
           this.scene.remove(tile.mesh);
           tile.mesh.geometry.dispose();

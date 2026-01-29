@@ -398,17 +398,16 @@ class GeoMMO {
     // Update position
     const position = { lat, lng };
 
-    // Update local player position
-    this.playerManager.updateSelfPosition(position);
-
-    // Tell the map to update tiles for new location
+    // Tell the map to update for new location (must happen before player position update)
     if (this.mapManager.map3d) {
+      // Use setCenter which properly clears old tiles and updates center
+      this.mapManager.map3d.tileManager.setCenter(lat, lng);
       this.mapManager.map3d.setCenter(lat, lng);
-      this.mapManager.map3d.tileManager.centerLat = lat;
-      this.mapManager.map3d.tileManager.centerLng = lng;
-      this.mapManager.map3d.tileManager.tiles.clear(); // Clear old tiles
       this.mapManager.map3d.tileManager.updateTiles(lat, lng);
     }
+
+    // Update local player position
+    this.playerManager.updateSelfPosition(position);
 
     // Send to server
     this.socket.emit('player:move', { lat, lng });
