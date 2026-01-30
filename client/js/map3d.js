@@ -173,6 +173,9 @@ class Map3D {
     // Update particle systems
     this.updateParticleSystems();
 
+    // Update player aura particles
+    this.updatePlayerAuras();
+
     // Update NPC overlays
     this.updateNPCOverlays();
 
@@ -209,8 +212,9 @@ class Map3D {
     const avatarText = avatar.text || player.flag || ':-)';
     const avatarColor = avatar.color || '#ffb000';
     const username = player.username || 'Unknown';
+    const equipment = player.equipment || {};
 
-    // Create a group to hold sprite
+    // Create a group to hold sprite and equipment
     const group = new THREE.Group();
 
     // Create canvas for avatar sprite
@@ -219,24 +223,8 @@ class Map3D {
     canvas.height = 128;
     const ctx = canvas.getContext('2d');
 
-    // Draw circular background
-    ctx.beginPath();
-    ctx.arc(64, 64, 56, 0, Math.PI * 2);
-    ctx.fillStyle = 'rgba(0, 0, 0, 0.7)';
-    ctx.fill();
-
-    // Draw border with player's color
-    ctx.strokeStyle = avatarColor;
-    ctx.lineWidth = 4;
-    ctx.stroke();
-
-    // Draw avatar text - adjust font size based on text length
-    const fontSize = avatarText.length <= 2 ? 48 : avatarText.length === 3 ? 36 : 28;
-    ctx.font = `bold ${fontSize}px "Courier New", monospace`;
-    ctx.textAlign = 'center';
-    ctx.textBaseline = 'middle';
-    ctx.fillStyle = avatarColor;
-    ctx.fillText(avatarText, 64, 66);
+    // Draw the player avatar with equipment
+    this.drawPlayerCanvas(ctx, avatarText, avatarColor, equipment);
 
     // Create sprite texture
     const texture = new THREE.CanvasTexture(canvas);
@@ -249,7 +237,7 @@ class Map3D {
       transparent: true
     });
 
-    // Create sprite
+    // Create main sprite
     const sprite = new THREE.Sprite(material);
     sprite.scale.set(
       GAME_CONFIG.view3d.playerSpriteSize,
@@ -258,6 +246,15 @@ class Map3D {
     );
     sprite.position.y = GAME_CONFIG.view3d.playerSpriteSize / 2;
     group.add(sprite);
+
+    // Create aura particle system if equipped
+    let auraParticles = null;
+    if (equipment.aura && window.skillsManager) {
+      const auraData = window.skillsManager.equipmentTypes[equipment.aura];
+      if (auraData && auraData.particle) {
+        auraParticles = this.createPlayerAura(player.id, auraData.particle, auraData.color, group);
+      }
+    }
 
     // Position group
     const worldPos = this.latLngToWorld(player.position.lat, player.position.lng);
@@ -270,7 +267,10 @@ class Map3D {
     const nameLabel = this.createNameLabel(player.id, username, isSelf, avatarColor);
 
     // Store reference
-    this.playerSprites.set(player.id, { sprite, group, canvas, ctx, isSelf, nameLabel, avatarColor });
+    this.playerSprites.set(player.id, {
+      sprite, group, canvas, ctx, isSelf, nameLabel, avatarColor,
+      equipment, auraParticles, texture
+    });
 
     // If self, set camera target and load tiles
     if (isSelf) {
@@ -281,6 +281,153 @@ class Map3D {
     }
 
     return group;
+  }
+
+  // Draw player avatar with equipment on canvas
+  drawPlayerCanvas(ctx, avatarText, avatarColor, equipment) {
+    const skillsManager = window.skillsManager;
+
+    // Clear canvas
+    ctx.clearRect(0, 0, 128, 128);
+
+    // Get skin data if equipped
+    const skinData = equipment.skin && skillsManager ?
+      skillsManager.equipmentTypes[equipment.skin] : null;
+    const skinColor = skinData ? skinData.color : null;
+
+    // Draw circular background (skin changes the color)
+    ctx.beginPath();
+    ctx.arc(64, 64, 56, 0, Math.PI * 2);
+    if (skinData) {
+      // Skin equipped - use gradient with skin color
+      const gradient = ctx.createRadialGradient(64, 64, 0, 64, 64, 56);
+      gradient.addColorStop(0, this.hexToRgba(skinColor, 0.9));
+      gradient.addColorStop(0.7, this.hexToRgba(skinColor, 0.5));
+      gradient.addColorStop(1, 'rgba(0, 0, 0, 0.7)');
+      ctx.fillStyle = gradient;
+    } else {
+      ctx.fillStyle = 'rgba(0, 0, 0, 0.7)';
+    }
+    ctx.fill();
+
+    // Draw border with player's color (or skin color)
+    ctx.strokeStyle = skinColor || avatarColor;
+    ctx.lineWidth = 4;
+    ctx.stroke();
+
+    // Draw hat if equipped (above avatar)
+    if (equipment.hat && skillsManager) {
+      const hatData = skillsManager.equipmentTypes[equipment.hat];
+      if (hatData) {
+        ctx.font = 'bold 28px Arial';
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        ctx.fillStyle = hatData.color;
+        ctx.fillText(hatData.icon, 64, 22);
+      }
+    }
+
+    // Draw avatar text in center
+    const fontSize = avatarText.length <= 2 ? 40 : avatarText.length === 3 ? 32 : 24;
+    ctx.font = `bold ${fontSize}px "Courier New", monospace`;
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.fillStyle = skinColor || avatarColor;
+    ctx.fillText(avatarText, 64, 64);
+
+    // Draw held item if equipped (to the right)
+    if (equipment.held && skillsManager) {
+      const heldData = skillsManager.equipmentTypes[equipment.held];
+      if (heldData) {
+        ctx.font = 'bold 24px Arial';
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        ctx.fillStyle = heldData.color;
+        ctx.fillText(heldData.icon, 100, 80);
+      }
+    }
+
+    // Draw skin icon if equipped (bottom left indicator)
+    if (skinData) {
+      ctx.font = 'bold 20px Arial';
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+      ctx.fillStyle = skinData.color;
+      ctx.fillText(skinData.icon, 28, 100);
+    }
+  }
+
+  // Create aura particle effect for player
+  createPlayerAura(playerId, particleType, color, group) {
+    const particleCount = 20;
+    const geometry = new THREE.BufferGeometry();
+    const positions = new Float32Array(particleCount * 3);
+    const colors = new Float32Array(particleCount * 3);
+
+    const colorObj = new THREE.Color(color);
+
+    for (let i = 0; i < particleCount; i++) {
+      const angle = (i / particleCount) * Math.PI * 2;
+      const radius = 1.5 + Math.random() * 0.5;
+      positions[i * 3] = Math.cos(angle) * radius;
+      positions[i * 3 + 1] = Math.random() * 3 + 1;
+      positions[i * 3 + 2] = Math.sin(angle) * radius;
+
+      colors[i * 3] = colorObj.r;
+      colors[i * 3 + 1] = colorObj.g;
+      colors[i * 3 + 2] = colorObj.b;
+    }
+
+    geometry.setAttribute('position', new THREE.BufferAttribute(positions, 3));
+    geometry.setAttribute('color', new THREE.BufferAttribute(colors, 3));
+
+    const material = new THREE.PointsMaterial({
+      size: 0.3,
+      vertexColors: true,
+      transparent: true,
+      opacity: 0.7,
+      blending: THREE.AdditiveBlending
+    });
+
+    const particles = new THREE.Points(geometry, material);
+    particles.userData = { type: particleType, playerId, time: 0 };
+    group.add(particles);
+
+    return particles;
+  }
+
+  // Update player equipment visuals
+  updatePlayerEquipment(playerId, equipment) {
+    const playerData = this.playerSprites.get(playerId);
+    if (!playerData) return;
+
+    // Store new equipment
+    playerData.equipment = equipment;
+
+    // Redraw the canvas with new equipment
+    const avatar = playerData.isSelf && window.game?.selectedAvatar ?
+      window.game.selectedAvatar : { text: ':-)', color: playerData.avatarColor };
+    this.drawPlayerCanvas(playerData.ctx, avatar.text, avatar.color, equipment);
+
+    // Update texture
+    playerData.texture.needsUpdate = true;
+
+    // Handle aura changes
+    if (playerData.auraParticles) {
+      playerData.group.remove(playerData.auraParticles);
+      playerData.auraParticles.geometry.dispose();
+      playerData.auraParticles.material.dispose();
+      playerData.auraParticles = null;
+    }
+
+    if (equipment.aura && window.skillsManager) {
+      const auraData = window.skillsManager.equipmentTypes[equipment.aura];
+      if (auraData && auraData.particle) {
+        playerData.auraParticles = this.createPlayerAura(playerId, auraData.particle, auraData.color, playerData.group);
+      }
+    }
+
+    console.log(`Updated equipment for player ${playerId}:`, equipment);
   }
 
   // Create HTML name label (like chat bubbles, stays same size)
@@ -1139,6 +1286,30 @@ class Map3D {
     system.points.geometry.dispose();
     system.points.material.dispose();
     this.particleSystems.delete(entityId);
+  }
+
+  // Update player aura particles
+  updatePlayerAuras() {
+    const time = performance.now() * 0.001;
+
+    for (const [playerId, playerData] of this.playerSprites) {
+      if (!playerData.auraParticles) continue;
+
+      const positions = playerData.auraParticles.geometry.attributes.position;
+      const particleType = playerData.auraParticles.userData.type;
+
+      for (let i = 0; i < positions.count; i++) {
+        const baseAngle = (i / positions.count) * Math.PI * 2;
+        const angle = baseAngle + time * 0.5;
+        const radius = 1.5 + Math.sin(time * 2 + i) * 0.3;
+
+        positions.array[i * 3] = Math.cos(angle) * radius;
+        positions.array[i * 3 + 1] = 1 + Math.sin(time * 3 + i * 0.5) * 1.5 + 1;
+        positions.array[i * 3 + 2] = Math.sin(angle) * radius;
+      }
+
+      positions.needsUpdate = true;
+    }
   }
 
   // Update player cosmetics (visual appearance)

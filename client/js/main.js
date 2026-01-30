@@ -983,6 +983,11 @@ class Geommo {
       this.playerManager.updatePlayerName(data.id, data.username);
     });
 
+    // Equipment updates (cosmetic items)
+    this.socket.on('player:equipmentUpdated', (data) => {
+      this.playerManager.updatePlayerEquipment(data.id, data.equipment);
+    });
+
     // Legacy support for flag updates
     this.socket.on('player:flagUpdated', (data) => {
       this.playerManager.updatePlayerAvatar(data.id, { text: data.flag, color: '#ffb000' });

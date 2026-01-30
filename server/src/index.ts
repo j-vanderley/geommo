@@ -166,6 +166,19 @@ io.on('connection', (socket) => {
     }
   });
 
+  // Update equipment (cosmetic items)
+  socket.on('player:updateEquipment', async (data) => {
+    const player = await playerManager.updateEquipment(socket.id, data.equipment);
+
+    if (player) {
+      // Broadcast equipment change to all other players
+      socket.broadcast.emit('player:equipmentUpdated', {
+        id: socket.id,
+        equipment: player.equipment!
+      });
+    }
+  });
+
   // Combat attack
   socket.on('combat:attack', (data) => {
     const attacker = playerManager.getPlayer(socket.id);

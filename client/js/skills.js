@@ -721,16 +721,21 @@ class SkillsManager {
     const selfId = window.playerManager.selfSocketId;
     if (!selfId) return;
 
-    // Get equipped gear data
-    const gearData = {
-      skin: this.equippedGear.skin ? this.equipmentTypes[this.equippedGear.skin] : null,
-      hat: this.equippedGear.hat ? this.equipmentTypes[this.equippedGear.hat] : null,
-      held: this.equippedGear.held ? this.equipmentTypes[this.equippedGear.held] : null,
-      aura: this.equippedGear.aura ? this.equipmentTypes[this.equippedGear.aura] : null
+    // Create equipment object with just the item keys
+    const equipment = {
+      skin: this.equippedGear.skin || null,
+      hat: this.equippedGear.hat || null,
+      held: this.equippedGear.held || null,
+      aura: this.equippedGear.aura || null
     };
 
-    // Update 3D appearance
-    this.map3d.updatePlayerCosmetics(selfId, gearData);
+    // Update local 3D appearance
+    this.map3d.updatePlayerEquipment(selfId, equipment);
+
+    // Send equipment update to server (so other players see it)
+    if (window.game && window.game.socket && window.game.socket.connected) {
+      window.game.socket.emit('player:updateEquipment', { equipment });
+    }
   }
 
   // Show item context menu (for equip option)

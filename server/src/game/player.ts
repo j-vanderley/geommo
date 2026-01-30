@@ -1,4 +1,4 @@
-import { Player, Position, Avatar } from '../types';
+import { Player, Position, Avatar, Equipment } from '../types';
 import { Firestore, FieldValue } from '@google-cloud/firestore';
 
 export class PlayerManager {
@@ -27,6 +27,7 @@ export class PlayerManager {
     let playerFlag = flag || '🏳️'; // Default: white flag
     let playerAvatar = avatar || { text: ':-)', color: '#ffb000' }; // Default avatar
     let playerUsername = username; // Default to provided username
+    let playerEquipment: Equipment | undefined = undefined; // Equipment loaded from Firestore
 
     if (playerDoc.exists) {
       const data = playerDoc.data();
@@ -44,6 +45,10 @@ export class PlayerManager {
       if (data?.username) {
         playerUsername = data.username;
       }
+      // Load saved equipment
+      if (data?.equipment) {
+        playerEquipment = data.equipment;
+      }
     }
 
     const player: Player = {
@@ -53,6 +58,7 @@ export class PlayerManager {
       position: playerPosition,
       flag: playerFlag,
       avatar: playerAvatar,
+      equipment: playerEquipment,
       lastSeen: new Date()
     };
 
@@ -133,6 +139,18 @@ export class PlayerManager {
     return player;
   }
 
+  async updateEquipment(socketId: string, equipment: Equipment): Promise<Player | undefined> {
+    const player = this.players.get(socketId);
+    if (player) {
+      player.equipment = equipment;
+      player.lastSeen = new Date();
+
+      // Save to Firestore
+      await this.savePlayer(player);
+    }
+    return player;
+  }
+
   private async savePlayer(player: Player): Promise<void> {
     try {
       await this.db.collection('players').doc(player.odId).set({
@@ -140,6 +158,7 @@ export class PlayerManager {
         position: player.position,
         flag: player.flag,
         avatar: player.avatar,
+        equipment: player.equipment,
         lastSeen: player.lastSeen,
         createdAt: FieldValue.serverTimestamp()
       }, { merge: true });

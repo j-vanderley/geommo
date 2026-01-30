@@ -194,6 +194,19 @@ class PlayerManager {
     this.updatePlayerList();
   }
 
+  // Update another player's equipment (cosmetic items)
+  updatePlayerEquipment(playerId, equipment) {
+    const player = this.players.get(playerId);
+    if (!player) return;
+
+    player.equipment = equipment;
+
+    // Update 3D appearance
+    if (this.mapManager.map3d) {
+      this.mapManager.map3d.updatePlayerEquipment(playerId, equipment);
+    }
+  }
+
   // Legacy: Update self player's flag (for backward compatibility)
   updateSelfFlag(flag) {
     this.updateSelfAvatar({ text: flag, color: '#ffb000' });

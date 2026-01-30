@@ -8,6 +8,13 @@ export interface Avatar {
   color: string;
 }
 
+export interface Equipment {
+  skin?: string;
+  hat?: string;
+  held?: string;
+  aura?: string;
+}
+
 export interface Player {
   id: string;
   odId: string;
@@ -15,6 +22,7 @@ export interface Player {
   position: Position;
   flag: string;
   avatar?: Avatar;
+  equipment?: Equipment;
   lastSeen: Date;
 }
 
@@ -75,6 +83,7 @@ export interface ClientToServerEvents {
   'player:updateFlag': (data: { flag: string }) => void;
   'player:updateAvatar': (data: { avatar: Avatar }) => void;
   'player:updateName': (data: { username: string }) => void;
+  'player:updateEquipment': (data: { equipment: Equipment }) => void;
   'combat:attack': (data: { targetId: string; itemKey: string; damage: number }) => void;
 }
 
@@ -85,6 +94,7 @@ export interface ServerToClientEvents {
   'player:flagUpdated': (data: { id: string; flag: string }) => void;
   'player:avatarUpdated': (data: { id: string; avatar: Avatar }) => void;
   'player:nameUpdated': (data: { id: string; username: string }) => void;
+  'player:equipmentUpdated': (data: { id: string; equipment: Equipment }) => void;
   'chat:message': (data: ChatMessage) => void;
   'world:state': (data: WorldState) => void;
   'auth:success': (data: { player: Player }) => void;
