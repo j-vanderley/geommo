@@ -9,6 +9,7 @@ import path from 'path';
 import { PlayerManager } from './game/player';
 import { ChatManager } from './game/chat';
 import { WorldManager } from './game/world';
+import { NPCManager } from './game/npc';
 import { ClientToServerEvents, ServerToClientEvents } from './types';
 
 // Initialize Firebase Admin
@@ -22,7 +23,8 @@ const db = new Firestore();
 // Initialize managers
 const playerManager = new PlayerManager(db);
 const chatManager = new ChatManager(playerManager);
-const worldManager = new WorldManager(playerManager);
+const npcManager = new NPCManager();
+const worldManager = new WorldManager(playerManager, npcManager);
 
 // Express app
 const app = express();

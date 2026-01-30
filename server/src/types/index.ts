@@ -28,8 +28,28 @@ export interface ChatMessage {
   timestamp: Date;
 }
 
+// NPC (Non-Player Character) entity
+export interface NPC {
+  id: string;
+  name: string;
+  title: string;
+  icon: string;
+  equipment: string;
+  sellsEquipment: string;
+  baseCity: string;
+  position: Position;
+  health: number;
+  maxHealth: number;
+  damage: number;
+  attackItems: string[];
+  color: string;
+  particle: string;
+  equippedAura: string;
+}
+
 export interface WorldState {
   players: Player[];
+  npcs: NPC[];
 }
 
 // Combat attack data

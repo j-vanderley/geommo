@@ -839,18 +839,15 @@ class Geommo {
   fastTravelTo(lat, lng) {
     if (!this.socket || !this.socket.connected) return;
 
-    // Update position
     const position = { lat, lng };
 
-    // Tell the map to update for new location (must happen before player position update)
+    // Use the map3d fast travel which resets the coordinate system
+    // This ensures click-to-move works at the new location
     if (this.mapManager.map3d) {
-      // Use setCenter which properly clears old tiles and updates center
-      this.mapManager.map3d.tileManager.setCenter(lat, lng);
-      this.mapManager.map3d.setCenter(lat, lng);
-      this.mapManager.map3d.tileManager.updateTiles(lat, lng);
+      this.mapManager.map3d.fastTravelTo(lat, lng);
     }
 
-    // Update local player position
+    // Update local player position (this updates minimap and coordinates display)
     this.playerManager.updateSelfPosition(position);
 
     // Send to server
@@ -917,6 +914,8 @@ class Geommo {
       // Set user ID for skills/inventory (per-account storage)
       if (this.mapManager.skillsManager) {
         this.mapManager.skillsManager.setUserId(this.getUserId());
+        // Check if player should receive test items
+        this.mapManager.skillsManager.setUsername(data.player.username);
       }
 
       this.playerManager.setSelf(data.player);
@@ -939,6 +938,11 @@ class Geommo {
     this.socket.on('world:state', (state) => {
       console.log('Received world state:', state);
       this.playerManager.loadWorldState(state);
+
+      // Load NPCs from server
+      if (state.npcs && this.mapManager.skillsManager) {
+        this.mapManager.skillsManager.loadNPCsFromServer(state.npcs);
+      }
     });
 
     // Player events

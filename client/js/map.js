@@ -107,12 +107,8 @@ class MapManager {
     // Set up NPC click handling
     this.setupNPCInteraction();
 
-    // Initialize NPCs after a short delay to ensure everything is ready
-    setTimeout(() => {
-      if (this.skillsManager) {
-        this.skillsManager.initNPCs();
-      }
-    }, 1000);
+    // NPCs are now loaded from server via world:state event
+    // No need to initialize locally - skillsManager.loadNPCsFromServer() handles it
   }
 
   // Set up NPC interaction handling

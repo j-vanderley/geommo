@@ -26,44 +26,45 @@ class SkillsManager {
       light: { name: 'Light', icon: '✨', rarity: 'legendary', isCurrency: true }
     };
 
-    // Cosmetic items (purchasable with Light)
-    this.cosmeticTypes = {
+    // Equipment items (wearable/visible gear)
+    this.equipmentTypes = {
       // Skins (change base body appearance)
-      skin_snowball: { name: 'Snowball', type: 'skin', icon: '⚪', color: '#ffffff', price: 50, particle: 'snow' },
-      skin_lightning: { name: 'Lightning Ball', type: 'skin', icon: '⚡', color: '#ffff00', price: 75, particle: 'spark' },
-      skin_flame: { name: 'Flame Spirit', type: 'skin', icon: '🔥', color: '#ff4400', price: 75, particle: 'fire' },
-      skin_void: { name: 'Void Walker', type: 'skin', icon: '🌑', color: '#330066', price: 100, particle: 'void' },
+      skin_snowball: { name: 'Snowball', type: 'skin', icon: '⚪', color: '#ffffff', price: 50, particle: 'snow', isEquipment: true },
+      skin_lightning: { name: 'Lightning Ball', type: 'skin', icon: '⚡', color: '#ffff00', price: 75, particle: 'spark', isEquipment: true },
+      skin_flame: { name: 'Flame Spirit', type: 'skin', icon: '🔥', color: '#ff4400', price: 75, particle: 'fire', isEquipment: true },
+      skin_void: { name: 'Void Walker', type: 'skin', icon: '🌑', color: '#330066', price: 100, particle: 'void', isEquipment: true },
       // Hats (head-worn items)
-      hat_ice_tiara: { name: 'Ice Tiara', type: 'hat', icon: '👑', color: '#88ddff', price: 30 },
-      hat_storm_crown: { name: 'Storm Crown', type: 'hat', icon: '⚜️', color: '#9966ff', price: 40 },
-      hat_sun_halo: { name: 'Sun Halo', type: 'hat', icon: '☀️', color: '#ffcc00', price: 35 },
-      hat_mist_hood: { name: 'Mist Hood', type: 'hat', icon: '🎭', color: '#aabbcc', price: 25 },
+      hat_ice_tiara: { name: 'Ice Tiara', type: 'hat', icon: '👑', color: '#88ddff', price: 30, isEquipment: true },
+      hat_storm_crown: { name: 'Storm Crown', type: 'hat', icon: '⚜️', color: '#9966ff', price: 40, isEquipment: true },
+      hat_sun_halo: { name: 'Sun Halo', type: 'hat', icon: '☀️', color: '#ffcc00', price: 35, isEquipment: true },
+      hat_mist_hood: { name: 'Mist Hood', type: 'hat', icon: '🎭', color: '#aabbcc', price: 25, isEquipment: true },
       // Held items (objects held by character)
-      held_lightning_bolt: { name: 'Lightning Bolt', type: 'held', icon: '🗡️', color: '#ffff00', price: 45 },
-      held_frost_staff: { name: 'Frost Staff', type: 'held', icon: '🪄', color: '#88ddff', price: 40 },
-      held_sun_orb: { name: 'Sun Orb', type: 'held', icon: '🔮', color: '#ffaa00', price: 35 },
-      held_void_blade: { name: 'Void Blade', type: 'held', icon: '⚔️', color: '#660099', price: 60 },
+      held_lightning_bolt: { name: 'Lightning Bolt', type: 'held', icon: '🗡️', color: '#ffff00', price: 45, isEquipment: true },
+      held_frost_staff: { name: 'Frost Staff', type: 'held', icon: '🪄', color: '#88ddff', price: 40, isEquipment: true },
+      held_sun_orb: { name: 'Sun Orb', type: 'held', icon: '🔮', color: '#ffaa00', price: 35, isEquipment: true },
+      held_void_blade: { name: 'Void Blade', type: 'held', icon: '⚔️', color: '#660099', price: 60, isEquipment: true },
       // Auras (particle effects around character)
-      aura_frost: { name: 'Frost Aura', type: 'aura', icon: '❄️', color: '#88ddff', price: 80, particle: 'frost' },
-      aura_fire: { name: 'Fire Aura', type: 'aura', icon: '🔥', color: '#ff4400', price: 80, particle: 'fire' },
-      aura_lightning: { name: 'Lightning Aura', type: 'aura', icon: '⚡', color: '#ffff00', price: 100, particle: 'lightning' },
-      aura_void: { name: 'Void Aura', type: 'aura', icon: '🌀', color: '#660099', price: 120, particle: 'void' },
-      aura_holy: { name: 'Holy Aura', type: 'aura', icon: '✨', color: '#ffffaa', price: 150, particle: 'holy' }
+      aura_frost: { name: 'Frost Aura', type: 'aura', icon: '❄️', color: '#88ddff', price: 80, particle: 'frost', isEquipment: true },
+      aura_fire: { name: 'Fire Aura', type: 'aura', icon: '🔥', color: '#ff4400', price: 80, particle: 'fire', isEquipment: true },
+      aura_lightning: { name: 'Lightning Aura', type: 'aura', icon: '⚡', color: '#ffff00', price: 100, particle: 'lightning', isEquipment: true },
+      aura_void: { name: 'Void Aura', type: 'aura', icon: '🌀', color: '#660099', price: 120, particle: 'void', isEquipment: true },
+      aura_holy: { name: 'Holy Aura', type: 'aura', icon: '✨', color: '#ffffaa', price: 150, particle: 'holy', isEquipment: true }
     };
 
-    // Equipped cosmetics
-    this.equippedCosmetics = {
+    // Equipped gear slots
+    this.equippedGear = {
       skin: null,
       hat: null,
       held: null,
       aura: null
     };
 
-    // Owned cosmetics (array of cosmetic keys)
-    this.ownedCosmetics = [];
-
     // Light currency balance
     this.lightBalance = 0;
+
+    // Active trade screen
+    this.activeTradeScreen = null;
+    this.tradeOffer = { items: [], lightOffer: 0 };
 
     // Inventory - 24 slots, each slot can hold one item type
     // Format: [{ itemKey, count }, null, null, ...]
@@ -110,87 +111,106 @@ class SkillsManager {
     this.inCombat = false;
     this.combatTarget = null;
 
-    // NPC Merchants (Legendary Bosses)
+    // NPC Merchants (Legendary Bosses) - received from server
     this.npcs = [];
-    this.npcData = this.createNPCData();
+    this.npcDataTemplate = this.createNPCData(); // Keep templates for local reference
     this.activeNPCDialog = null;
+    this.activeNPCMenu = null;
     this.npcCombatTarget = null;
+    this.npcsInitialized = false;
+
+    // Game tick system (600ms ticks for future features)
+    this.TICK_DURATION = 600; // 0.6 seconds per tick
+    this.COMBAT_TICKS = 4; // 4 ticks = 2.4 seconds between attacks
+    this.gameTickInterval = null;
+    this.gameTick = 0;
+    this.combatTurnTick = 0;
+    this.isPlayerTurn = true;
 
     // Don't load here - wait for setUserId to be called with user's ID
   }
 
-  // Create NPC merchant data
+  // Create individual NPC instances - each NPC is a separate class instance
   createNPCData() {
-    return [
-      {
-        id: 'npc_frost_merchant',
-        name: 'Frost Merchant',
-        title: 'Keeper of Ice',
-        cosmetic: 'skin_snowball',
-        sellsCosmetic: 'aura_frost',
-        baseCity: 'Sydney', // Near Sydney
-        offsetLat: 0.027, // ~3000m offset
+    // Define NPC templates - these are used to create separate NPC instances
+    const npcTemplates = {
+      glacius: {
+        id: 'npc_frost_warden',
+        name: 'Glacius',
+        title: 'Frost Warden',
+        icon: '🧊',
+        equipment: 'skin_snowball',
+        sellsEquipment: 'aura_frost',
+        baseCity: 'Sydney',
+        offsetLat: 0.018, // ~2000m offset
         offsetLng: 0,
-        health: 5000,
-        maxHealth: 5000,
-        damage: 50,
-        attackItem: 'snowflake',
+        baseHealth: 8000,
+        baseDamage: 75,
+        attackItems: ['lightningshard', 'mistessence'],
         color: '#88ddff',
         particle: 'frost',
-        aura: 'aura_frost'
+        equippedAura: 'aura_frost'
       },
-      {
-        id: 'npc_storm_merchant',
-        name: 'Storm Merchant',
-        title: 'Herald of Thunder',
-        cosmetic: 'skin_lightning',
-        sellsCosmetic: 'aura_lightning',
+      voltarus: {
+        id: 'npc_storm_herald',
+        name: 'Voltarus',
+        title: 'Storm Herald',
+        icon: '⛈️',
+        equipment: 'skin_lightning',
+        sellsEquipment: 'aura_lightning',
         baseCity: 'Tokyo',
         offsetLat: 0,
-        offsetLng: 0.033,
-        health: 6000,
-        maxHealth: 6000,
-        damage: 65,
-        attackItem: 'lightningshard',
+        offsetLng: 0.022, // ~2000m (adjusted for latitude)
+        baseHealth: 10000,
+        baseDamage: 90,
+        attackItems: ['lightningshard', 'mistessence'],
         color: '#ffff00',
         particle: 'lightning',
-        aura: 'aura_lightning'
+        equippedAura: 'aura_lightning'
       },
-      {
-        id: 'npc_void_merchant',
-        name: 'Void Merchant',
-        title: 'Shadow Walker',
-        cosmetic: 'skin_void',
-        sellsCosmetic: 'aura_void',
+      nyx: {
+        id: 'npc_void_walker',
+        name: 'Nyx',
+        title: 'Void Walker',
+        icon: '🌀',
+        equipment: 'skin_void',
+        sellsEquipment: 'aura_void',
         baseCity: 'London',
-        offsetLat: -0.027,
+        offsetLat: 0.018,
         offsetLng: 0,
-        health: 7500,
-        maxHealth: 7500,
-        damage: 80,
-        attackItem: 'mistessence',
+        baseHealth: 12000,
+        baseDamage: 110,
+        attackItems: ['mistessence', 'lightningshard'],
         color: '#660099',
         particle: 'void',
-        aura: 'aura_void'
+        equippedAura: 'aura_void'
       },
-      {
-        id: 'npc_holy_merchant',
-        name: 'Holy Merchant',
+      solara: {
+        id: 'npc_light_bringer',
+        name: 'Solara',
         title: 'Light Bringer',
-        cosmetic: 'skin_flame',
-        sellsCosmetic: 'aura_holy',
+        icon: '🌟',
+        equipment: 'skin_flame',
+        sellsEquipment: 'aura_holy',
         baseCity: 'New York',
         offsetLat: 0,
-        offsetLng: -0.033,
-        health: 10000,
-        maxHealth: 10000,
-        damage: 100,
-        attackItem: 'lightningshard',
+        offsetLng: -0.022,
+        baseHealth: 15000,
+        baseDamage: 130,
+        attackItems: ['lightningshard', 'mistessence'],
         color: '#ffffaa',
         particle: 'holy',
-        aura: 'aura_holy'
+        equippedAura: 'aura_holy'
       }
-    ];
+    };
+
+    // Create separate NPC instances from templates
+    return Object.values(npcTemplates).map(template => ({
+      ...template,
+      health: template.baseHealth,
+      maxHealth: template.baseHealth,
+      damage: template.baseDamage
+    }));
   }
 
   // Get NPC position based on city
@@ -252,7 +272,34 @@ class SkillsManager {
       this.updateDroppedItems();
     }, 1000);
 
+    // Start game tick system (600ms ticks)
+    this.startGameTick();
+
     return this;
+  }
+
+  // Start the game tick system
+  startGameTick() {
+    if (this.gameTickInterval) return;
+
+    this.gameTickInterval = setInterval(() => {
+      this.gameTick++;
+      this.onGameTick();
+    }, this.TICK_DURATION);
+  }
+
+  // Called every game tick (600ms)
+  onGameTick() {
+    // Handle combat turns
+    if (this.inCombat && this.npcCombatTarget) {
+      this.combatTurnTick++;
+
+      // Every 2 ticks (1.2 seconds), process a combat turn
+      if (this.combatTurnTick >= this.COMBAT_TICKS) {
+        this.combatTurnTick = 0;
+        this.processCombatTurn();
+      }
+    }
   }
 
   // Create the skills/inventory panel
@@ -267,14 +314,14 @@ class SkillsManager {
           <button class="skills-tab active" data-tab="skills" title="Skills">⭐</button>
           <button class="skills-tab" data-tab="inventory" title="Inventory">📦</button>
           <button class="skills-tab" data-tab="combat" title="Combat">⚔️</button>
-          <button class="skills-tab" data-tab="cosmetics" title="Cosmetics">💎</button>
+          <button class="skills-tab" data-tab="equipment" title="Equipment">🛡️</button>
         </div>
       </div>
       <div id="home-content" class="home-content hidden"></div>
       <div id="skills-content" class="skills-content"></div>
       <div id="inventory-content" class="inventory-content hidden"></div>
       <div id="combat-content" class="combat-content hidden"></div>
-      <div id="cosmetics-content" class="cosmetics-content hidden"></div>
+      <div id="equipment-content" class="equipment-content hidden"></div>
     `;
 
     // Add to UI overlay
@@ -340,7 +387,7 @@ class SkillsManager {
     document.getElementById('skills-content').classList.toggle('hidden', tabName !== 'skills');
     document.getElementById('inventory-content').classList.toggle('hidden', tabName !== 'inventory');
     document.getElementById('combat-content').classList.toggle('hidden', tabName !== 'combat');
-    document.getElementById('cosmetics-content').classList.toggle('hidden', tabName !== 'cosmetics');
+    document.getElementById('equipment-content').classList.toggle('hidden', tabName !== 'equipment');
 
     this.updateUI();
   }
@@ -355,8 +402,8 @@ class SkillsManager {
       this.renderHome();
     } else if (this.activeTab === 'combat') {
       this.renderCombat();
-    } else if (this.activeTab === 'cosmetics') {
-      this.renderCosmetics();
+    } else if (this.activeTab === 'equipment') {
+      this.renderEquipment();
     }
   }
 
@@ -399,20 +446,31 @@ class SkillsManager {
     const container = document.getElementById('inventory-content');
     if (!container) return;
 
-    let html = '<div class="inventory-grid">';
+    // Light balance display at top
+    let html = `
+      <div class="inventory-light-balance">
+        <span class="light-icon">✨</span>
+        <span class="light-amount">${this.lightBalance}</span>
+        <span class="light-label">Light</span>
+      </div>
+    `;
+
+    html += '<div class="inventory-grid">';
 
     for (let i = 0; i < 24; i++) {
       const slot = this.inventorySlots[i];
       const hasItem = slot && slot.count > 0;
-      const item = hasItem ? this.itemTypes[slot.itemKey] : null;
+      const item = hasItem ? this.getItemType(slot.itemKey) : null;
+      const isEquipment = hasItem && this.isEquipmentItem(slot.itemKey);
 
       html += `
-        <div class="inventory-slot ${hasItem ? 'has-item' : ''}"
+        <div class="inventory-slot ${hasItem ? 'has-item' : ''} ${isEquipment ? 'equipment-item' : ''}"
              data-slot="${i}"
-             ${hasItem ? `title="${item.name}"` : ''}
+             ${hasItem ? `title="${item.name}${isEquipment ? ' (Equipment)' : ''}"` : ''}
              draggable="${hasItem}">
-          ${hasItem ? `<span class="item-icon">${item.icon}</span>` : ''}
+          ${hasItem ? `<span class="item-icon" ${isEquipment ? `style="color: ${item.color}"` : ''}>${item.icon}</span>` : ''}
           ${hasItem ? `<span class="item-count">${slot.count}</span>` : ''}
+          ${isEquipment ? '<span class="equipment-badge">E</span>' : ''}
         </div>
       `;
     }
@@ -422,6 +480,20 @@ class SkillsManager {
 
     // Set up drag and drop
     this.setupDragAndDrop();
+
+    // Set up click handlers for context menu
+    this.setupInventoryClickHandlers();
+  }
+
+  // Set up click handlers for inventory items
+  setupInventoryClickHandlers() {
+    const slots = document.querySelectorAll('.inventory-slot.has-item');
+    slots.forEach(slot => {
+      slot.addEventListener('click', (e) => {
+        const slotIndex = parseInt(slot.dataset.slot);
+        this.showItemContextMenu(slotIndex, e);
+      });
+    });
   }
 
   // Set up drag and drop for inventory
@@ -546,25 +618,31 @@ class SkillsManager {
     const container = document.getElementById('combat-content');
     if (!container) return;
 
-    // Get items that can be used for combat
+    // Get items that can be used for combat (gathered items only)
     const combatItems = this.getCombatItems();
 
     let itemsHtml = '';
     if (combatItems.length === 0) {
-      itemsHtml = '<p class="no-items">No items available for combat. Collect items first!</p>';
+      itemsHtml = `
+        <div class="no-combat-items">
+          <p class="no-items-title">⚠️ No Ammo</p>
+          <p class="no-items-desc">Collect weather items to fight!</p>
+        </div>
+      `;
     } else {
-      itemsHtml = '<div class="combat-items">';
+      itemsHtml = '<div class="combat-ammo-grid">';
       for (const item of combatItems) {
         const isSelected = this.selectedCombatItem === item.itemKey;
         const itemType = this.itemTypes[item.itemKey];
-        const level = this.getCombatLevel(item.itemKey);
+        if (!itemType) continue;
+        const damage = this.getCombatDamage(item.itemKey);
         itemsHtml += `
-          <div class="combat-item ${isSelected ? 'selected' : ''}"
+          <div class="combat-ammo-slot ${isSelected ? 'selected' : ''}"
                data-item="${item.itemKey}"
-               title="${itemType.name} - Level ${level}">
-            <span class="item-icon">${itemType.icon}</span>
-            <span class="item-count">x${item.count}</span>
-            <span class="item-level">Lv${level}</span>
+               title="${itemType.name}">
+            <span class="ammo-icon">${itemType.icon}</span>
+            <span class="ammo-qty">${item.count}</span>
+            <span class="ammo-dmg">${damage}</span>
           </div>
         `;
       }
@@ -585,24 +663,18 @@ class SkillsManager {
         </div>
 
         <div class="combat-section">
-          <h4>⚔️ Select Weapon</h4>
+          <h4>⚔️ Select Ammo</h4>
           ${itemsHtml}
         </div>
 
         ${this.selectedCombatItem ? `
-          <div class="combat-info">
-            <p>Click on a player to attack!</p>
-            <p class="combat-stats">
-              Damage: ${this.getCombatDamage(this.selectedCombatItem)}<br>
-              Uses 1 ${this.itemTypes[this.selectedCombatItem].name} per attack
-            </p>
-          </div>
-        ` : '<div class="combat-info"><p>Select an item to use as a weapon.</p></div>'}
+          <div class="combat-ready">✅ Ready for battle!</div>
+        ` : '<div class="combat-warning">⚠️ Select ammo to fight</div>'}
       </div>
     `;
 
     // Combat item selection
-    container.querySelectorAll('.combat-item').forEach(el => {
+    container.querySelectorAll('.combat-ammo-slot').forEach(el => {
       el.addEventListener('click', () => {
         const itemKey = el.dataset.item;
         this.selectCombatItem(itemKey);
@@ -610,117 +682,211 @@ class SkillsManager {
     });
   }
 
-  // Render cosmetics tab
-  renderCosmetics() {
-    const container = document.getElementById('cosmetics-content');
+  // Render equipment tab
+  renderEquipment() {
+    const container = document.getElementById('equipment-content');
     if (!container) return;
 
-    // Equipment slots HTML
+    // Equipment slots in 2x2 grid
     const slotTypes = ['skin', 'hat', 'held', 'aura'];
     const slotNames = { skin: 'Skin', hat: 'Hat', held: 'Held', aura: 'Aura' };
-    const slotIcons = { skin: '👤', hat: '👑', held: '🗡️', aura: '✨' };
+    const slotIcons = { skin: '👤', hat: '🎩', held: '🗡️', aura: '✨' };
 
-    let slotsHtml = '<div class="cosmetic-slots">';
+    let slotsHtml = '<div class="equipment-grid">';
     for (const slotType of slotTypes) {
-      const equipped = this.equippedCosmetics[slotType];
-      const cosmetic = equipped ? this.cosmeticTypes[equipped] : null;
+      const equipped = this.equippedGear[slotType];
+      const gear = equipped ? this.equipmentTypes[equipped] : null;
       slotsHtml += `
-        <div class="cosmetic-slot ${equipped ? 'equipped' : ''}" data-slot="${slotType}">
-          <span class="slot-icon">${cosmetic ? cosmetic.icon : slotIcons[slotType]}</span>
-          <span class="slot-name">${slotNames[slotType]}</span>
-          ${equipped ? `<span class="slot-item">${cosmetic.name}</span>` : ''}
+        <div class="equip-slot ${equipped ? 'equipped' : ''}" data-slot="${slotType}" title="${equipped ? gear.name + ' - Click to unequip' : slotNames[slotType]}">
+          <span class="equip-icon" ${gear ? `style="color: ${gear.color}"` : ''}>${gear ? gear.icon : slotIcons[slotType]}</span>
+          <span class="equip-label">${slotNames[slotType]}</span>
         </div>
       `;
     }
     slotsHtml += '</div>';
 
-    // Owned cosmetics HTML
-    let ownedHtml = '<div class="owned-cosmetics">';
-    if (this.ownedCosmetics.length === 0) {
-      ownedHtml += '<p class="no-items">No cosmetics owned. Trade with Legendary Merchants!</p>';
-    } else {
-      for (const cosmeticKey of this.ownedCosmetics) {
-        const cosmetic = this.cosmeticTypes[cosmeticKey];
-        if (!cosmetic) continue;
-        const isEquipped = this.equippedCosmetics[cosmetic.type] === cosmeticKey;
-        ownedHtml += `
-          <div class="owned-cosmetic ${isEquipped ? 'equipped' : ''}"
-               data-cosmetic="${cosmeticKey}"
-               title="${cosmetic.name}">
-            <span class="cosmetic-icon" style="color: ${cosmetic.color}">${cosmetic.icon}</span>
-            <span class="cosmetic-name">${cosmetic.name}</span>
-            ${isEquipped ? '<span class="equipped-badge">E</span>' : ''}
-          </div>
-        `;
-      }
-    }
-    ownedHtml += '</div>';
-
-    // Trade section - sell items for Light
-    const sellableItems = this.getSellableItems();
-    let tradeHtml = '<div class="trade-section">';
-    tradeHtml += '<h4>💱 Trade Items for Light</h4>';
-    if (sellableItems.length === 0) {
-      tradeHtml += '<p class="no-items">No items to trade.</p>';
-    } else {
-      tradeHtml += '<div class="trade-items">';
-      for (const item of sellableItems) {
-        const itemType = this.itemTypes[item.itemKey];
-        tradeHtml += `
-          <div class="trade-item" data-item="${item.itemKey}" title="Sell for ${itemType.sellValue} Light each">
-            <span class="item-icon">${itemType.icon}</span>
-            <span class="item-count">x${item.count}</span>
-            <span class="item-value">+${itemType.sellValue}✨</span>
-          </div>
-        `;
-      }
-      tradeHtml += '</div>';
-      tradeHtml += `<button class="osrs-btn small-btn" id="sell-all-btn">Sell All Items</button>`;
-    }
-    tradeHtml += '</div>';
-
     container.innerHTML = `
-      <div class="cosmetics-panel">
+      <div class="equipment-panel">
         <div class="light-balance">
           <span class="light-icon">✨</span>
           <span class="light-amount">${this.lightBalance}</span>
-          <span class="light-label">Light</span>
         </div>
-
-        <div class="cosmetics-section">
-          <h4>🎨 Equipment</h4>
-          ${slotsHtml}
-        </div>
-
-        <div class="cosmetics-section">
-          <h4>📦 Owned Cosmetics</h4>
-          ${ownedHtml}
-        </div>
-
-        ${tradeHtml}
+        ${slotsHtml}
+        <p class="equip-hint">Equip gear from inventory</p>
       </div>
     `;
 
-    // Click handlers for equipping cosmetics
-    container.querySelectorAll('.owned-cosmetic').forEach(el => {
+    // Click handlers for unequipping gear
+    container.querySelectorAll('.equip-slot.equipped').forEach(el => {
       el.addEventListener('click', () => {
-        const cosmeticKey = el.dataset.cosmetic;
-        this.toggleCosmetic(cosmeticKey);
+        const slotType = el.dataset.slot;
+        this.unequipGear(slotType);
+      });
+    });
+  }
+
+  // Check if an item key is equipment
+  isEquipmentItem(itemKey) {
+    return this.equipmentTypes.hasOwnProperty(itemKey);
+  }
+
+  // Get the combined item type (regular or equipment)
+  getItemType(itemKey) {
+    if (this.itemTypes[itemKey]) return this.itemTypes[itemKey];
+    if (this.equipmentTypes[itemKey]) return this.equipmentTypes[itemKey];
+    return null;
+  }
+
+  // Equip a gear item from inventory
+  equipGear(itemKey) {
+    const gear = this.equipmentTypes[itemKey];
+    if (!gear) return false;
+
+    // Find the item in inventory
+    const slotIndex = this.inventorySlots.findIndex(
+      s => s && s.itemKey === itemKey && s.count > 0
+    );
+    if (slotIndex === -1) return false;
+
+    // If something is already equipped in that slot, unequip it first
+    const currentEquipped = this.equippedGear[gear.type];
+    if (currentEquipped) {
+      // Add current item back to inventory
+      this.addItem(currentEquipped, 1);
+    }
+
+    // Remove from inventory
+    this.inventorySlots[slotIndex].count--;
+    if (this.inventorySlots[slotIndex].count <= 0) {
+      this.inventorySlots[slotIndex] = null;
+    }
+
+    // Equip the new item
+    this.equippedGear[gear.type] = itemKey;
+
+    // Update player visual
+    this.updatePlayerEquipment();
+    this.save();
+    this.renderInventory();
+    this.renderEquipment();
+
+    if (window.chatManager) {
+      window.chatManager.addLogMessage(`🛡️ Equipped ${gear.icon} ${gear.name}`, 'info');
+    }
+
+    return true;
+  }
+
+  // Unequip gear from a slot
+  unequipGear(slotType) {
+    const equipped = this.equippedGear[slotType];
+    if (!equipped) return false;
+
+    const gear = this.equipmentTypes[equipped];
+
+    // Try to add back to inventory
+    if (!this.addItem(equipped, 1)) {
+      if (window.chatManager) {
+        window.chatManager.addLogMessage(`❌ Inventory full! Cannot unequip.`, 'error');
+      }
+      return false;
+    }
+
+    // Remove from equipped
+    this.equippedGear[slotType] = null;
+
+    // Update player visual
+    this.updatePlayerEquipment();
+    this.save();
+    this.renderInventory();
+    this.renderEquipment();
+
+    if (window.chatManager) {
+      window.chatManager.addLogMessage(`🛡️ Unequipped ${gear.icon} ${gear.name}`, 'info');
+    }
+
+    return true;
+  }
+
+  // Update player's visual appearance based on equipped gear
+  updatePlayerEquipment() {
+    if (!this.map3d || !window.playerManager) return;
+
+    const selfId = window.playerManager.selfSocketId;
+    if (!selfId) return;
+
+    // Get equipped gear data
+    const gearData = {
+      skin: this.equippedGear.skin ? this.equipmentTypes[this.equippedGear.skin] : null,
+      hat: this.equippedGear.hat ? this.equipmentTypes[this.equippedGear.hat] : null,
+      held: this.equippedGear.held ? this.equipmentTypes[this.equippedGear.held] : null,
+      aura: this.equippedGear.aura ? this.equipmentTypes[this.equippedGear.aura] : null
+    };
+
+    // Update 3D appearance
+    this.map3d.updatePlayerCosmetics(selfId, gearData);
+  }
+
+  // Show item context menu (for equip option)
+  showItemContextMenu(slotIndex, event) {
+    const slot = this.inventorySlots[slotIndex];
+    if (!slot) return;
+
+    // Remove any existing context menu
+    this.hideItemContextMenu();
+
+    const itemKey = slot.itemKey;
+    const itemType = this.getItemType(itemKey);
+    const isEquipment = this.isEquipmentItem(itemKey);
+
+    const menu = document.createElement('div');
+    menu.id = 'item-context-menu';
+    menu.className = 'item-context-menu';
+
+    let menuHtml = `<div class="context-menu-header">${itemType.icon} ${itemType.name}</div>`;
+
+    if (isEquipment) {
+      const gear = this.equipmentTypes[itemKey];
+      menuHtml += `<button class="context-menu-btn equip-btn" data-action="equip">Equip (${gear.type})</button>`;
+    }
+
+    if (itemType.sellValue && !itemType.isCurrency) {
+      menuHtml += `<button class="context-menu-btn sell-btn" data-action="sell">Sell (+${itemType.sellValue}✨)</button>`;
+    }
+
+    menuHtml += `<button class="context-menu-btn cancel-btn" data-action="cancel">Cancel</button>`;
+
+    menu.innerHTML = menuHtml;
+
+    // Position near click
+    menu.style.left = `${event.clientX}px`;
+    menu.style.top = `${event.clientY}px`;
+
+    document.body.appendChild(menu);
+
+    // Button handlers
+    menu.querySelectorAll('.context-menu-btn').forEach(btn => {
+      btn.addEventListener('click', () => {
+        const action = btn.dataset.action;
+        if (action === 'equip') {
+          this.equipGear(itemKey);
+        } else if (action === 'sell') {
+          this.sellItem(itemKey, 1);
+        }
+        this.hideItemContextMenu();
       });
     });
 
-    // Click handlers for selling items
-    container.querySelectorAll('.trade-item').forEach(el => {
-      el.addEventListener('click', () => {
-        const itemKey = el.dataset.item;
-        this.sellItem(itemKey, 1);
-      });
-    });
+    // Close on click outside
+    setTimeout(() => {
+      document.addEventListener('click', this.hideItemContextMenu.bind(this), { once: true });
+    }, 10);
+  }
 
-    // Sell all button
-    document.getElementById('sell-all-btn')?.addEventListener('click', () => {
-      this.sellAllItems();
-    });
+  // Hide item context menu
+  hideItemContextMenu() {
+    const menu = document.getElementById('item-context-menu');
+    if (menu) menu.remove();
   }
 
   // Get items that can be sold for Light
@@ -765,7 +931,7 @@ class SkillsManager {
       const lightGained = sold * itemType.sellValue;
       this.lightBalance += lightGained;
       this.save();
-      this.renderCosmetics();
+      this.renderEquipment();
 
       if (window.chatManager) {
         window.chatManager.addLogMessage(`💱 Sold ${sold}x ${itemType.icon} ${itemType.name} for ${lightGained}✨ Light!`, 'item');
@@ -802,69 +968,17 @@ class SkillsManager {
 
     this.lightBalance += totalLight;
     this.save();
-    this.renderCosmetics();
+    this.renderEquipment();
 
     if (window.chatManager) {
       window.chatManager.addLogMessage(`💱 Sold ${totalItems} items for ${totalLight}✨ Light!`, 'item');
     }
   }
 
-  // Toggle equip/unequip cosmetic
-  toggleCosmetic(cosmeticKey) {
-    const cosmetic = this.cosmeticTypes[cosmeticKey];
-    if (!cosmetic) return;
-
-    if (this.equippedCosmetics[cosmetic.type] === cosmeticKey) {
-      // Unequip
-      this.equippedCosmetics[cosmetic.type] = null;
-      if (window.chatManager) {
-        window.chatManager.addLogMessage(`🎨 Unequipped ${cosmetic.icon} ${cosmetic.name}`, 'info');
-      }
-    } else {
-      // Equip
-      this.equippedCosmetics[cosmetic.type] = cosmeticKey;
-      if (window.chatManager) {
-        window.chatManager.addLogMessage(`🎨 Equipped ${cosmetic.icon} ${cosmetic.name}`, 'info');
-      }
-    }
-
-    // Update player visual
-    this.updatePlayerCosmetics();
-    this.save();
-    this.renderCosmetics();
-  }
-
-  // Update player's visual appearance based on equipped cosmetics
-  updatePlayerCosmetics() {
-    if (!this.map3d || !window.playerManager) return;
-
-    const selfId = window.playerManager.selfSocketId;
-    if (!selfId) return;
-
-    // Get equipped cosmetic data
-    const cosmeticsData = {
-      skin: this.equippedCosmetics.skin ? this.cosmeticTypes[this.equippedCosmetics.skin] : null,
-      hat: this.equippedCosmetics.hat ? this.cosmeticTypes[this.equippedCosmetics.hat] : null,
-      held: this.equippedCosmetics.held ? this.cosmeticTypes[this.equippedCosmetics.held] : null,
-      aura: this.equippedCosmetics.aura ? this.cosmeticTypes[this.equippedCosmetics.aura] : null
-    };
-
-    // Update 3D appearance
-    this.map3d.updatePlayerCosmetics(selfId, cosmeticsData);
-  }
-
-  // Buy a cosmetic from an NPC
-  buyCosmetic(cosmeticKey, npcId) {
-    const cosmetic = this.cosmeticTypes[cosmeticKey];
-    if (!cosmetic) return false;
-
-    // Check if already owned
-    if (this.ownedCosmetics.includes(cosmeticKey)) {
-      if (window.chatManager) {
-        window.chatManager.addLogMessage(`❌ You already own ${cosmetic.icon} ${cosmetic.name}!`, 'error');
-      }
-      return false;
-    }
+  // Buy equipment from an NPC - adds item to inventory
+  buyEquipment(equipmentKey, npcId) {
+    const equipment = this.equipmentTypes[equipmentKey];
+    if (!equipment) return false;
 
     // Check if in combat
     if (this.inCombat) {
@@ -875,120 +989,358 @@ class SkillsManager {
     }
 
     // Check Light balance
-    if (this.lightBalance < cosmetic.price) {
+    if (this.lightBalance < equipment.price) {
       if (window.chatManager) {
-        window.chatManager.addLogMessage(`❌ Not enough Light! Need ${cosmetic.price}✨`, 'error');
+        window.chatManager.addLogMessage(`❌ Not enough Light! Need ${equipment.price}✨`, 'error');
       }
       return false;
     }
 
-    // Purchase
-    this.lightBalance -= cosmetic.price;
-    this.ownedCosmetics.push(cosmeticKey);
+    // Check inventory space
+    const slotIndex = this.findSlotForItem(equipmentKey);
+    if (slotIndex === -1) {
+      if (window.chatManager) {
+        window.chatManager.addLogMessage(`❌ Inventory full!`, 'error');
+      }
+      return false;
+    }
+
+    // Purchase - add to inventory
+    this.lightBalance -= equipment.price;
+    this.addItem(equipmentKey, 1);
     this.save();
-    this.renderCosmetics();
+    this.renderInventory();
+    this.renderEquipment();
 
     if (window.chatManager) {
-      window.chatManager.addLogMessage(`🎉 Purchased ${cosmetic.icon} ${cosmetic.name} for ${cosmetic.price}✨ Light!`, 'levelup');
+      window.chatManager.addLogMessage(`🎉 Purchased ${equipment.icon} ${equipment.name} for ${equipment.price}✨ Light!`, 'levelup');
     }
 
     return true;
   }
 
-  // Initialize NPCs in the 3D world
+  // Initialize NPCs from server data
   initNPCs() {
-    if (!this.map3d) return;
-
-    // Create each NPC at their position
-    for (const npc of this.npcData) {
-      const position = this.getNPCPosition(npc);
-      if (position) {
-        this.map3d.createNPC(npc, position);
-        this.npcs.push({ ...npc, position });
-      }
+    // NPCs are now loaded from server - this is called after world:state is received
+    // This method is kept for backward compatibility but does nothing if npcsInitialized is true
+    if (this.npcsInitialized) {
+      console.log('NPCs already initialized from server data');
+      return;
     }
-
-    console.log(`Initialized ${this.npcs.length} Legendary Merchant NPCs`);
+    console.log('Waiting for NPC data from server...');
   }
 
-  // Show NPC dialog
-  showNPCDialog(npcId) {
-    // Find the NPC
+  // Load NPCs from server world state
+  loadNPCsFromServer(serverNPCs) {
+    if (!this.map3d) {
+      console.warn('Map3D not ready, deferring NPC loading');
+      // Retry after a short delay
+      setTimeout(() => this.loadNPCsFromServer(serverNPCs), 500);
+      return;
+    }
+
+    if (!serverNPCs || serverNPCs.length === 0) {
+      console.warn('No NPCs received from server');
+      return;
+    }
+
+    // Clear existing NPCs first
+    for (const npc of this.npcs) {
+      if (this.map3d) {
+        this.map3d.removeNPC(npc.id);
+      }
+    }
+    this.npcs = [];
+
+    // Create NPCs from server data
+    for (const serverNPC of serverNPCs) {
+      // Create client-side NPC instance from server data
+      const npcInstance = {
+        id: serverNPC.id,
+        name: serverNPC.name,
+        title: serverNPC.title,
+        icon: serverNPC.icon,
+        equipment: serverNPC.equipment,
+        sellsEquipment: serverNPC.sellsEquipment,
+        baseCity: serverNPC.baseCity,
+        health: serverNPC.health,
+        maxHealth: serverNPC.maxHealth,
+        damage: serverNPC.damage,
+        attackItems: [...serverNPC.attackItems],
+        color: serverNPC.color,
+        particle: serverNPC.particle,
+        equippedAura: serverNPC.equippedAura,
+        position: { lat: serverNPC.position.lat, lng: serverNPC.position.lng }
+      };
+
+      // Create 3D sprite for the NPC
+      this.map3d.createNPC(npcInstance, npcInstance.position);
+      this.npcs.push(npcInstance);
+
+      console.log(`Loaded NPC from server: ${npcInstance.name} (${npcInstance.icon}) at ${npcInstance.baseCity} - Position: ${npcInstance.position.lat.toFixed(4)}, ${npcInstance.position.lng.toFixed(4)}`);
+    }
+
+    this.npcsInitialized = true;
+    console.log(`Loaded ${this.npcs.length} NPCs from server:`, this.npcs.map(n => `${n.icon} ${n.name}`).join(', '));
+  }
+
+  // Show Trade Screen (modular for NPC and future P2P trading)
+  showTradeScreen(npcId) {
     const npc = this.npcs.find(n => n.id === npcId);
     if (!npc) return;
 
-    // Check if already in dialog
-    if (this.activeNPCDialog) {
-      this.closeNPCDialog();
-    }
+    // Close any existing trade screen
+    this.closeTradeScreen();
 
-    const cosmetic = this.cosmeticTypes[npc.sellsCosmetic];
-    const alreadyOwned = this.ownedCosmetics.includes(npc.sellsCosmetic);
-    const canAfford = this.lightBalance >= cosmetic.price;
+    const equipment = this.equipmentTypes[npc.sellsEquipment];
+    const npcEquipment = this.equipmentTypes[npc.equipment];
+    const canAfford = this.lightBalance >= equipment.price;
 
-    // Create dialog HTML
-    const dialog = document.createElement('div');
-    dialog.className = 'npc-dialog';
-    dialog.innerHTML = `
-      <div class="npc-dialog-header">
-        <div class="npc-portrait" style="color: ${npc.color}">${this.cosmeticTypes[npc.cosmetic]?.icon || '👤'}</div>
-        <div class="npc-info">
-          <h3>${npc.name}</h3>
-          <span class="npc-title">${npc.title}</span>
-        </div>
-      </div>
-      <div class="npc-dialog-content">
-        <p>"Greetings, traveler. I am ${npc.name}, ${npc.title}. I possess a rare artifact that might interest you..."</p>
+    // Get sellable items from inventory
+    const sellableItems = this.getSellableItems();
 
-        <div class="npc-shop-item">
-          <span class="shop-icon" style="color: ${cosmetic.color}">${cosmetic.icon}</span>
-          <div class="shop-details">
-            <span class="shop-name">${cosmetic.name}</span>
-            <span class="shop-type">${cosmetic.type.toUpperCase()}</span>
+    // Create trade screen HTML
+    const screen = document.createElement('div');
+    screen.className = 'trade-screen';
+    screen.innerHTML = `
+      <div class="trade-screen-overlay"></div>
+      <div class="trade-screen-content">
+        <div class="trade-header">
+          <div class="trade-npc-info">
+            <span class="trade-npc-icon" style="color: ${npc.color}">${npc.icon}</span>
+            <div class="trade-npc-details">
+              <h3>${npc.name}</h3>
+              <span class="trade-npc-title">${npc.title}</span>
+            </div>
           </div>
-          <span class="shop-price">${cosmetic.price}✨</span>
+          <button class="trade-close-btn" id="trade-close-btn">✕</button>
         </div>
 
-        ${alreadyOwned ? '<p style="color: #4CAF50;">✓ You already own this cosmetic!</p>' : ''}
-        ${!canAfford && !alreadyOwned ? `<p style="color: #ff6666;">You need ${cosmetic.price - this.lightBalance} more Light.</p>` : ''}
+        <div class="trade-body">
+          <div class="trade-column trade-your-offer">
+            <h4>Your Offer</h4>
+            <div class="trade-balance">
+              <span class="light-icon">✨</span>
+              <span class="light-amount">${this.lightBalance}</span>
+              <span class="light-label">Light</span>
+            </div>
+            <div class="trade-items-grid" id="trade-your-items">
+              ${sellableItems.length === 0 ? '<p class="no-items">No items to trade</p>' : ''}
+              ${sellableItems.map(item => {
+                const itemType = this.itemTypes[item.itemKey];
+                return `
+                  <div class="trade-grid-item" data-item="${item.itemKey}" title="Click to sell for ${itemType.sellValue}✨">
+                    <span class="item-icon">${itemType.icon}</span>
+                    <span class="item-count">x${item.count}</span>
+                    <span class="item-value">+${itemType.sellValue}✨</span>
+                  </div>
+                `;
+              }).join('')}
+            </div>
+            <button class="osrs-btn small-btn" id="trade-sell-all-btn" ${sellableItems.length === 0 ? 'disabled' : ''}>
+              Sell All Items
+            </button>
+          </div>
 
-        <p style="color: #ff6666; margin-top: 10px;">"...Or you may challenge me in combat. But be warned, I am no ordinary foe."</p>
-      </div>
-      <div class="npc-dialog-actions">
-        <button class="osrs-btn npc-buy-btn" id="npc-buy-btn" ${alreadyOwned || !canAfford ? 'disabled' : ''}>
-          ${alreadyOwned ? 'Owned' : `Buy (${cosmetic.price}✨)`}
-        </button>
-        <button class="osrs-btn npc-fight-btn" id="npc-fight-btn">Fight</button>
-        <button class="osrs-btn" id="npc-close-btn">Leave</button>
+          <div class="trade-divider">
+            <span class="trade-arrow">⇄</span>
+          </div>
+
+          <div class="trade-column trade-npc-offer">
+            <h4>${npc.name}'s Wares</h4>
+            <div class="trade-npc-equipment">
+              <div class="trade-npc-wearing">
+                <span>Wearing: </span>
+                <span style="color: ${npcEquipment?.color}">${npcEquipment?.icon} ${npcEquipment?.name || 'Unknown'}</span>
+              </div>
+            </div>
+            <div class="trade-shop-item ${!canAfford ? 'cannot-afford' : ''}">
+              <span class="shop-icon" style="color: ${equipment.color}">${equipment.icon}</span>
+              <div class="shop-details">
+                <span class="shop-name">${equipment.name}</span>
+                <span class="shop-type">${equipment.type.toUpperCase()}</span>
+              </div>
+              <span class="shop-price">${equipment.price}✨</span>
+            </div>
+            ${!canAfford ? `<p class="afford-warning">Need ${equipment.price - this.lightBalance} more Light</p>` : ''}
+            <button class="osrs-btn small-btn buy-btn" id="trade-buy-btn" ${!canAfford ? 'disabled' : ''}>
+              Buy (${equipment.price}✨)
+            </button>
+          </div>
+        </div>
+
+        <div class="trade-footer">
+          <p class="trade-warning">"Defeat me in combat, and I shall reward you handsomely with Light..."</p>
+          <div class="trade-actions">
+            <button class="osrs-btn fight-btn" id="trade-fight-btn">⚔️ Challenge to Combat</button>
+            <button class="osrs-btn" id="trade-leave-btn">Leave</button>
+          </div>
+        </div>
       </div>
     `;
 
-    document.body.appendChild(dialog);
-    this.activeNPCDialog = { element: dialog, npc };
+    document.body.appendChild(screen);
+    this.activeTradeScreen = { element: screen, npc, npcId };
 
     // Event handlers
-    dialog.querySelector('#npc-buy-btn')?.addEventListener('click', () => {
-      if (this.buyCosmetic(npc.sellsCosmetic, npcId)) {
-        this.closeNPCDialog();
+    screen.querySelector('#trade-close-btn')?.addEventListener('click', () => this.closeTradeScreen());
+    screen.querySelector('#trade-leave-btn')?.addEventListener('click', () => this.closeTradeScreen());
+    screen.querySelector('.trade-screen-overlay')?.addEventListener('click', () => this.closeTradeScreen());
+
+    screen.querySelector('#trade-buy-btn')?.addEventListener('click', () => {
+      if (this.buyEquipment(npc.sellsEquipment, npcId)) {
+        this.closeTradeScreen();
       }
     });
 
-    dialog.querySelector('#npc-fight-btn')?.addEventListener('click', () => {
+    screen.querySelector('#trade-fight-btn')?.addEventListener('click', () => {
       this.startNPCCombat(npcId);
-      this.closeNPCDialog();
+      this.closeTradeScreen();
     });
 
-    dialog.querySelector('#npc-close-btn')?.addEventListener('click', () => {
-      this.closeNPCDialog();
+    screen.querySelector('#trade-sell-all-btn')?.addEventListener('click', () => {
+      this.sellAllItems();
+      this.refreshTradeScreen();
+    });
+
+    // Individual item sell handlers
+    screen.querySelectorAll('.trade-grid-item').forEach(el => {
+      el.addEventListener('click', () => {
+        const itemKey = el.dataset.item;
+        this.sellItem(itemKey, 1);
+        this.refreshTradeScreen();
+      });
     });
   }
 
-  // Close NPC dialog
-  closeNPCDialog() {
-    if (this.activeNPCDialog && this.activeNPCDialog.element) {
-      this.activeNPCDialog.element.remove();
+  // Refresh trade screen content (after selling items)
+  refreshTradeScreen() {
+    if (!this.activeTradeScreen) return;
+    const { npcId } = this.activeTradeScreen;
+    this.showTradeScreen(npcId);
+  }
+
+  // Close trade screen
+  closeTradeScreen() {
+    if (this.activeTradeScreen && this.activeTradeScreen.element) {
+      this.activeTradeScreen.element.remove();
     }
-    this.activeNPCDialog = null;
+    this.activeTradeScreen = null;
+  }
+
+  // Show NPC interaction menu (Trade/Battle/Talk options)
+  showNPCDialog(npcId) {
+    const npc = this.npcs.find(n => n.id === npcId);
+    if (!npc) return;
+
+    // Close any existing menu
+    this.closeNPCMenu();
+
+    // Create interaction menu
+    const menu = document.createElement('div');
+    menu.className = 'npc-interaction-menu';
+    menu.innerHTML = `
+      <div class="npc-menu-overlay"></div>
+      <div class="npc-menu-content">
+        <div class="npc-menu-header">
+          <span class="npc-menu-icon" style="color: ${npc.color}">${npc.icon}</span>
+          <div class="npc-menu-info">
+            <h3>${npc.name}</h3>
+            <span class="npc-menu-title">${npc.title}</span>
+          </div>
+        </div>
+        <div class="npc-menu-options">
+          <button class="npc-menu-btn trade-btn" data-action="trade">
+            <span class="btn-icon">💰</span>
+            <span class="btn-text">Trade</span>
+          </button>
+          <button class="npc-menu-btn battle-btn" data-action="battle">
+            <span class="btn-icon">⚔️</span>
+            <span class="btn-text">Battle</span>
+          </button>
+          <button class="npc-menu-btn talk-btn" data-action="talk">
+            <span class="btn-icon">💬</span>
+            <span class="btn-text">Talk</span>
+          </button>
+        </div>
+        <button class="npc-menu-close">✕</button>
+      </div>
+    `;
+
+    document.body.appendChild(menu);
+    this.activeNPCMenu = { element: menu, npc, npcId };
+
+    // Event handlers
+    menu.querySelector('.npc-menu-overlay')?.addEventListener('click', () => this.closeNPCMenu());
+    menu.querySelector('.npc-menu-close')?.addEventListener('click', () => this.closeNPCMenu());
+
+    menu.querySelectorAll('.npc-menu-btn').forEach(btn => {
+      btn.addEventListener('click', () => {
+        const action = btn.dataset.action;
+        this.closeNPCMenu();
+
+        switch (action) {
+          case 'trade':
+            this.showTradeScreen(npcId);
+            break;
+          case 'battle':
+            this.startNPCCombat(npcId);
+            break;
+          case 'talk':
+            this.showNPCTalk(npcId);
+            break;
+        }
+      });
+    });
+  }
+
+  // Close NPC interaction menu
+  closeNPCMenu() {
+    if (this.activeNPCMenu && this.activeNPCMenu.element) {
+      this.activeNPCMenu.element.remove();
+    }
+    this.activeNPCMenu = null;
+  }
+
+  // Show NPC talk dialog
+  showNPCTalk(npcId) {
+    const npc = this.npcs.find(n => n.id === npcId);
+    if (!npc) return;
+
+    const dialogues = {
+      'npc_frost_warden': [
+        "The cold never bothered me... it empowers me.",
+        "Frost and ice are my domain. Can you survive my chill?",
+        "I've frozen warriors far mightier than you."
+      ],
+      'npc_storm_herald': [
+        "Thunder rumbles in my veins!",
+        "The storm's fury knows no bounds.",
+        "Lightning strikes twice... and thrice!"
+      ],
+      'npc_void_walker': [
+        "The void whispers secrets of power...",
+        "Step into the darkness with me.",
+        "Existence is but a flicker in the void."
+      ],
+      'npc_light_bringer': [
+        "May the light guide your path.",
+        "Darkness cannot stand against me.",
+        "I am the dawn that banishes all shadows."
+      ]
+    };
+
+    const npcDialogues = dialogues[npcId] || ["..."];
+    const randomDialogue = npcDialogues[Math.floor(Math.random() * npcDialogues.length)];
+
+    if (window.chatManager) {
+      window.chatManager.addLogMessage(`${npc.icon} ${npc.name}: "${randomDialogue}"`, 'npc');
+    }
+  }
+
+  closeNPCDialog() {
+    this.closeNPCMenu();
+    this.closeTradeScreen();
   }
 
   // Start combat with an NPC
@@ -1005,6 +1357,8 @@ class SkillsManager {
 
     this.inCombat = true;
     this.npcCombatTarget = npcId;
+    this.isPlayerTurn = true;
+    this.combatTurnTick = 0;
 
     // Reset NPC health for new fight
     npc.health = npc.maxHealth;
@@ -1016,40 +1370,40 @@ class SkillsManager {
       window.chatManager.addLogMessage(`⚔️ Combat started with ${npc.name}!`, 'combat');
     }
 
-    // Start combat loop
-    this.npcCombatLoop(npcId);
+    // Show combat HUD
+    this.showCombatHUD(npcId);
+
+    // First attack happens immediately
+    this.processCombatTurn();
   }
 
-  // NPC combat loop
-  npcCombatLoop(npcId) {
-    if (!this.inCombat || this.npcCombatTarget !== npcId) return;
+  // Process a single combat turn (called by game tick system every 1.2s)
+  processCombatTurn() {
+    if (!this.inCombat || !this.npcCombatTarget) return;
 
+    const npcId = this.npcCombatTarget;
     const npc = this.npcs.find(n => n.id === npcId);
     if (!npc) {
       this.endNPCCombat();
       return;
     }
 
-    // Player attacks NPC
-    if (this.attackNPC(npcId)) {
-      // NPC is still alive, NPC attacks back after delay
-      setTimeout(() => {
-        if (this.inCombat && this.npcCombatTarget === npcId) {
-          this.npcAttacksPlayer(npcId);
-
-          // Continue combat if both alive
-          if (this.inCombat && this.combatHealth > 0 && npc.health > 0) {
-            setTimeout(() => this.npcCombatLoop(npcId), 1500);
-          }
-        }
-      }, 1000);
+    if (this.isPlayerTurn) {
+      // Player's turn
+      this.playerAttackNPC(npcId);
+    } else {
+      // NPC's turn
+      this.npcAttackPlayer(npcId);
     }
+
+    // Toggle turn
+    this.isPlayerTurn = !this.isPlayerTurn;
   }
 
-  // Player attacks NPC
-  attackNPC(npcId) {
+  // Player attacks NPC with visual effects
+  playerAttackNPC(npcId) {
     const npc = this.npcs.find(n => n.id === npcId);
-    if (!npc) return false;
+    if (!npc) return;
 
     // Check if we have the item
     const slotIndex = this.inventorySlots.findIndex(
@@ -1061,7 +1415,7 @@ class SkillsManager {
         window.chatManager.addLogMessage('⚔️ No ammo left!', 'error');
       }
       this.endNPCCombat();
-      return false;
+      return;
     }
 
     // Consume one item
@@ -1074,15 +1428,20 @@ class SkillsManager {
     const damage = this.getCombatDamage(this.selectedCombatItem);
     npc.health -= damage;
 
-    if (window.chatManager) {
-      const item = this.itemTypes[this.selectedCombatItem];
-      window.chatManager.addLogMessage(`⚔️ You hit ${npc.name} for ${damage} damage!`, 'combat');
-    }
+    const item = this.itemTypes[this.selectedCombatItem];
 
-    // Update NPC health bar
+    // Show attack particle effect
     if (this.map3d) {
+      this.map3d.showCombatEffect('player_attack', npcId, item?.icon || '⚔️', damage);
       this.map3d.updateNPCHealth(npcId, Math.max(0, npc.health), npc.maxHealth);
     }
+
+    if (window.chatManager) {
+      window.chatManager.addLogMessage(`⚔️ You hit ${npc.name} with ${item?.icon || '⚔️'} for ${damage} damage!`, 'combat');
+    }
+
+    // Update combat HUD
+    this.updateCombatHUD(npcId);
 
     this.save();
     this.renderCombat();
@@ -1090,25 +1449,33 @@ class SkillsManager {
     // Check if NPC defeated
     if (npc.health <= 0) {
       this.defeatNPC(npcId);
-      return false;
     }
-
-    return true;
   }
 
-  // NPC attacks the player
-  npcAttacksPlayer(npcId) {
+  // NPC attacks the player with visual effects
+  npcAttackPlayer(npcId) {
     const npc = this.npcs.find(n => n.id === npcId);
     if (!npc) return;
+
+    // Select random attack item from NPC's arsenal
+    const attackItems = npc.attackItems || ['lightningshard'];
+    const attackItemKey = attackItems[Math.floor(Math.random() * attackItems.length)];
+    const attackItem = this.itemTypes[attackItemKey];
 
     const damage = npc.damage;
     this.combatHealth -= damage;
 
+    // Show attack particle effect
+    if (this.map3d) {
+      this.map3d.showCombatEffect('npc_attack', npcId, attackItem?.icon || '💀', damage);
+    }
+
     if (window.chatManager) {
-      const attackItem = this.itemTypes[npc.attackItem];
       window.chatManager.addLogMessage(`💥 ${npc.name} hits you with ${attackItem?.icon || '💀'} for ${damage} damage!`, 'combat');
     }
 
+    // Update combat HUD
+    this.updateCombatHUD(npcId);
     this.renderCombat();
 
     // Check if player defeated
@@ -1117,6 +1484,81 @@ class SkillsManager {
       this.endNPCCombat();
       this.die();
     }
+  }
+
+  // Show combat HUD overlay
+  showCombatHUD(npcId) {
+    const npc = this.npcs.find(n => n.id === npcId);
+    if (!npc) return;
+
+    // Remove existing HUD
+    this.hideCombatHUD();
+
+    const hud = document.createElement('div');
+    hud.id = 'combat-hud';
+    hud.className = 'combat-hud';
+    hud.innerHTML = `
+      <div class="combat-hud-content">
+        <div class="combat-participant player-side">
+          <span class="combat-name">You</span>
+          <div class="combat-health-bar">
+            <div class="combat-health-fill player-health" style="width: ${(this.combatHealth / this.maxCombatHealth) * 100}%"></div>
+          </div>
+          <span class="combat-hp">${this.combatHealth}/${this.maxCombatHealth}</span>
+        </div>
+        <div class="combat-vs">⚔️</div>
+        <div class="combat-participant npc-side">
+          <span class="combat-name" style="color: ${npc.color}">${npc.icon} ${npc.name}</span>
+          <div class="combat-health-bar">
+            <div class="combat-health-fill npc-health" style="width: ${(npc.health / npc.maxHealth) * 100}%"></div>
+          </div>
+          <span class="combat-hp">${npc.health}/${npc.maxHealth}</span>
+        </div>
+      </div>
+      <button class="combat-flee-btn osrs-btn">🏃 Flee</button>
+    `;
+
+    document.body.appendChild(hud);
+
+    hud.querySelector('.combat-flee-btn')?.addEventListener('click', () => {
+      this.endNPCCombat();
+      if (window.chatManager) {
+        window.chatManager.addLogMessage('🏃 You fled from combat!', 'system');
+      }
+    });
+  }
+
+  // Update combat HUD
+  updateCombatHUD(npcId) {
+    const npc = this.npcs.find(n => n.id === npcId);
+    if (!npc) return;
+
+    const hud = document.getElementById('combat-hud');
+    if (!hud) return;
+
+    const playerHealth = hud.querySelector('.player-health');
+    const npcHealth = hud.querySelector('.npc-health');
+    const playerHp = hud.querySelector('.player-side .combat-hp');
+    const npcHp = hud.querySelector('.npc-side .combat-hp');
+
+    if (playerHealth) {
+      playerHealth.style.width = `${(this.combatHealth / this.maxCombatHealth) * 100}%`;
+    }
+    if (npcHealth) {
+      npcHealth.style.width = `${(Math.max(0, npc.health) / npc.maxHealth) * 100}%`;
+    }
+    if (playerHp) {
+      playerHp.textContent = `${this.combatHealth}/${this.maxCombatHealth}`;
+    }
+    if (npcHp) {
+      npcHp.textContent = `${Math.max(0, npc.health)}/${npc.maxHealth}`;
+    }
+  }
+
+  // Hide combat HUD
+  hideCombatHUD() {
+    const hud = document.getElementById('combat-hud');
+    if (hud) hud.remove();
   }
 
   // Player defeats NPC
@@ -1143,13 +1585,16 @@ class SkillsManager {
 
     this.endNPCCombat();
     this.save();
-    this.renderCosmetics();
+    this.renderEquipment();
   }
 
   // End NPC combat
   endNPCCombat() {
     this.inCombat = false;
     this.npcCombatTarget = null;
+    this.isPlayerTurn = true;
+    this.combatTurnTick = 0;
+    this.hideCombatHUD();
   }
 
   // Check if player is near an NPC (for interaction)
@@ -1167,17 +1612,23 @@ class SkillsManager {
     return null;
   }
 
-  // Get items available for combat (from inventory)
+  // Get items available for combat (only gathered items, not equipment)
   getCombatItems() {
     const items = [];
     for (const slot of this.inventorySlots) {
       if (slot && slot.count > 0) {
-        // Check if already in list
-        const existing = items.find(i => i.itemKey === slot.itemKey);
-        if (existing) {
-          existing.count += slot.count;
-        } else {
-          items.push({ itemKey: slot.itemKey, count: slot.count });
+        // Only include gathered items (those in itemTypes, not equipmentTypes)
+        const isGatheredItem = this.itemTypes[slot.itemKey] && !this.itemTypes[slot.itemKey].isCurrency;
+        const isEquipment = this.equipmentTypes[slot.itemKey];
+
+        if (isGatheredItem && !isEquipment) {
+          // Check if already in list
+          const existing = items.find(i => i.itemKey === slot.itemKey);
+          if (existing) {
+            existing.count += slot.count;
+          } else {
+            items.push({ itemKey: slot.itemKey, count: slot.count });
+          }
         }
       }
     }
@@ -1659,9 +2110,8 @@ class SkillsManager {
       selectedCombatItem: this.selectedCombatItem,
       combatHealth: this.combatHealth,
       maxCombatHealth: this.maxCombatHealth,
-      // Cosmetics data
-      equippedCosmetics: this.equippedCosmetics,
-      ownedCosmetics: this.ownedCosmetics,
+      // Equipment data
+      equippedGear: this.equippedGear,
       lightBalance: this.lightBalance
     };
 
@@ -1730,12 +2180,19 @@ class SkillsManager {
         this.combatHealth = this.maxCombatHealth;
       }
 
-      // Load cosmetics data
-      if (data.equippedCosmetics) {
-        this.equippedCosmetics = { ...this.equippedCosmetics, ...data.equippedCosmetics };
+      // Load equipment data
+      if (data.equippedGear) {
+        this.equippedGear = { ...this.equippedGear, ...data.equippedGear };
       }
-      if (data.ownedCosmetics) {
-        this.ownedCosmetics = data.ownedCosmetics;
+      // Backward compatibility: migrate old equippedCosmetics to equippedGear
+      else if (data.equippedCosmetics) {
+        this.equippedGear = { ...this.equippedGear, ...data.equippedCosmetics };
+      }
+      // Migrate old ownedCosmetics to inventory
+      if (data.ownedCosmetics && data.ownedCosmetics.length > 0) {
+        for (const cosmeticKey of data.ownedCosmetics) {
+          this.addItem(cosmeticKey, 1);
+        }
       }
       if (data.lightBalance !== undefined) {
         this.lightBalance = data.lightBalance;
@@ -1752,6 +2209,45 @@ class SkillsManager {
       total += this.getLevel(skill.xp);
     }
     return total;
+  }
+
+  // Grant all equipment items and Light to a player (for testing)
+  grantAllEquipment() {
+    console.log('Granting all equipment and Light to player...');
+
+    // Grant 1000 Light currency
+    this.lightBalance = 1000;
+
+    // Grant all equipment items to inventory
+    for (const [key, item] of Object.entries(this.equipmentTypes)) {
+      this.addItem(key, 1);
+    }
+
+    // Grant some combat items too
+    this.addItem('lightningshard', 50);
+    this.addItem('mistessence', 50);
+    this.addItem('sunstone', 20);
+    this.addItem('snowflake', 20);
+
+    this.save();
+    this.updateUI();
+    console.log('Granted all equipment, 1000 Light, and combat items!');
+  }
+
+  // Set username and check for test player
+  setUsername(username) {
+    // Grant test items to player "Jo" (case insensitive)
+    if (username && username.toLowerCase() === 'jo') {
+      // Check if we've already granted items (only grant once)
+      const grantedKey = `geommo_granted_${this.userId}`;
+      if (!localStorage.getItem(grantedKey)) {
+        setTimeout(() => {
+          this.grantAllEquipment();
+          localStorage.setItem(grantedKey, 'true');
+          console.log('Test items granted to Jo!');
+        }, 2000); // Delay to ensure everything is initialized
+      }
+    }
   }
 
   // Cleanup

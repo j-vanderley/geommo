@@ -515,12 +515,41 @@ class Map3D {
     this.cameraController.setTarget(worldPos.x, 0, worldPos.z);
   }
 
-  // Fast travel to a location
+  // Fast travel to a location - resets coordinate system to keep world coordinates small
   fastTravelTo(lat, lng) {
-    // Update tiles for new location
+    // Update the coordinate center to the new location
+    // This keeps world coordinates manageable and ensures click detection works
+    this.setCenter(lat, lng);
+
+    // Clear and reload tiles at new center
+    this.tileManager.setCenter(lat, lng);
     this.tileManager.updateTiles(lat, lng);
 
-    // Return the lat/lng for the game to update player position
+    // Reposition self player to origin (they are now at the center)
+    if (this.selfPlayerId) {
+      const playerData = this.playerSprites.get(this.selfPlayerId);
+      if (playerData) {
+        playerData.group.position.set(0, 0, 0);
+        this.cameraController.setTarget(0, 0, 0);
+      }
+    }
+
+    // Reposition all other players relative to new center
+    for (const [playerId, playerData] of this.playerSprites) {
+      if (playerId === this.selfPlayerId) continue;
+      // Other players will be repositioned when their position update comes from server
+    }
+
+    // Reposition all NPCs relative to new center
+    for (const [npcId, npcData] of this.npcSprites) {
+      // We need the NPC's lat/lng to reposition it
+      // Store the original position if available
+      if (npcData.latLng) {
+        const worldPos = this.latLngToWorld(npcData.latLng.lat, npcData.latLng.lng);
+        npcData.group.position.set(worldPos.x, 0, worldPos.z);
+      }
+    }
+
     return { lat, lng };
   }
 
@@ -663,9 +692,9 @@ class Map3D {
 
   // Create an NPC sprite
   createNPC(npc, position) {
-    // Get cosmetic data for the NPC
-    const cosmetic = window.skillsManager?.cosmeticTypes[npc.cosmetic];
-    const aura = window.skillsManager?.cosmeticTypes[npc.aura];
+    // Get equipment data for the NPC
+    const equipment = window.skillsManager?.equipmentTypes[npc.equipment];
+    const aura = window.skillsManager?.equipmentTypes[npc.equippedAura];
     const color = npc.color || '#ff6600';
 
     // Create a group for the NPC
@@ -692,8 +721,8 @@ class Map3D {
     ctx.lineWidth = 3;
     ctx.stroke();
 
-    // Draw cosmetic icon
-    const icon = cosmetic?.icon || '👤';
+    // Draw NPC icon (use NPC's own icon, fallback to equipment icon)
+    const icon = npc.icon || equipment?.icon || '👤';
     ctx.font = 'bold 48px Arial';
     ctx.textAlign = 'center';
     ctx.textBaseline = 'middle';
@@ -731,10 +760,11 @@ class Map3D {
     // Create health bar
     const healthBar = this.createNPCHealthBar(npc.id);
 
-    // Store reference
+    // Store reference (include lat/lng for repositioning on fast travel)
     this.npcSprites.set(npc.id, {
       sprite, group, canvas, ctx, particles, nameLabel, healthBar, npc,
-      health: npc.health, maxHealth: npc.maxHealth
+      health: npc.health, maxHealth: npc.maxHealth,
+      latLng: { lat: position.lat, lng: position.lng }
     });
 
     // Make NPC clickable
@@ -778,6 +808,217 @@ class Map3D {
       else if (percent > 30) fill.style.background = '#ffcc00';
       else fill.style.background = '#f44336';
     }
+  }
+
+  // Show combat visual effect (attack particles and damage numbers)
+  showCombatEffect(type, npcId, icon, damage) {
+    const npcData = this.npcSprites.get(npcId);
+    if (!npcData) return;
+
+    // Get self player position
+    const selfPlayerData = this.selfPlayerId ? this.playerSprites.get(this.selfPlayerId) : null;
+    if (!selfPlayerData) return;
+
+    const npcPosition = npcData.group.position.clone();
+    const playerPosition = selfPlayerData.group.position.clone();
+
+    if (type === 'player_attack') {
+      // Player attacking NPC - projectile from player to NPC
+      this.createAttackProjectile(playerPosition, npcPosition, icon, '#ffff00');
+      // Show damage number on NPC
+      setTimeout(() => {
+        this.showDamageNumber(npcPosition, damage, '#ff4444');
+      }, 300);
+    } else if (type === 'npc_attack') {
+      // NPC attacking player - projectile from NPC to player
+      this.createAttackProjectile(npcPosition, playerPosition, icon, npcData.npc.color || '#ff0000');
+      // Show damage number on player
+      setTimeout(() => {
+        this.showDamageNumber(playerPosition, damage, '#ff0000');
+      }, 300);
+    }
+  }
+
+  // Create attack projectile that travels from source to target
+  createAttackProjectile(from, to, icon, color) {
+    // Create a simple sprite projectile
+    const canvas = document.createElement('canvas');
+    canvas.width = 64;
+    canvas.height = 64;
+    const ctx = canvas.getContext('2d');
+
+    // Draw glow
+    const gradient = ctx.createRadialGradient(32, 32, 5, 32, 32, 30);
+    gradient.addColorStop(0, color);
+    gradient.addColorStop(0.5, this.hexToRgba(color, 0.5));
+    gradient.addColorStop(1, 'transparent');
+    ctx.fillStyle = gradient;
+    ctx.fillRect(0, 0, 64, 64);
+
+    // Draw icon
+    ctx.font = '32px Arial';
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.fillStyle = '#ffffff';
+    ctx.fillText(icon, 32, 32);
+
+    const texture = new THREE.CanvasTexture(canvas);
+    const material = new THREE.SpriteMaterial({ map: texture, transparent: true });
+    const sprite = new THREE.Sprite(material);
+    sprite.scale.set(2, 2, 1);
+    sprite.position.copy(from);
+    sprite.position.y += 2;
+
+    this.scene.add(sprite);
+
+    // Animate projectile
+    const startPos = from.clone();
+    startPos.y += 2;
+    const endPos = to.clone();
+    endPos.y += 2;
+
+    const duration = 300; // ms
+    const startTime = Date.now();
+
+    const animateProjectile = () => {
+      const elapsed = Date.now() - startTime;
+      const progress = Math.min(elapsed / duration, 1);
+
+      // Lerp position
+      sprite.position.lerpVectors(startPos, endPos, progress);
+
+      // Add some arc
+      sprite.position.y += Math.sin(progress * Math.PI) * 2;
+
+      if (progress < 1) {
+        requestAnimationFrame(animateProjectile);
+      } else {
+        // Remove projectile and show impact
+        this.scene.remove(sprite);
+        material.dispose();
+        texture.dispose();
+        this.createImpactEffect(endPos, color);
+      }
+    };
+
+    animateProjectile();
+  }
+
+  // Create impact particle effect
+  createImpactEffect(position, color) {
+    const particleCount = 15;
+    const geometry = new THREE.BufferGeometry();
+    const positions = new Float32Array(particleCount * 3);
+    const velocities = [];
+
+    for (let i = 0; i < particleCount; i++) {
+      positions[i * 3] = position.x;
+      positions[i * 3 + 1] = position.y;
+      positions[i * 3 + 2] = position.z;
+
+      // Random outward velocity
+      velocities.push({
+        x: (Math.random() - 0.5) * 0.3,
+        y: Math.random() * 0.2,
+        z: (Math.random() - 0.5) * 0.3
+      });
+    }
+
+    geometry.setAttribute('position', new THREE.BufferAttribute(positions, 3));
+
+    const material = new THREE.PointsMaterial({
+      color: new THREE.Color(color),
+      size: 0.3,
+      transparent: true,
+      opacity: 1
+    });
+
+    const particles = new THREE.Points(geometry, material);
+    this.scene.add(particles);
+
+    // Animate particles
+    const startTime = Date.now();
+    const duration = 500;
+
+    const animateParticles = () => {
+      const elapsed = Date.now() - startTime;
+      const progress = elapsed / duration;
+
+      if (progress < 1) {
+        const posArray = particles.geometry.attributes.position.array;
+        for (let i = 0; i < particleCount; i++) {
+          posArray[i * 3] += velocities[i].x;
+          posArray[i * 3 + 1] += velocities[i].y;
+          posArray[i * 3 + 2] += velocities[i].z;
+          velocities[i].y -= 0.01; // gravity
+        }
+        particles.geometry.attributes.position.needsUpdate = true;
+        material.opacity = 1 - progress;
+
+        requestAnimationFrame(animateParticles);
+      } else {
+        this.scene.remove(particles);
+        geometry.dispose();
+        material.dispose();
+      }
+    };
+
+    animateParticles();
+  }
+
+  // Show floating damage number
+  showDamageNumber(position, damage, color) {
+    const damageEl = document.createElement('div');
+    damageEl.className = 'damage-number';
+    damageEl.textContent = `-${damage}`;
+    damageEl.style.color = color;
+    this.container.appendChild(damageEl);
+
+    // Position the element
+    const updatePosition = () => {
+      const screenPos = this.worldToScreen(position.x, position.y + 3, position.z);
+      if (screenPos) {
+        damageEl.style.left = `${screenPos.x}px`;
+        damageEl.style.top = `${screenPos.y}px`;
+      }
+    };
+
+    updatePosition();
+
+    // Animate upward and fade
+    let offset = 0;
+    const startTime = Date.now();
+    const duration = 1000;
+
+    const animate = () => {
+      const elapsed = Date.now() - startTime;
+      const progress = elapsed / duration;
+
+      if (progress < 1) {
+        offset = progress * 50;
+        damageEl.style.transform = `translate(-50%, -${offset}px)`;
+        damageEl.style.opacity = 1 - progress;
+        requestAnimationFrame(animate);
+      } else {
+        damageEl.remove();
+      }
+    };
+
+    animate();
+  }
+
+  // Convert world position to screen position
+  worldToScreen(x, y, z) {
+    const vector = new THREE.Vector3(x, y, z);
+    vector.project(this.camera);
+
+    const halfWidth = this.container.clientWidth / 2;
+    const halfHeight = this.container.clientHeight / 2;
+
+    return {
+      x: (vector.x * halfWidth) + halfWidth,
+      y: -(vector.y * halfHeight) + halfHeight
+    };
   }
 
   // Remove NPC
