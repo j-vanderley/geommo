@@ -842,13 +842,28 @@ class Geommo {
     const position = { lat, lng };
 
     // Use the map3d fast travel which resets the coordinate system
-    // This ensures click-to-move works at the new location
+    // This handles: center update, tiles, player position, camera, NPCs
     if (this.mapManager.map3d) {
       this.mapManager.map3d.fastTravelTo(lat, lng);
     }
 
-    // Update local player position (this updates minimap and coordinates display)
-    this.playerManager.updateSelfPosition(position);
+    // Update self player data
+    if (this.playerManager.selfPlayer) {
+      this.playerManager.selfPlayer.position = position;
+    }
+
+    // Update UI elements only (don't re-update 3D position)
+    if (this.mapManager.minimap) {
+      this.mapManager.minimap.setCenter(position);
+    }
+    document.getElementById('player-coords').textContent =
+      `${position.lat.toFixed(6)}, ${position.lng.toFixed(6)}`;
+    if (this.mapManager.weatherManager) {
+      this.mapManager.weatherManager.fetchWeather(position.lat, position.lng);
+    }
+    if (this.mapManager.skillsManager) {
+      this.mapManager.skillsManager.setPlayerPosition(position);
+    }
 
     // Send to server
     this.socket.emit('player:move', { lat, lng });

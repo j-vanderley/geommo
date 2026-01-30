@@ -111,9 +111,8 @@ class SkillsManager {
     this.inCombat = false;
     this.combatTarget = null;
 
-    // NPC Merchants (Legendary Bosses) - received from server
+    // NPC Merchants (Legendary Bosses) - received from server only
     this.npcs = [];
-    this.npcDataTemplate = this.createNPCData(); // Keep templates for local reference
     this.activeNPCDialog = null;
     this.activeNPCMenu = null;
     this.npcCombatTarget = null;
@@ -128,99 +127,6 @@ class SkillsManager {
     this.isPlayerTurn = true;
 
     // Don't load here - wait for setUserId to be called with user's ID
-  }
-
-  // Create individual NPC instances - each NPC is a separate class instance
-  createNPCData() {
-    // Define NPC templates - these are used to create separate NPC instances
-    const npcTemplates = {
-      glacius: {
-        id: 'npc_frost_warden',
-        name: 'Glacius',
-        title: 'Frost Warden',
-        icon: '🧊',
-        equipment: 'skin_snowball',
-        sellsEquipment: 'aura_frost',
-        baseCity: 'Sydney',
-        offsetLat: 0.018, // ~2000m offset
-        offsetLng: 0,
-        baseHealth: 8000,
-        baseDamage: 75,
-        attackItems: ['lightningshard', 'mistessence'],
-        color: '#88ddff',
-        particle: 'frost',
-        equippedAura: 'aura_frost'
-      },
-      voltarus: {
-        id: 'npc_storm_herald',
-        name: 'Voltarus',
-        title: 'Storm Herald',
-        icon: '⛈️',
-        equipment: 'skin_lightning',
-        sellsEquipment: 'aura_lightning',
-        baseCity: 'Tokyo',
-        offsetLat: 0,
-        offsetLng: 0.022, // ~2000m (adjusted for latitude)
-        baseHealth: 10000,
-        baseDamage: 90,
-        attackItems: ['lightningshard', 'mistessence'],
-        color: '#ffff00',
-        particle: 'lightning',
-        equippedAura: 'aura_lightning'
-      },
-      nyx: {
-        id: 'npc_void_walker',
-        name: 'Nyx',
-        title: 'Void Walker',
-        icon: '🌀',
-        equipment: 'skin_void',
-        sellsEquipment: 'aura_void',
-        baseCity: 'London',
-        offsetLat: 0.018,
-        offsetLng: 0,
-        baseHealth: 12000,
-        baseDamage: 110,
-        attackItems: ['mistessence', 'lightningshard'],
-        color: '#660099',
-        particle: 'void',
-        equippedAura: 'aura_void'
-      },
-      solara: {
-        id: 'npc_light_bringer',
-        name: 'Solara',
-        title: 'Light Bringer',
-        icon: '🌟',
-        equipment: 'skin_flame',
-        sellsEquipment: 'aura_holy',
-        baseCity: 'New York',
-        offsetLat: 0,
-        offsetLng: -0.022,
-        baseHealth: 15000,
-        baseDamage: 130,
-        attackItems: ['lightningshard', 'mistessence'],
-        color: '#ffffaa',
-        particle: 'holy',
-        equippedAura: 'aura_holy'
-      }
-    };
-
-    // Create separate NPC instances from templates
-    return Object.values(npcTemplates).map(template => ({
-      ...template,
-      health: template.baseHealth,
-      maxHealth: template.baseHealth,
-      damage: template.baseDamage
-    }));
-  }
-
-  // Get NPC position based on city
-  getNPCPosition(npc) {
-    const city = MAJOR_CITIES.find(c => c.name === npc.baseCity);
-    if (!city) return null;
-    return {
-      lat: city.lat + npc.offsetLat,
-      lng: city.lng + npc.offsetLng
-    };
   }
 
   // Generate XP table for levels 1-99
@@ -1019,18 +925,7 @@ class SkillsManager {
     return true;
   }
 
-  // Initialize NPCs from server data
-  initNPCs() {
-    // NPCs are now loaded from server - this is called after world:state is received
-    // This method is kept for backward compatibility but does nothing if npcsInitialized is true
-    if (this.npcsInitialized) {
-      console.log('NPCs already initialized from server data');
-      return;
-    }
-    console.log('Waiting for NPC data from server...');
-  }
-
-  // Load NPCs from server world state
+  // Load NPCs from server world state (called when world:state is received)
   loadNPCsFromServer(serverNPCs) {
     if (!this.map3d) {
       console.warn('Map3D not ready, deferring NPC loading');

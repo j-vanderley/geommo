@@ -1693,14 +1693,14 @@ body[class*="ui-"] .weather-time {
   padding: 20px;
 }
 
-/* Cosmetics Tab */
-.cosmetics-content {
+/* Equipment Tab */
+.equipment-content {
   padding: 5px;
   overflow-y: auto;
   max-height: 250px;
 }
 
-.cosmetics-panel {
+.equipment-panel {
   display: flex;
   flex-direction: column;
   gap: 10px;
@@ -1733,20 +1733,20 @@ body[class*="ui-"] .weather-time {
   font-size: 12px;
 }
 
-.cosmetics-section h4 {
+.equipment-section h4 {
   color: var(--osrs-gold);
   font-size: 11px;
   margin-bottom: 6px;
   text-transform: uppercase;
 }
 
-.cosmetic-slots {
+.equipment-slots {
   display: grid;
   grid-template-columns: repeat(4, 1fr);
   gap: 4px;
 }
 
-.cosmetic-slot {
+.equipment-slot {
   background: rgba(0, 0, 0, 0.4);
   border: 1px solid var(--osrs-border);
   border-radius: 4px;
@@ -1756,29 +1756,29 @@ body[class*="ui-"] .weather-time {
   transition: all 0.2s;
 }
 
-.cosmetic-slot:hover {
+.equipment-slot:hover {
   background: rgba(255, 176, 0, 0.2);
   border-color: var(--osrs-gold);
 }
 
-.cosmetic-slot.equipped {
+.equipment-slot.equipped {
   background: rgba(100, 255, 100, 0.15);
   border-color: #4CAF50;
 }
 
-.cosmetic-slot .slot-icon {
+.equipment-slot .slot-icon {
   font-size: 18px;
   display: block;
 }
 
-.cosmetic-slot .slot-name {
+.equipment-slot .slot-name {
   font-size: 9px;
   color: #aaa;
   display: block;
   margin-top: 2px;
 }
 
-.cosmetic-slot .slot-item {
+.equipment-slot .slot-item {
   font-size: 8px;
   color: #4CAF50;
   display: block;
@@ -1788,60 +1788,102 @@ body[class*="ui-"] .weather-time {
   text-overflow: ellipsis;
 }
 
-.owned-cosmetics {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 4px;
-  max-height: 80px;
-  overflow-y: auto;
+.equipment-hint {
+  font-size: 10px;
+  color: #888;
+  text-align: center;
+  margin-top: 8px;
+  font-style: italic;
 }
 
-.owned-cosmetic {
-  background: rgba(0, 0, 0, 0.4);
-  border: 1px solid var(--osrs-border);
-  border-radius: 4px;
-  padding: 4px 8px;
-  cursor: pointer;
+/* Inventory Light Balance */
+.inventory-light-balance {
   display: flex;
   align-items: center;
-  gap: 4px;
-  transition: all 0.2s;
-  position: relative;
+  justify-content: center;
+  gap: 6px;
+  padding: 6px;
+  margin-bottom: 5px;
+  background: linear-gradient(180deg, rgba(255, 255, 150, 0.15) 0%, rgba(255, 200, 0, 0.1) 100%);
+  border: 1px solid #ffcc00;
+  border-radius: 4px;
 }
 
-.owned-cosmetic:hover {
-  background: rgba(255, 176, 0, 0.2);
-  border-color: var(--osrs-gold);
+.inventory-light-balance .light-icon { font-size: 16px; }
+.inventory-light-balance .light-amount { font-size: 16px; font-weight: bold; color: #ffcc00; }
+.inventory-light-balance .light-label { font-size: 10px; color: #aaa; }
+
+/* Equipment Item Badge in Inventory */
+.inventory-slot.equipment-item {
+  border-color: #9966ff;
 }
 
-.owned-cosmetic.equipped {
-  background: rgba(100, 255, 100, 0.15);
-  border-color: #4CAF50;
-}
-
-.owned-cosmetic .cosmetic-icon {
-  font-size: 14px;
-}
-
-.owned-cosmetic .cosmetic-name {
-  font-size: 10px;
-  color: #ccc;
-}
-
-.owned-cosmetic .equipped-badge {
+.inventory-slot .equipment-badge {
   position: absolute;
-  top: -4px;
-  right: -4px;
-  background: #4CAF50;
+  top: 1px;
+  right: 1px;
+  background: #9966ff;
   color: #fff;
-  font-size: 8px;
-  width: 12px;
-  height: 12px;
-  border-radius: 50%;
+  font-size: 7px;
+  width: 10px;
+  height: 10px;
+  border-radius: 2px;
   display: flex;
   align-items: center;
   justify-content: center;
   font-weight: bold;
+}
+
+/* Item Context Menu */
+.item-context-menu {
+  position: fixed;
+  background: rgba(73, 64, 52, 0.98);
+  border: 2px solid var(--osrs-gold);
+  border-radius: 6px;
+  padding: 8px;
+  z-index: 2000;
+  min-width: 120px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.5);
+}
+
+.context-menu-header {
+  color: var(--osrs-gold);
+  font-size: 12px;
+  font-weight: bold;
+  padding-bottom: 6px;
+  margin-bottom: 6px;
+  border-bottom: 1px solid var(--osrs-border);
+  text-align: center;
+}
+
+.context-menu-btn {
+  display: block;
+  width: 100%;
+  padding: 6px 10px;
+  margin: 2px 0;
+  background: rgba(0, 0, 0, 0.3);
+  border: 1px solid var(--osrs-border);
+  border-radius: 3px;
+  color: var(--osrs-text);
+  font-size: 11px;
+  cursor: pointer;
+  text-align: left;
+  transition: all 0.15s;
+}
+
+.context-menu-btn:hover {
+  background: rgba(255, 176, 0, 0.2);
+  border-color: var(--osrs-gold);
+}
+
+.context-menu-btn.equip-btn:hover {
+  background: rgba(100, 255, 100, 0.2);
+  border-color: #4CAF50;
+}
+
+.context-menu-btn.sell-btn:hover {
+  background: rgba(255, 200, 0, 0.2);
+  border-color: #ffcc00;
 }
 
 .trade-section {
@@ -2033,6 +2075,263 @@ body[class*="ui-"] .weather-time {
 
 .npc-fight-btn:hover {
   background: linear-gradient(180deg, #9a4a4a 0%, #743636 100%) !important;
+}
+
+/* Trade Screen (Full Screen Modal) */
+.trade-screen {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  z-index: 1500;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.trade-screen-overlay {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: rgba(0, 0, 0, 0.8);
+}
+
+.trade-screen-content {
+  position: relative;
+  background: rgba(73, 64, 52, 0.98);
+  border: 3px solid var(--osrs-gold);
+  border-radius: 8px;
+  width: 90%;
+  max-width: 600px;
+  max-height: 90vh;
+  overflow-y: auto;
+  box-shadow: 0 0 50px rgba(0, 0, 0, 0.9);
+}
+
+.trade-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 15px 20px;
+  border-bottom: 2px solid var(--osrs-border);
+  background: rgba(0, 0, 0, 0.2);
+}
+
+.trade-npc-info {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.trade-npc-icon {
+  font-size: 36px;
+  width: 50px;
+  height: 50px;
+  background: rgba(0, 0, 0, 0.3);
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: 2px solid;
+}
+
+.trade-npc-details h3 {
+  color: var(--osrs-gold);
+  font-size: 18px;
+  margin-bottom: 2px;
+}
+
+.trade-npc-title {
+  color: #aaa;
+  font-size: 12px;
+  font-style: italic;
+}
+
+.trade-close-btn {
+  background: transparent;
+  border: none;
+  color: #888;
+  font-size: 24px;
+  cursor: pointer;
+  padding: 5px 10px;
+  transition: color 0.2s;
+}
+
+.trade-close-btn:hover {
+  color: #ff6666;
+}
+
+.trade-body {
+  display: flex;
+  gap: 10px;
+  padding: 15px;
+}
+
+.trade-column {
+  flex: 1;
+  background: rgba(0, 0, 0, 0.2);
+  border: 1px solid var(--osrs-border);
+  border-radius: 6px;
+  padding: 12px;
+}
+
+.trade-column h4 {
+  color: var(--osrs-gold);
+  font-size: 13px;
+  margin-bottom: 10px;
+  text-align: center;
+  text-transform: uppercase;
+}
+
+.trade-balance {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  padding: 8px;
+  background: linear-gradient(180deg, rgba(255, 255, 150, 0.15) 0%, rgba(255, 200, 0, 0.1) 100%);
+  border: 1px solid #ffcc00;
+  border-radius: 4px;
+  margin-bottom: 10px;
+}
+
+.trade-items-grid {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  min-height: 60px;
+  margin-bottom: 10px;
+}
+
+.trade-grid-item {
+  background: rgba(0, 0, 0, 0.4);
+  border: 1px solid var(--osrs-border);
+  border-radius: 4px;
+  padding: 6px 8px;
+  cursor: pointer;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+  transition: all 0.2s;
+}
+
+.trade-grid-item:hover {
+  background: rgba(255, 200, 0, 0.2);
+  border-color: #ffcc00;
+}
+
+.trade-grid-item .item-icon { font-size: 16px; }
+.trade-grid-item .item-count { font-size: 9px; color: #aaa; }
+.trade-grid-item .item-value { font-size: 9px; color: #ffcc00; }
+
+.trade-divider {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 30px;
+}
+
+.trade-arrow {
+  font-size: 24px;
+  color: var(--osrs-gold);
+}
+
+.trade-npc-equipment {
+  margin-bottom: 10px;
+}
+
+.trade-npc-wearing {
+  font-size: 11px;
+  color: #aaa;
+  padding: 6px;
+  background: rgba(0, 0, 0, 0.2);
+  border-radius: 4px;
+  text-align: center;
+}
+
+.trade-shop-item {
+  background: rgba(0, 0, 0, 0.3);
+  border: 2px solid var(--osrs-border);
+  border-radius: 6px;
+  padding: 10px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 8px;
+}
+
+.trade-shop-item:hover {
+  border-color: var(--osrs-gold);
+}
+
+.trade-shop-item.cannot-afford {
+  opacity: 0.6;
+}
+
+.trade-shop-item .shop-icon { font-size: 28px; }
+.trade-shop-item .shop-details { flex: 1; }
+.trade-shop-item .shop-name { color: #fff; font-size: 13px; font-weight: bold; }
+.trade-shop-item .shop-type { color: #aaa; font-size: 9px; text-transform: uppercase; }
+.trade-shop-item .shop-price { color: #ffcc00; font-size: 13px; font-weight: bold; }
+
+.afford-warning {
+  color: #ff6666;
+  font-size: 10px;
+  text-align: center;
+  margin-bottom: 8px;
+}
+
+.trade-footer {
+  padding: 15px 20px;
+  border-top: 2px solid var(--osrs-border);
+  background: rgba(0, 0, 0, 0.2);
+}
+
+.trade-warning {
+  color: #ff8866;
+  font-size: 11px;
+  text-align: center;
+  font-style: italic;
+  margin-bottom: 12px;
+}
+
+.trade-actions {
+  display: flex;
+  gap: 10px;
+  justify-content: center;
+}
+
+.trade-actions button {
+  padding: 10px 20px !important;
+}
+
+.fight-btn {
+  background: linear-gradient(180deg, #8a3a3a 0%, #642626 100%) !important;
+  border-color: #7a2e2e !important;
+}
+
+.fight-btn:hover {
+  background: linear-gradient(180deg, #9a4a4a 0%, #743636 100%) !important;
+}
+
+.buy-btn {
+  background: linear-gradient(180deg, #5d8a3a 0%, #3d6426 100%) !important;
+  border-color: #4a7a2e !important;
+}
+
+.buy-btn:hover {
+  background: linear-gradient(180deg, #6d9a4a 0%, #4d7436 100%) !important;
+}
+
+.buy-btn:disabled {
+  background: #333 !important;
+  border-color: #555 !important;
+  color: #666 !important;
+  cursor: not-allowed;
 }
 
 /* Skills Grid - Same layout as inventory */
@@ -2291,4 +2590,431 @@ body[class*="ui-"] .inventory-slot.has-item {
 
 body[class*="ui-"] .item-count {
   color: var(--ui-text);
+}
+
+/* ============================================
+   NPC INTERACTION MENU
+   ============================================ */
+
+.npc-interaction-menu {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100vw;
+  height: 100vh;
+  z-index: 1000;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
+
+.npc-menu-overlay {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: rgba(0, 0, 0, 0.7);
+}
+
+.npc-menu-content {
+  position: relative;
+  background: linear-gradient(180deg, #2a2a3a 0%, #1a1a2a 100%);
+  border: 3px solid var(--osrs-gold);
+  border-radius: 12px;
+  padding: 20px;
+  min-width: 280px;
+  box-shadow: 0 0 30px rgba(255, 176, 0, 0.3);
+}
+
+.npc-menu-header {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 20px;
+  padding-bottom: 15px;
+  border-bottom: 2px solid rgba(255, 176, 0, 0.3);
+}
+
+.npc-menu-icon {
+  font-size: 48px;
+  text-shadow: 0 0 10px currentColor;
+}
+
+.npc-menu-info h3 {
+  color: var(--osrs-gold);
+  font-size: 1.3rem;
+  margin-bottom: 4px;
+}
+
+.npc-menu-title {
+  color: #888;
+  font-size: 0.9rem;
+  font-style: italic;
+}
+
+.npc-menu-options {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.npc-menu-btn {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 16px;
+  background: linear-gradient(180deg, #3d3d4d 0%, #2d2d3d 100%);
+  border: 2px solid #555;
+  border-radius: 8px;
+  color: #fff;
+  font-size: 1rem;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.npc-menu-btn:hover {
+  background: linear-gradient(180deg, #4d4d5d 0%, #3d3d4d 100%);
+  border-color: var(--osrs-gold);
+  transform: translateX(5px);
+}
+
+.npc-menu-btn .btn-icon {
+  font-size: 1.4rem;
+}
+
+.npc-menu-btn.trade-btn:hover {
+  border-color: #ffcc00;
+  box-shadow: 0 0 10px rgba(255, 204, 0, 0.3);
+}
+
+.npc-menu-btn.battle-btn:hover {
+  border-color: #ff4444;
+  box-shadow: 0 0 10px rgba(255, 68, 68, 0.3);
+}
+
+.npc-menu-btn.talk-btn:hover {
+  border-color: #44aaff;
+  box-shadow: 0 0 10px rgba(68, 170, 255, 0.3);
+}
+
+.npc-menu-close {
+  position: absolute;
+  top: 10px;
+  right: 10px;
+  background: none;
+  border: none;
+  color: #888;
+  font-size: 1.2rem;
+  cursor: pointer;
+  padding: 5px;
+}
+
+.npc-menu-close:hover {
+  color: #fff;
+}
+
+/* ============================================
+   COMBAT HUD
+   ============================================ */
+
+.combat-hud {
+  position: fixed;
+  top: 20px;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 900;
+  animation: combatHudSlideIn 0.3s ease;
+}
+
+@keyframes combatHudSlideIn {
+  from {
+    opacity: 0;
+    transform: translateX(-50%) translateY(-20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(-50%) translateY(0);
+  }
+}
+
+.combat-hud-content {
+  display: flex;
+  align-items: center;
+  gap: 20px;
+  background: linear-gradient(180deg, rgba(30, 30, 40, 0.95) 0%, rgba(20, 20, 30, 0.95) 100%);
+  border: 2px solid #ff4444;
+  border-radius: 12px;
+  padding: 15px 25px;
+  box-shadow: 0 0 20px rgba(255, 68, 68, 0.4);
+}
+
+.combat-participant {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  min-width: 150px;
+}
+
+.combat-name {
+  font-size: 1rem;
+  font-weight: bold;
+  color: #fff;
+}
+
+.combat-health-bar {
+  width: 120px;
+  height: 12px;
+  background: #333;
+  border-radius: 6px;
+  overflow: hidden;
+  border: 1px solid #555;
+}
+
+.combat-health-fill {
+  height: 100%;
+  background: linear-gradient(90deg, #4CAF50, #8BC34A);
+  transition: width 0.3s ease;
+}
+
+.combat-health-fill.player-health {
+  background: linear-gradient(90deg, #4CAF50, #8BC34A);
+}
+
+.combat-health-fill.npc-health {
+  background: linear-gradient(90deg, #f44336, #ff5722);
+}
+
+.combat-hp {
+  font-size: 0.85rem;
+  color: #aaa;
+}
+
+.combat-vs {
+  font-size: 1.5rem;
+  color: #ff4444;
+  text-shadow: 0 0 10px rgba(255, 68, 68, 0.5);
+  animation: combatPulse 1s ease infinite;
+}
+
+@keyframes combatPulse {
+  0%, 100% { transform: scale(1); }
+  50% { transform: scale(1.1); }
+}
+
+.combat-flee-btn {
+  margin-top: 10px;
+  padding: 8px 20px;
+  background: #333;
+  border: 2px solid #666;
+  color: #fff;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.combat-flee-btn:hover {
+  background: #444;
+  border-color: #ffcc00;
+}
+
+/* ============================================
+   DAMAGE NUMBERS
+   ============================================ */
+
+.damage-number {
+  position: absolute;
+  font-size: 24px;
+  font-weight: bold;
+  pointer-events: none;
+  z-index: 1000;
+  text-shadow:
+    -2px -2px 0 #000,
+    2px -2px 0 #000,
+    -2px 2px 0 #000,
+    2px 2px 0 #000,
+    0 0 10px currentColor;
+  animation: damageFloat 1s ease-out forwards;
+}
+
+@keyframes damageFloat {
+  0% {
+    opacity: 1;
+    transform: translate(-50%, 0) scale(1.2);
+  }
+  100% {
+    opacity: 0;
+    transform: translate(-50%, -50px) scale(0.8);
+  }
+}
+
+/* ============================================
+   CHAT LOG NPC MESSAGES
+   ============================================ */
+
+.chat-log .npc {
+  color: #ffaa00;
+  font-style: italic;
+}
+
+/* ============================================
+   COMBAT TAB
+   ============================================ */
+
+.no-combat-items {
+  text-align: center;
+  padding: 20px 10px;
+}
+
+.no-items-title {
+  color: #ff6600;
+  font-size: 1rem;
+  margin-bottom: 8px;
+}
+
+.no-items-desc {
+  color: #888;
+  font-size: 0.85rem;
+}
+
+/* Combat ammo grid - large icons with quantity */
+.combat-ammo-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 8px;
+  padding: 5px;
+}
+
+.combat-ammo-slot {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 10px 5px;
+  background: linear-gradient(180deg, #3a3a4a 0%, #2a2a3a 100%);
+  border: 2px solid #444;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  position: relative;
+}
+
+.combat-ammo-slot:hover {
+  border-color: var(--osrs-gold);
+  transform: scale(1.05);
+}
+
+.combat-ammo-slot.selected {
+  border-color: #4CAF50;
+  background: linear-gradient(180deg, #2d4a2d 0%, #1a331a 100%);
+  box-shadow: 0 0 10px rgba(76, 175, 80, 0.5);
+}
+
+.combat-ammo-slot .ammo-icon {
+  font-size: 2rem;
+  margin-bottom: 4px;
+}
+
+.combat-ammo-slot .ammo-qty {
+  font-size: 0.9rem;
+  color: #fff;
+  font-weight: bold;
+}
+
+.combat-ammo-slot .ammo-dmg {
+  font-size: 0.7rem;
+  color: #ff8888;
+}
+
+.combat-ready {
+  text-align: center;
+  color: #4CAF50;
+  padding: 10px;
+  font-weight: bold;
+}
+
+.combat-warning {
+  text-align: center;
+  color: #ff6600;
+  padding: 10px;
+}
+
+/* ============================================
+   EQUIPMENT TAB - 2x2 GRID
+   ============================================ */
+
+.equipment-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 10px;
+  padding: 10px;
+}
+
+.equip-slot {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 15px 10px;
+  background: linear-gradient(180deg, #3a3a4a 0%, #2a2a3a 100%);
+  border: 2px solid #444;
+  border-radius: 10px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  min-height: 70px;
+}
+
+.equip-slot:hover {
+  border-color: #666;
+}
+
+.equip-slot.equipped {
+  border-color: var(--osrs-gold);
+  background: linear-gradient(180deg, #4a4a3a 0%, #3a3a2a 100%);
+}
+
+.equip-slot.equipped:hover {
+  border-color: #ff6666;
+}
+
+.equip-slot .equip-icon {
+  font-size: 1.8rem;
+  margin-bottom: 5px;
+}
+
+.equip-slot .equip-label {
+  font-size: 0.75rem;
+  color: #888;
+  text-transform: uppercase;
+}
+
+.equip-slot.equipped .equip-label {
+  color: var(--osrs-gold);
+}
+
+.equip-hint {
+  text-align: center;
+  font-size: 0.75rem;
+  color: #666;
+  margin-top: 10px;
+}
+
+.light-balance {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 10px;
+  background: linear-gradient(180deg, #3a3a2a 0%, #2a2a1a 100%);
+  border-radius: 8px;
+  margin-bottom: 10px;
+}
+
+.light-balance .light-icon {
+  font-size: 1.2rem;
+}
+
+.light-balance .light-amount {
+  font-size: 1.2rem;
+  font-weight: bold;
+  color: var(--osrs-gold);
 }

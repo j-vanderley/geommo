@@ -517,36 +517,33 @@ class Map3D {
 
   // Fast travel to a location - resets coordinate system to keep world coordinates small
   fastTravelTo(lat, lng) {
-    // Update the coordinate center to the new location
-    // This keeps world coordinates manageable and ensures click detection works
-    this.setCenter(lat, lng);
+    console.log(`Fast travel to: ${lat}, ${lng}`);
 
-    // Clear and reload tiles at new center
+    // 1. Update coordinate center (affects lat/lng <-> world conversion)
+    this.centerLat = lat;
+    this.centerLng = lng;
+
+    // 2. Clear old tiles and load new ones at new center
     this.tileManager.setCenter(lat, lng);
     this.tileManager.updateTiles(lat, lng);
 
-    // Reposition self player to origin (they are now at the center)
+    // 3. Move self player to origin (since they're now at the center lat/lng)
     if (this.selfPlayerId) {
       const playerData = this.playerSprites.get(this.selfPlayerId);
       if (playerData) {
         playerData.group.position.set(0, 0, 0);
-        this.cameraController.setTarget(0, 0, 0);
       }
     }
 
-    // Reposition all other players relative to new center
-    for (const [playerId, playerData] of this.playerSprites) {
-      if (playerId === this.selfPlayerId) continue;
-      // Other players will be repositioned when their position update comes from server
-    }
+    // 4. Move camera to origin
+    this.cameraController.setTarget(0, 0, 0);
 
-    // Reposition all NPCs relative to new center
+    // 5. Reposition all NPCs relative to new center
     for (const [npcId, npcData] of this.npcSprites) {
-      // We need the NPC's lat/lng to reposition it
-      // Store the original position if available
       if (npcData.latLng) {
         const worldPos = this.latLngToWorld(npcData.latLng.lat, npcData.latLng.lng);
         npcData.group.position.set(worldPos.x, 0, worldPos.z);
+        console.log(`NPC ${npcId} repositioned to world: ${worldPos.x.toFixed(0)}, ${worldPos.z.toFixed(0)}`);
       }
     }
 
