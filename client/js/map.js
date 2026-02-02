@@ -88,6 +88,9 @@ class MapManager {
     this.skillsManager.setMap3D(this.map3d);
     this.weatherManager.skillsManager = this.skillsManager;
 
+    // Expose skillsManager globally (needed by map3d.js for equipment rendering)
+    window.skillsManager = this.skillsManager;
+
     // Hook into the animation loop for weather updates
     const originalAnimate = this.map3d.animate.bind(this.map3d);
     this.map3d.animate = () => {

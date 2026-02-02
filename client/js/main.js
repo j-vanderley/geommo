@@ -742,6 +742,7 @@ class Geommo {
 
     // Initialize player manager
     this.playerManager = new PlayerManager(this.mapManager);
+    window.playerManager = this.playerManager; // Expose globally for equipment rendering
 
     // Initialize chat manager
     this.chatManager = new ChatManager(this.playerManager);
@@ -934,6 +935,14 @@ class Geommo {
       }
 
       this.playerManager.setSelf(data.player);
+
+      // Apply any locally equipped gear to the player's 3D appearance
+      // This syncs localStorage equipment with the 3D sprite after it's created
+      if (this.mapManager.skillsManager) {
+        setTimeout(() => {
+          this.mapManager.skillsManager.updatePlayerEquipment();
+        }, 100);
+      }
 
       // Immediately update position to ensure character is visible
       // This triggers proper camera positioning and coordinate display

@@ -4,8 +4,9 @@ class SkillsManager {
     // User ID for per-account storage
     this.userId = null;
 
-    // Skills - one for each weather type
+    // Skills - one for each weather type + HP skill
     this.skills = {
+      hitpoints: { name: 'Hitpoints', xp: 0, icon: '❤️', isCombat: true },
       sunbathing: { name: 'Sunbathing', weather: 'clear', xp: 0, icon: '☀️' },
       cloudgazing: { name: 'Cloud Gazing', weather: 'cloudy', xp: 0, icon: '☁️' },
       mistwalking: { name: 'Mist Walking', weather: 'fog', xp: 0, icon: '🌫️' },
@@ -15,15 +16,29 @@ class SkillsManager {
     };
 
     // Items that can be collected
+    // accuracyBonus: added to hit chance (base 50% + skill level + accuracyBonus)
     this.itemTypes = {
-      sunstone: { name: 'Sunstone', weather: 'clear', icon: '🌟', rarity: 'uncommon', sellValue: 2 },
-      cloudwisp: { name: 'Cloud Wisp', weather: 'cloudy', icon: '💨', rarity: 'common', sellValue: 1 },
-      mistessence: { name: 'Mist Essence', weather: 'fog', icon: '🫧', rarity: 'rare', sellValue: 5 },
-      raindrop: { name: 'Raindrop Crystal', weather: 'rain', icon: '💧', rarity: 'common', sellValue: 1 },
-      snowflake: { name: 'Eternal Snowflake', weather: 'snow', icon: '❆', rarity: 'uncommon', sellValue: 2 },
-      lightningshard: { name: 'Lightning Shard', weather: 'storm', icon: '⚡', rarity: 'rare', sellValue: 5 },
+      sunstone: { name: 'Sunstone', weather: 'clear', icon: '🌟', rarity: 'uncommon', sellValue: 2, accuracyBonus: 5 },
+      cloudwisp: { name: 'Cloud Wisp', weather: 'cloudy', icon: '💨', rarity: 'common', sellValue: 1, accuracyBonus: 0 },
+      mistessence: { name: 'Mist Essence', weather: 'fog', icon: '🫧', rarity: 'rare', sellValue: 5, accuracyBonus: 10 },
+      raindrop: { name: 'Raindrop Crystal', weather: 'rain', icon: '💧', rarity: 'common', sellValue: 1, accuracyBonus: 0 },
+      snowflake: { name: 'Eternal Snowflake', weather: 'snow', icon: '❆', rarity: 'uncommon', sellValue: 2, accuracyBonus: 5 },
+      lightningshard: { name: 'Lightning Shard', weather: 'storm', icon: '⚡', rarity: 'rare', sellValue: 5, accuracyBonus: 10 },
       // Currency
-      light: { name: 'Light', icon: '✨', rarity: 'legendary', isCurrency: true }
+      light: { name: 'Light', icon: '✨', rarity: 'legendary', isCurrency: true },
+      // Battle NPC drops - rare items only obtainable from combat
+      shadow_essence: { name: 'Shadow Essence', icon: '🌑', rarity: 'rare', sellValue: 15, droppedBy: 'Shadow Imp', accuracyBonus: 12 },
+      dark_fragment: { name: 'Dark Fragment', icon: '🖤', rarity: 'epic', sellValue: 30, droppedBy: 'Shadow Imp', accuracyBonus: 20 },
+      ember_shard: { name: 'Ember Shard', icon: '🔶', rarity: 'rare', sellValue: 15, droppedBy: 'Ember Sprite', accuracyBonus: 12 },
+      flame_core: { name: 'Flame Core', icon: '💛', rarity: 'epic', sellValue: 30, droppedBy: 'Ember Sprite', accuracyBonus: 20 },
+      ancient_bark: { name: 'Ancient Bark', icon: '🪵', rarity: 'rare', sellValue: 12, droppedBy: 'Moss Golem', accuracyBonus: 8 },
+      living_vine: { name: 'Living Vine', icon: '🌱', rarity: 'epic', sellValue: 25, droppedBy: 'Moss Golem', accuracyBonus: 15 },
+      crystal_shard: { name: 'Crystal Shard', icon: '💠', rarity: 'rare', sellValue: 20, droppedBy: 'Crystal Wisp', accuracyBonus: 15 },
+      prismatic_gem: { name: 'Prismatic Gem', icon: '💎', rarity: 'legendary', sellValue: 50, droppedBy: 'Crystal Wisp', accuracyBonus: 25 },
+      wind_fragment: { name: 'Wind Fragment', icon: '🍃', rarity: 'rare', sellValue: 15, droppedBy: 'Dust Devil', accuracyBonus: 12 },
+      storm_dust: { name: 'Storm Dust', icon: '🌫️', rarity: 'epic', sellValue: 28, droppedBy: 'Dust Devil', accuracyBonus: 18 },
+      frost_shard: { name: 'Frost Shard', icon: '🧊', rarity: 'rare', sellValue: 15, droppedBy: 'Frost Minion', accuracyBonus: 12 },
+      frozen_heart: { name: 'Frozen Heart', icon: '💙', rarity: 'epic', sellValue: 35, droppedBy: 'Frost Minion', accuracyBonus: 22 }
     };
 
     // Equipment items (wearable/visible gear)
@@ -106,8 +121,8 @@ class SkillsManager {
 
     // Combat system
     this.selectedCombatItem = null;
-    this.combatHealth = 100;
-    this.maxCombatHealth = 100;
+    this.combatHealth = 100;  // Will be recalculated based on HP level
+    this.maxCombatHealth = 100;  // Will be recalculated based on HP level
     this.inCombat = false;
     this.combatTarget = null;
 
@@ -165,6 +180,49 @@ class SkillsManager {
     const currentLevelXP = this.xpTable[level - 1];
     const nextLevelXP = this.xpTable[level];
     return (xp - currentLevelXP) / (nextLevelXP - currentLevelXP);
+  }
+
+  // Get HP level from hitpoints skill
+  getHPLevel() {
+    return this.getLevel(this.skills.hitpoints.xp);
+  }
+
+  // Calculate max HP based on hitpoints skill level (level * 100)
+  calculateMaxHP() {
+    return this.getHPLevel() * 100;
+  }
+
+  // Recalculate and update max HP
+  updateMaxHP() {
+    const newMaxHP = this.calculateMaxHP();
+    const wasAtMax = this.combatHealth >= this.maxCombatHealth;
+    this.maxCombatHealth = newMaxHP;
+
+    // If player was at full HP, keep them at full HP
+    if (wasAtMax) {
+      this.combatHealth = this.maxCombatHealth;
+    }
+    // Make sure current HP doesn't exceed max
+    if (this.combatHealth > this.maxCombatHealth) {
+      this.combatHealth = this.maxCombatHealth;
+    }
+  }
+
+  // Add HP XP from combat
+  addHPXP(amount) {
+    const oldLevel = this.getHPLevel();
+    this.skills.hitpoints.xp += amount;
+    const newLevel = this.getHPLevel();
+
+    // Check for level up
+    if (newLevel > oldLevel) {
+      if (window.chatManager) {
+        window.chatManager.addLogMessage(`❤️ Hitpoints leveled up! (${newLevel})`, 'levelup');
+      }
+      this.updateMaxHP();
+    }
+
+    this.renderSkills();
   }
 
   // Initialize UI
@@ -574,6 +632,10 @@ class SkillsManager {
         </div>
 
         ${this.selectedCombatItem ? `
+          <div class="combat-stats">
+            <div class="combat-stat">🎯 Accuracy: ${Math.round(this.getAccuracy(this.selectedCombatItem))}%</div>
+            <div class="combat-stat">💥 Max Hit: ${this.getMaxHit(this.selectedCombatItem)}</div>
+          </div>
           <div class="combat-ready">✅ Ready for battle!</div>
         ` : '<div class="combat-warning">⚠️ Select ammo to fight</div>'}
       </div>
@@ -1136,6 +1198,26 @@ class SkillsManager {
     // Close any existing menu
     this.closeNPCMenu();
 
+    // Build menu options based on NPC type
+    const isBattleOnly = npc.isBattleOnly;
+    const isTraining = npc.isTraining;
+
+    // Build drops display
+    const dropInfo = npc.drops && npc.drops.length > 0 ?
+      `<div class="npc-drop-info">
+        <span class="drop-label">Drops:</span>
+        ${npc.drops.map(d => {
+          const item = this.itemTypes[d];
+          return item ? `<span class="drop-item" title="${item.name}">${item.icon}</span>` : '';
+        }).join('')}
+        <span class="drop-chance">(${Math.round((npc.dropChance || 0) * 100)}%)</span>
+      </div>` : '';
+
+    // NPC difficulty label
+    const difficultyLabel = isTraining ? '<span class="npc-difficulty training">Training</span>' :
+      (isBattleOnly ? '<span class="npc-difficulty battle">Battle</span>' :
+      '<span class="npc-difficulty boss">Boss</span>');
+
     // Create interaction menu
     const menu = document.createElement('div');
     menu.className = 'npc-interaction-menu';
@@ -1147,21 +1229,50 @@ class SkillsManager {
           <div class="npc-menu-info">
             <h3>${npc.name}</h3>
             <span class="npc-menu-title">${npc.title}</span>
+            ${difficultyLabel}
           </div>
         </div>
+        <div class="npc-stats">
+          <div class="npc-stat">
+            <span class="stat-icon">❤️</span>
+            <span class="stat-value">${npc.health}/${npc.maxHealth}</span>
+          </div>
+          <div class="npc-stat">
+            <span class="stat-icon">⚔️</span>
+            <span class="stat-value">${npc.damage} max hit</span>
+          </div>
+          <div class="npc-stat">
+            <span class="stat-icon">📍</span>
+            <span class="stat-value">${npc.baseCity}</span>
+          </div>
+        </div>
+        ${dropInfo}
+        ${this.selectedCombatItem ? `
+        <div class="npc-player-stats">
+          <div class="player-combat-title">Your Combat Stats:</div>
+          <div class="player-combat-row">
+            <span>🎯 ${Math.round(this.getAccuracy(this.selectedCombatItem))}% accuracy</span>
+            <span>💥 0-${this.getMaxHit(this.selectedCombatItem)} damage</span>
+          </div>
+        </div>
+        ` : '<div class="npc-player-warning">⚠️ Select ammo in Combat tab first!</div>'}
         <div class="npc-menu-options">
+          ${!isBattleOnly ? `
           <button class="npc-menu-btn trade-btn" data-action="trade">
             <span class="btn-icon">💰</span>
             <span class="btn-text">Trade</span>
           </button>
+          ` : ''}
           <button class="npc-menu-btn battle-btn" data-action="battle">
             <span class="btn-icon">⚔️</span>
             <span class="btn-text">Battle</span>
           </button>
+          ${!isBattleOnly ? `
           <button class="npc-menu-btn talk-btn" data-action="talk">
             <span class="btn-icon">💬</span>
             <span class="btn-text">Talk</span>
           </button>
+          ` : ''}
         </div>
         <button class="npc-menu-close">✕</button>
       </div>
@@ -1200,6 +1311,117 @@ class SkillsManager {
       this.activeNPCMenu.element.remove();
     }
     this.activeNPCMenu = null;
+  }
+
+  // Show player inspection dialog
+  showPlayerInspect(player) {
+    if (!player) return;
+
+    // Close any existing menu
+    this.closePlayerInspect();
+
+    // Get player's equipment display
+    const equipment = player.equipment || {};
+    const equipDisplay = [];
+    if (equipment.skin) {
+      const item = this.equipmentTypes[equipment.skin];
+      if (item) equipDisplay.push(`<span title="${item.name}">${item.icon}</span>`);
+    }
+    if (equipment.hat) {
+      const item = this.equipmentTypes[equipment.hat];
+      if (item) equipDisplay.push(`<span title="${item.name}">${item.icon}</span>`);
+    }
+    if (equipment.held) {
+      const item = this.equipmentTypes[equipment.held];
+      if (item) equipDisplay.push(`<span title="${item.name}">${item.icon}</span>`);
+    }
+    if (equipment.aura) {
+      const item = this.equipmentTypes[equipment.aura];
+      if (item) equipDisplay.push(`<span title="${item.name}">${item.icon}</span>`);
+    }
+
+    const avatarText = player.avatar?.text || player.flag || ':-)';
+    const avatarColor = player.avatar?.color || '#ffb000';
+
+    // Create inspection menu
+    const menu = document.createElement('div');
+    menu.className = 'player-inspect-menu';
+    menu.innerHTML = `
+      <div class="npc-menu-overlay"></div>
+      <div class="npc-menu-content">
+        <div class="npc-menu-header">
+          <span class="npc-menu-icon" style="color: ${avatarColor}">${avatarText}</span>
+          <div class="npc-menu-info">
+            <h3>${player.username}</h3>
+            <span class="npc-menu-title">Player</span>
+          </div>
+        </div>
+        <div class="npc-stats">
+          <div class="npc-stat">
+            <span class="stat-icon">🎮</span>
+            <span class="stat-value">Online</span>
+          </div>
+          <div class="npc-stat">
+            <span class="stat-icon">📍</span>
+            <span class="stat-value">${player.position ? `${player.position.lat.toFixed(4)}, ${player.position.lng.toFixed(4)}` : 'Unknown'}</span>
+          </div>
+          ${equipDisplay.length > 0 ? `
+          <div class="npc-stat equipment-display">
+            <span class="stat-icon">🛡️</span>
+            <span class="stat-value">${equipDisplay.join(' ')}</span>
+          </div>
+          ` : ''}
+        </div>
+        <div class="npc-menu-options">
+          <button class="npc-menu-btn" data-action="center">
+            <span class="btn-icon">📍</span>
+            <span class="btn-text">Go To</span>
+          </button>
+          ${this.selectedCombatItem ? `
+          <button class="npc-menu-btn battle-btn" data-action="attack">
+            <span class="btn-icon">⚔️</span>
+            <span class="btn-text">Attack</span>
+          </button>
+          ` : ''}
+        </div>
+        <button class="npc-menu-close">✕</button>
+      </div>
+    `;
+
+    document.body.appendChild(menu);
+    this.activePlayerInspect = { element: menu, player };
+
+    // Event handlers
+    menu.querySelector('.npc-menu-overlay')?.addEventListener('click', () => this.closePlayerInspect());
+    menu.querySelector('.npc-menu-close')?.addEventListener('click', () => this.closePlayerInspect());
+
+    menu.querySelectorAll('.npc-menu-btn').forEach(btn => {
+      btn.addEventListener('click', () => {
+        const action = btn.dataset.action;
+        this.closePlayerInspect();
+
+        switch (action) {
+          case 'center':
+            if (this.map3d && player.position) {
+              this.map3d.centerOn(player.position.lat, player.position.lng);
+            }
+            break;
+          case 'attack':
+            if (window.game) {
+              window.game.attackPlayer(player.id);
+            }
+            break;
+        }
+      });
+    });
+  }
+
+  // Close player inspection menu
+  closePlayerInspect() {
+    if (this.activePlayerInspect && this.activePlayerInspect.element) {
+      this.activePlayerInspect.element.remove();
+    }
+    this.activePlayerInspect = null;
   }
 
   // Show NPC talk dialog
@@ -1324,20 +1546,34 @@ class SkillsManager {
       this.inventorySlots[slotIndex] = null;
     }
 
-    // Calculate damage
-    const damage = this.getCombatDamage(this.selectedCombatItem);
+    // Roll damage (0 to max hit) with accuracy check
+    const combatResult = this.rollCombatDamage(this.selectedCombatItem);
+    const damage = combatResult.damage;
     npc.health -= damage;
 
     const item = this.itemTypes[this.selectedCombatItem];
+    const accuracy = this.getAccuracy(this.selectedCombatItem);
+
+    // Award HP XP for attacking (XP = damage dealt / 4, min 1 even on miss for effort)
+    const hpXP = combatResult.hit ? Math.max(1, Math.floor(damage / 4)) : 1;
+    this.addHPXP(hpXP);
 
     // Show attack particle effect
     if (this.map3d) {
-      this.map3d.showCombatEffect('player_attack', npcId, item?.icon || '⚔️', damage);
+      if (combatResult.hit) {
+        this.map3d.showCombatEffect('player_attack', npcId, item?.icon || '⚔️', damage);
+      } else {
+        this.map3d.showCombatEffect('player_miss', npcId, '💨', 0);
+      }
       this.map3d.updateNPCHealth(npcId, Math.max(0, npc.health), npc.maxHealth);
     }
 
     if (window.chatManager) {
-      window.chatManager.addLogMessage(`⚔️ You hit ${npc.name} with ${item?.icon || '⚔️'} for ${damage} damage!`, 'combat');
+      if (combatResult.hit) {
+        window.chatManager.addLogMessage(`⚔️ You hit ${npc.name} with ${item?.icon || '⚔️'} for ${damage} damage! (max: ${combatResult.maxHit})`, 'combat');
+      } else {
+        window.chatManager.addLogMessage(`💨 You miss ${npc.name}! (${Math.round(accuracy)}% accuracy)`, 'combat');
+      }
     }
 
     // Update combat HUD
@@ -1475,13 +1711,39 @@ class SkillsManager {
       window.chatManager.addLogMessage(`✨ Received ${lightReward} Light!`, 'item');
     }
 
+    // Check for item drops (battle NPCs only)
+    if (npc.isBattleOnly && npc.drops && npc.drops.length > 0 && npc.dropChance) {
+      const roll = Math.random();
+      if (roll < npc.dropChance) {
+        // Randomly select one of the possible drops
+        const dropIndex = Math.floor(Math.random() * npc.drops.length);
+        const droppedItemKey = npc.drops[dropIndex];
+        const droppedItem = this.itemTypes[droppedItemKey];
+
+        if (droppedItem) {
+          // Add item to inventory
+          const added = this.addItemToInventory(droppedItemKey, 1);
+          if (added && window.chatManager) {
+            window.chatManager.addLogMessage(`🎁 ${npc.name} dropped: ${droppedItem.icon} ${droppedItem.name}!`, 'item');
+          }
+        }
+      } else {
+        // No drop this time
+        if (window.chatManager) {
+          window.chatManager.addLogMessage(`${npc.name} didn't drop anything this time.`, 'system');
+        }
+      }
+    }
+
     // Respawn NPC after delay (NPCs respawn)
+    // Battle NPCs respawn faster than bosses
+    const respawnTime = npc.isBattleOnly ? 15000 : 30000; // 15s for battle, 30s for bosses
     setTimeout(() => {
       npc.health = npc.maxHealth;
       if (this.map3d) {
         this.map3d.updateNPCHealth(npcId, npc.health, npc.maxHealth);
       }
-    }, 30000); // 30 seconds respawn
+    }, respawnTime);
 
     this.endNPCCombat();
     this.save();
@@ -1549,8 +1811,8 @@ class SkillsManager {
     return 1;
   }
 
-  // Get damage for an item
-  getCombatDamage(itemKey) {
+  // Get max hit for an item (used to roll damage from 0 to max)
+  getMaxHit(itemKey) {
     const level = this.getCombatLevel(itemKey);
     const item = this.itemTypes[itemKey];
 
@@ -1560,20 +1822,57 @@ class SkillsManager {
       case 'common': baseDamage = 5; break;
       case 'uncommon': baseDamage = 8; break;
       case 'rare': baseDamage = 12; break;
+      case 'epic': baseDamage = 18; break;
+      case 'legendary': baseDamage = 25; break;
     }
 
     return baseDamage + Math.floor(level / 2);
+  }
+
+  // Legacy alias for getMaxHit
+  getCombatDamage(itemKey) {
+    return this.getMaxHit(itemKey);
+  }
+
+  // Get accuracy percentage for an item (chance to hit)
+  // Base accuracy: 50% + (skill level * 0.5) + item accuracy bonus
+  // Capped at 95% to always have some miss chance
+  getAccuracy(itemKey) {
+    const level = this.getCombatLevel(itemKey);
+    const item = this.itemTypes[itemKey];
+    const accuracyBonus = item?.accuracyBonus || 0;
+
+    // Base 50% + 0.5% per level + item bonus
+    const accuracy = 50 + (level * 0.5) + accuracyBonus;
+
+    // Cap at 95%
+    return Math.min(95, accuracy);
+  }
+
+  // Roll damage (0 to max hit) and check accuracy
+  // Returns actual damage dealt (0 if miss)
+  rollCombatDamage(itemKey) {
+    const maxHit = this.getMaxHit(itemKey);
+    const accuracy = this.getAccuracy(itemKey);
+
+    // Check if hit lands
+    const hitRoll = Math.random() * 100;
+    if (hitRoll > accuracy) {
+      // Miss!
+      return { damage: 0, hit: false, maxHit };
+    }
+
+    // Hit! Roll damage from 1 to max hit (at least 1 on hit)
+    const damage = Math.floor(Math.random() * maxHit) + 1;
+    return { damage, hit: true, maxHit };
   }
 
   // Select combat item
   selectCombatItem(itemKey) {
     this.selectedCombatItem = itemKey;
 
-    // Update max health based on combat level
-    this.maxCombatHealth = this.getCombatLevel(itemKey) * 10;
-    if (this.combatHealth > this.maxCombatHealth) {
-      this.combatHealth = this.maxCombatHealth;
-    }
+    // Update max health based on HP skill level (level * 100)
+    this.updateMaxHP();
 
     this.renderCombat();
 
@@ -2071,11 +2370,13 @@ class SkillsManager {
       if (data.selectedCombatItem) {
         this.selectedCombatItem = data.selectedCombatItem;
       }
-      if (data.maxCombatHealth) {
-        this.maxCombatHealth = data.maxCombatHealth;
-      }
+
+      // Recalculate max HP based on HP skill level (level * 100)
+      this.maxCombatHealth = this.calculateMaxHP();
+
+      // Load current HP (capped at new max)
       if (data.combatHealth !== undefined) {
-        this.combatHealth = data.combatHealth;
+        this.combatHealth = Math.min(data.combatHealth, this.maxCombatHealth);
       } else {
         this.combatHealth = this.maxCombatHealth;
       }

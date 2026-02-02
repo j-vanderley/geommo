@@ -973,6 +973,13 @@ class Map3D {
       setTimeout(() => {
         this.showDamageNumber(npcPosition, damage, '#ff4444');
       }, 300);
+    } else if (type === 'player_miss') {
+      // Player missed - show miss projectile and "MISS" text
+      this.createAttackProjectile(playerPosition, npcPosition, icon, '#888888');
+      // Show "MISS" text on NPC
+      setTimeout(() => {
+        this.showMissText(npcPosition);
+      }, 300);
     } else if (type === 'npc_attack') {
       // NPC attacking player - projectile from NPC to player
       this.createAttackProjectile(npcPosition, playerPosition, icon, npcData.npc.color || '#ff0000');
@@ -981,6 +988,53 @@ class Map3D {
         this.showDamageNumber(playerPosition, damage, '#ff0000');
       }, 300);
     }
+  }
+
+  // Show "MISS" floating text
+  showMissText(position) {
+    const canvas = document.createElement('canvas');
+    canvas.width = 128;
+    canvas.height = 64;
+    const ctx = canvas.getContext('2d');
+
+    // Draw text with outline
+    ctx.font = 'bold 32px Arial';
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.strokeStyle = '#000000';
+    ctx.lineWidth = 4;
+    ctx.strokeText('MISS', 64, 32);
+    ctx.fillStyle = '#888888';
+    ctx.fillText('MISS', 64, 32);
+
+    const texture = new THREE.CanvasTexture(canvas);
+    const material = new THREE.SpriteMaterial({ map: texture, transparent: true });
+    const sprite = new THREE.Sprite(material);
+    sprite.scale.set(3, 1.5, 1);
+    sprite.position.copy(position);
+    sprite.position.y += 4;
+    this.scene.add(sprite);
+
+    // Animate upward and fade out
+    const startY = sprite.position.y;
+    const startTime = Date.now();
+    const duration = 1000;
+
+    const animate = () => {
+      const elapsed = Date.now() - startTime;
+      const progress = elapsed / duration;
+
+      if (progress < 1) {
+        sprite.position.y = startY + progress * 2;
+        material.opacity = 1 - progress;
+        requestAnimationFrame(animate);
+      } else {
+        this.scene.remove(sprite);
+        material.dispose();
+        texture.dispose();
+      }
+    };
+    animate();
   }
 
   // Create attack projectile that travels from source to target

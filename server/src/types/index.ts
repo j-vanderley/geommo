@@ -42,8 +42,8 @@ export interface NPC {
   name: string;
   title: string;
   icon: string;
-  equipment: string;
-  sellsEquipment: string;
+  equipment?: string;           // Optional - boss NPCs have equipment
+  sellsEquipment?: string;      // Optional - what the NPC sells
   baseCity: string;
   position: Position;
   health: number;
@@ -52,7 +52,12 @@ export interface NPC {
   attackItems: string[];
   color: string;
   particle: string;
-  equippedAura: string;
+  equippedAura?: string;        // Optional - aura visual
+  // Battle-only NPC fields
+  isBattleOnly?: boolean;       // If true, NPC doesn't trade, only fights
+  isTraining?: boolean;         // If true, NPC is a weak training mob
+  drops?: string[];             // Item keys that can drop on defeat
+  dropChance?: number;          // Probability of dropping an item (0-1)
 }
 
 export interface WorldState {

@@ -1583,7 +1583,9 @@ body[class*="ui-"] .weather-time {
 .combat-panel {
   display: flex;
   flex-direction: column;
+  align-items: center;
   gap: 10px;
+  padding: 5px;
 }
 
 .combat-health {
@@ -1593,6 +1595,8 @@ body[class*="ui-"] .weather-time {
   padding: 8px;
   background: rgba(0, 0, 0, 0.3);
   border-radius: 4px;
+  width: 100%;
+  max-width: 200px;
 }
 
 .health-label {
@@ -1620,6 +1624,12 @@ body[class*="ui-"] .weather-time {
   font-size: 11px;
   min-width: 50px;
   text-align: right;
+}
+
+.combat-section {
+  width: 100%;
+  max-width: 200px;
+  text-align: center;
 }
 
 .combat-section h4 {
@@ -1696,13 +1706,12 @@ body[class*="ui-"] .weather-time {
 /* Equipment Tab */
 .equipment-content {
   padding: 5px;
-  overflow-y: auto;
-  max-height: 250px;
 }
 
 .equipment-panel {
   display: flex;
   flex-direction: column;
+  align-items: center;
   gap: 10px;
 }
 
@@ -1715,6 +1724,8 @@ body[class*="ui-"] .weather-time {
   background: linear-gradient(180deg, rgba(255, 255, 150, 0.2) 0%, rgba(255, 200, 0, 0.15) 100%);
   border: 2px solid #ffcc00;
   border-radius: 6px;
+  width: 100%;
+  max-width: 180px;
 }
 
 .light-icon {
@@ -2653,6 +2664,110 @@ body[class*="ui-"] .item-count {
   font-style: italic;
 }
 
+.npc-stats {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  padding: 10px;
+  background: rgba(0, 0, 0, 0.3);
+  border-radius: 6px;
+  margin: 10px 0;
+}
+
+.npc-stat {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 0.85rem;
+}
+
+.npc-stat .stat-icon {
+  font-size: 1rem;
+}
+
+.npc-stat .stat-value {
+  color: #ffcc00;
+}
+
+.npc-drop-info {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px;
+  background: rgba(100, 50, 150, 0.3);
+  border-radius: 6px;
+  margin: 5px 0;
+}
+
+.drop-label {
+  color: #bb88ff;
+  font-size: 0.8rem;
+}
+
+.drop-item {
+  font-size: 1.1rem;
+}
+
+.drop-chance {
+  color: #888;
+  font-size: 0.75rem;
+}
+
+.npc-difficulty {
+  display: inline-block;
+  padding: 2px 8px;
+  border-radius: 4px;
+  font-size: 0.7rem;
+  font-weight: bold;
+  margin-left: 8px;
+}
+
+.npc-difficulty.training {
+  background: #2a5a2a;
+  color: #88ff88;
+}
+
+.npc-difficulty.battle {
+  background: #5a2a2a;
+  color: #ff8888;
+}
+
+.npc-difficulty.boss {
+  background: #5a4a2a;
+  color: #ffcc00;
+}
+
+.npc-player-stats {
+  padding: 10px;
+  background: rgba(50, 100, 50, 0.3);
+  border-radius: 6px;
+  margin: 10px 0;
+  border: 1px solid #4a6a4a;
+}
+
+.player-combat-title {
+  color: #88ff88;
+  font-size: 0.75rem;
+  margin-bottom: 5px;
+}
+
+.player-combat-row {
+  display: flex;
+  justify-content: space-between;
+  color: #ffcc00;
+  font-size: 0.85rem;
+}
+
+.npc-player-warning {
+  padding: 10px;
+  background: rgba(100, 50, 50, 0.3);
+  border-radius: 6px;
+  margin: 10px 0;
+  color: #ff8888;
+  font-size: 0.8rem;
+  text-align: center;
+}
+
 .npc-menu-options {
   display: flex;
   flex-direction: column;
@@ -2712,6 +2827,32 @@ body[class*="ui-"] .item-count {
 
 .npc-menu-close:hover {
   color: #fff;
+}
+
+/* Player Inspect Menu (reuses NPC menu styles) */
+.player-inspect-menu {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100vw;
+  height: 100vh;
+  z-index: 1000;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
+
+.player-inspect-menu .npc-menu-content {
+  border-color: #4488ff;
+  box-shadow: 0 0 30px rgba(68, 136, 255, 0.3);
+}
+
+.player-inspect-menu .npc-menu-icon {
+  background: linear-gradient(180deg, #334455 0%, #223344 100%);
+}
+
+.equipment-display .stat-value {
+  font-size: 1.2rem;
 }
 
 /* ============================================
@@ -2925,6 +3066,24 @@ body[class*="ui-"] .item-count {
   color: #ff8888;
 }
 
+.combat-stats {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  padding: 8px;
+  background: rgba(0, 0, 0, 0.3);
+  border-radius: 6px;
+  margin: 5px 0;
+  width: 100%;
+  max-width: 180px;
+}
+
+.combat-stat {
+  font-size: 0.75rem;
+  color: #ffcc00;
+}
+
 .combat-ready {
   text-align: center;
   color: #4CAF50;
@@ -2947,6 +3106,8 @@ body[class*="ui-"] .item-count {
   grid-template-columns: repeat(2, 1fr);
   gap: 10px;
   padding: 10px;
+  width: 100%;
+  max-width: 180px;
 }
 
 .equip-slot {
