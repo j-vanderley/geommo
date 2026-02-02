@@ -38,7 +38,11 @@ class SkillsManager {
       wind_fragment: { name: 'Wind Fragment', icon: '🍃', rarity: 'rare', sellValue: 15, droppedBy: 'Dust Devil', accuracyBonus: 12 },
       storm_dust: { name: 'Storm Dust', icon: '🌫️', rarity: 'epic', sellValue: 28, droppedBy: 'Dust Devil', accuracyBonus: 18 },
       frost_shard: { name: 'Frost Shard', icon: '🧊', rarity: 'rare', sellValue: 15, droppedBy: 'Frost Minion', accuracyBonus: 12 },
-      frozen_heart: { name: 'Frozen Heart', icon: '💙', rarity: 'epic', sellValue: 35, droppedBy: 'Frost Minion', accuracyBonus: 22 }
+      frozen_heart: { name: 'Frozen Heart', icon: '💙', rarity: 'epic', sellValue: 35, droppedBy: 'Frost Minion', accuracyBonus: 22 },
+      // Consumables - can be used from inventory
+      health_pack: { name: 'Health Pack', icon: '🩹', rarity: 'common', sellValue: 5, healAmount: 50, isConsumable: true, buyPrice: 10 },
+      super_health_pack: { name: 'Super Health Pack', icon: '💊', rarity: 'uncommon', sellValue: 15, healAmount: 150, isConsumable: true, buyPrice: 25 },
+      mega_health_pack: { name: 'Mega Health Pack', icon: '❤️‍🩹', rarity: 'rare', sellValue: 40, healAmount: 400, isConsumable: true, buyPrice: 60 }
     };
 
     // Equipment items (wearable/visible gear)
@@ -536,6 +540,13 @@ class SkillsManager {
             </button>
           ` : ''}
         </div>
+        <div class="home-shop-section">
+          <h4>🏪 Home Shop</h4>
+          <p class="home-shop-desc">Buy supplies & sell items</p>
+          <button class="osrs-btn small-btn shop-btn" id="open-home-shop-btn">
+            Open Shop
+          </button>
+        </div>
         <div class="home-info">
           <p>Set your home to respawn here after combat.</p>
         </div>
@@ -550,6 +561,11 @@ class SkillsManager {
     // Teleport home button
     document.getElementById('teleport-home-btn')?.addEventListener('click', () => {
       this.teleportHome();
+    });
+
+    // Open home shop button
+    document.getElementById('open-home-shop-btn')?.addEventListener('click', () => {
+      this.showHomeShop();
     });
   }
 
@@ -574,6 +590,233 @@ class SkillsManager {
 
     if (window.chatManager) {
       window.chatManager.addLogMessage('🏠 Teleported home!', 'info');
+    }
+  }
+
+  // Show home shop dialog
+  showHomeShop() {
+    // Close any existing shop
+    this.closeHomeShop();
+
+    // Get sellable items from inventory
+    const sellableItems = this.inventorySlots
+      .filter(slot => slot && slot.count > 0)
+      .map(slot => {
+        const item = this.itemTypes[slot.itemKey];
+        return item ? { ...slot, item } : null;
+      })
+      .filter(Boolean);
+
+    // Build sellable items HTML
+    let sellHtml = '';
+    if (sellableItems.length === 0) {
+      sellHtml = '<p class="shop-empty">No items to sell</p>';
+    } else {
+      sellHtml = '<div class="shop-sell-grid">';
+      for (const slot of sellableItems) {
+        const sellValue = slot.item.sellValue || 1;
+        sellHtml += `
+          <div class="shop-item sellable" data-item="${slot.itemKey}">
+            <span class="shop-item-icon">${slot.item.icon}</span>
+            <span class="shop-item-name">${slot.item.name}</span>
+            <span class="shop-item-qty">x${slot.count}</span>
+            <span class="shop-item-price">✨${sellValue}</span>
+          </div>
+        `;
+      }
+      sellHtml += '</div>';
+    }
+
+    // Build buyable items HTML (health packs)
+    const buyableItems = [
+      { key: 'health_pack', item: this.itemTypes['health_pack'] },
+      { key: 'super_health_pack', item: this.itemTypes['super_health_pack'] },
+      { key: 'mega_health_pack', item: this.itemTypes['mega_health_pack'] }
+    ].filter(b => b.item);
+
+    let buyHtml = '<div class="shop-buy-grid">';
+    for (const buyable of buyableItems) {
+      const canAfford = this.lightBalance >= buyable.item.buyPrice;
+      buyHtml += `
+        <div class="shop-item buyable ${canAfford ? '' : 'disabled'}" data-item="${buyable.key}">
+          <span class="shop-item-icon">${buyable.item.icon}</span>
+          <span class="shop-item-name">${buyable.item.name}</span>
+          <span class="shop-item-heal">+${buyable.item.healAmount} HP</span>
+          <span class="shop-item-price">✨${buyable.item.buyPrice}</span>
+        </div>
+      `;
+    }
+    buyHtml += '</div>';
+
+    // Create shop dialog
+    const shop = document.createElement('div');
+    shop.className = 'home-shop-menu';
+    shop.innerHTML = `
+      <div class="npc-menu-overlay"></div>
+      <div class="home-shop-content">
+        <div class="shop-header">
+          <span class="shop-icon">🏪</span>
+          <h3>Home Shop</h3>
+          <span class="shop-balance">✨ ${this.lightBalance} Light</span>
+        </div>
+        <div class="shop-sections">
+          <div class="shop-section">
+            <h4>💰 Sell Items</h4>
+            ${sellHtml}
+            ${sellableItems.length > 0 ? `
+              <button class="osrs-btn sell-all-btn" id="sell-all-btn">Sell All Items</button>
+            ` : ''}
+          </div>
+          <div class="shop-section">
+            <h4>🛒 Buy Health Packs</h4>
+            ${buyHtml}
+          </div>
+        </div>
+        <button class="npc-menu-close">✕</button>
+      </div>
+    `;
+
+    document.body.appendChild(shop);
+    this.activeHomeShop = shop;
+
+    // Event handlers
+    shop.querySelector('.npc-menu-overlay')?.addEventListener('click', () => this.closeHomeShop());
+    shop.querySelector('.npc-menu-close')?.addEventListener('click', () => this.closeHomeShop());
+
+    // Sell individual items
+    shop.querySelectorAll('.shop-item.sellable').forEach(el => {
+      el.addEventListener('click', () => {
+        const itemKey = el.dataset.item;
+        this.sellItem(itemKey, 1);
+        this.showHomeShop(); // Refresh
+      });
+    });
+
+    // Sell all items
+    shop.querySelector('#sell-all-btn')?.addEventListener('click', () => {
+      this.sellAllItems();
+      this.showHomeShop(); // Refresh
+    });
+
+    // Buy items
+    shop.querySelectorAll('.shop-item.buyable:not(.disabled)').forEach(el => {
+      el.addEventListener('click', () => {
+        const itemKey = el.dataset.item;
+        this.buyItem(itemKey);
+        this.showHomeShop(); // Refresh
+      });
+    });
+  }
+
+  // Close home shop
+  closeHomeShop() {
+    if (this.activeHomeShop) {
+      this.activeHomeShop.remove();
+      this.activeHomeShop = null;
+    }
+  }
+
+  // Sell a single item
+  sellItem(itemKey, count = 1) {
+    const slotIndex = this.inventorySlots.findIndex(
+      s => s && s.itemKey === itemKey && s.count > 0
+    );
+    if (slotIndex === -1) return;
+
+    const item = this.itemTypes[itemKey];
+    if (!item) return;
+
+    const sellValue = item.sellValue || 1;
+    const actualCount = Math.min(count, this.inventorySlots[slotIndex].count);
+    const totalValue = sellValue * actualCount;
+
+    this.inventorySlots[slotIndex].count -= actualCount;
+    if (this.inventorySlots[slotIndex].count <= 0) {
+      this.inventorySlots[slotIndex] = null;
+    }
+
+    this.lightBalance += totalValue;
+    this.save();
+    this.renderInventory();
+
+    if (window.chatManager) {
+      window.chatManager.addLogMessage(`💰 Sold ${item.icon} ${item.name} x${actualCount} for ✨${totalValue} Light`, 'item');
+    }
+  }
+
+  // Sell all items in inventory
+  sellAllItems() {
+    let totalValue = 0;
+    let itemsSold = 0;
+
+    for (let i = 0; i < this.inventorySlots.length; i++) {
+      const slot = this.inventorySlots[i];
+      if (!slot || slot.count <= 0) continue;
+
+      const item = this.itemTypes[slot.itemKey];
+      if (!item) continue;
+
+      // Don't sell health packs or consumables
+      if (item.isConsumable) continue;
+
+      const sellValue = item.sellValue || 1;
+      totalValue += sellValue * slot.count;
+      itemsSold += slot.count;
+      this.inventorySlots[i] = null;
+    }
+
+    if (itemsSold > 0) {
+      this.lightBalance += totalValue;
+      this.save();
+      this.renderInventory();
+
+      if (window.chatManager) {
+        window.chatManager.addLogMessage(`💰 Sold ${itemsSold} items for ✨${totalValue} Light!`, 'item');
+      }
+    }
+  }
+
+  // Buy an item
+  buyItem(itemKey) {
+    const item = this.itemTypes[itemKey];
+    if (!item || !item.buyPrice) return;
+
+    if (this.lightBalance < item.buyPrice) {
+      if (window.chatManager) {
+        window.chatManager.addLogMessage(`❌ Not enough Light! Need ✨${item.buyPrice}`, 'error');
+      }
+      return;
+    }
+
+    // Find empty slot or existing stack
+    let slotIndex = this.inventorySlots.findIndex(
+      s => s && s.itemKey === itemKey
+    );
+
+    if (slotIndex === -1) {
+      slotIndex = this.inventorySlots.findIndex(s => s === null);
+    }
+
+    if (slotIndex === -1) {
+      if (window.chatManager) {
+        window.chatManager.addLogMessage('❌ Inventory full!', 'error');
+      }
+      return;
+    }
+
+    this.lightBalance -= item.buyPrice;
+
+    if (this.inventorySlots[slotIndex] && this.inventorySlots[slotIndex].itemKey === itemKey) {
+      this.inventorySlots[slotIndex].count++;
+    } else {
+      this.inventorySlots[slotIndex] = { itemKey, count: 1 };
+    }
+
+    this.save();
+    this.renderInventory();
+
+    if (window.chatManager) {
+      window.chatManager.addLogMessage(`🛒 Bought ${item.icon} ${item.name} for ✨${item.buyPrice} Light`, 'item');
     }
   }
 
@@ -818,6 +1061,11 @@ class SkillsManager {
 
     let menuHtml = `<div class="context-menu-header">${itemType.icon} ${itemType.name}</div>`;
 
+    // Consumable items (health packs) - Use option
+    if (itemType.isConsumable && itemType.healAmount) {
+      menuHtml += `<button class="context-menu-btn use-btn" data-action="use">Use (+${itemType.healAmount} HP)</button>`;
+    }
+
     if (isEquipment) {
       const gear = this.equipmentTypes[itemKey];
       menuHtml += `<button class="context-menu-btn equip-btn" data-action="equip">Equip (${gear.type})</button>`;
@@ -841,7 +1089,9 @@ class SkillsManager {
     menu.querySelectorAll('.context-menu-btn').forEach(btn => {
       btn.addEventListener('click', () => {
         const action = btn.dataset.action;
-        if (action === 'equip') {
+        if (action === 'use') {
+          this.useConsumable(itemKey);
+        } else if (action === 'equip') {
           this.equipGear(itemKey);
         } else if (action === 'sell') {
           this.sellItem(itemKey, 1);
@@ -860,6 +1110,48 @@ class SkillsManager {
   hideItemContextMenu() {
     const menu = document.getElementById('item-context-menu');
     if (menu) menu.remove();
+  }
+
+  // Use a consumable item (health pack)
+  useConsumable(itemKey) {
+    const slotIndex = this.inventorySlots.findIndex(
+      s => s && s.itemKey === itemKey && s.count > 0
+    );
+    if (slotIndex === -1) return;
+
+    const item = this.itemTypes[itemKey];
+    if (!item || !item.isConsumable || !item.healAmount) return;
+
+    // Consume one item
+    this.inventorySlots[slotIndex].count--;
+    if (this.inventorySlots[slotIndex].count <= 0) {
+      this.inventorySlots[slotIndex] = null;
+    }
+
+    // Heal the player
+    const oldHealth = this.combatHealth;
+    this.combatHealth = Math.min(this.maxCombatHealth, this.combatHealth + item.healAmount);
+    const actualHeal = this.combatHealth - oldHealth;
+
+    // If in combat, skip the player's next attack (eating takes a turn)
+    if (this.inCombat) {
+      this.skipNextAttack = true;
+      if (window.chatManager) {
+        window.chatManager.addLogMessage(`🩹 You eat ${item.icon} ${item.name} and heal ${actualHeal} HP! (Skipping attack)`, 'heal');
+      }
+      // Update combat HUD
+      if (this.npcCombatTarget) {
+        this.updateCombatHUD(this.npcCombatTarget);
+      }
+    } else {
+      if (window.chatManager) {
+        window.chatManager.addLogMessage(`🩹 You use ${item.icon} ${item.name} and heal ${actualHeal} HP!`, 'heal');
+      }
+    }
+
+    this.save();
+    this.renderInventory();
+    this.renderCombat();
   }
 
   // Get items that can be sold for Light
@@ -1580,8 +1872,17 @@ class SkillsManager {
     }
 
     if (this.isPlayerTurn) {
-      // Player's turn
-      this.playerAttackNPC(npcId);
+      // Check if player ate food and should skip attack
+      if (this.skipNextAttack) {
+        this.skipNextAttack = false;
+        if (window.chatManager) {
+          window.chatManager.addLogMessage('🍽️ You finish eating...', 'combat');
+        }
+        // Still toggle turn - NPC gets to attack after player eats
+      } else {
+        // Player's turn
+        this.playerAttackNPC(npcId);
+      }
     } else {
       // NPC's turn
       this.npcAttackPlayer(npcId);
@@ -1624,7 +1925,8 @@ class SkillsManager {
     const accuracy = this.getAccuracy(this.selectedCombatItem);
 
     // Award HP XP for attacking (XP = damage dealt / 4, min 1 even on miss for effort)
-    const hpXP = combatResult.hit ? Math.max(1, Math.floor(damage / 4)) : 1;
+    // HP XP scales with damage dealt (damage * 4 for faster leveling)
+    const hpXP = combatResult.hit ? Math.max(5, damage * 4) : 2;
     this.addHPXP(hpXP);
 
     // Show attack particle effect
