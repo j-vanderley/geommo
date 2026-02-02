@@ -1587,6 +1587,15 @@ body[class*="ui-"] .weather-time {
   border: 1px solid #2a5a2a;
 }
 
+.home-shop-section.disabled {
+  background: rgba(50, 50, 50, 0.2);
+  border-color: #444;
+}
+
+.home-shop-section.disabled h4 {
+  color: #666;
+}
+
 .home-shop-section h4 {
   color: #88ff88;
   margin-bottom: 5px;
@@ -1596,6 +1605,11 @@ body[class*="ui-"] .weather-time {
   color: #888;
   font-size: 11px;
   margin-bottom: 10px;
+}
+
+.home-shop-desc.away {
+  color: #aa6666;
+  font-style: italic;
 }
 
 .shop-btn {

@@ -526,6 +526,9 @@ class SkillsManager {
       ? `${this.homePosition.lat.toFixed(4)}, ${this.homePosition.lng.toFixed(4)}`
       : 'Not set';
 
+    // Check if player is near home (within ~50 meters)
+    const isNearHome = hasHome && this.isNearHome();
+
     container.innerHTML = `
       <div class="home-panel">
         <div class="home-section">
@@ -540,15 +543,22 @@ class SkillsManager {
             </button>
           ` : ''}
         </div>
-        <div class="home-shop-section">
+        ${hasHome ? `
+        <div class="home-shop-section ${isNearHome ? '' : 'disabled'}">
           <h4>🏪 Home Shop</h4>
-          <p class="home-shop-desc">Buy supplies & sell items</p>
-          <button class="osrs-btn small-btn shop-btn" id="open-home-shop-btn">
-            Open Shop
-          </button>
+          ${isNearHome ? `
+            <p class="home-shop-desc">Buy supplies & sell items</p>
+            <button class="osrs-btn small-btn shop-btn" id="open-home-shop-btn">
+              Open Shop
+            </button>
+          ` : `
+            <p class="home-shop-desc away">Travel to your home to access the shop</p>
+          `}
         </div>
+        ` : ''}
         <div class="home-info">
           <p>Set your home to respawn here after combat.</p>
+          ${hasHome ? '<p>Visit home to access your shop!</p>' : ''}
         </div>
       </div>
     `;
@@ -567,6 +577,18 @@ class SkillsManager {
     document.getElementById('open-home-shop-btn')?.addEventListener('click', () => {
       this.showHomeShop();
     });
+  }
+
+  // Check if player is near their home location
+  isNearHome() {
+    if (!this.homePosition || !this.playerPosition) return false;
+
+    // Calculate distance (roughly 0.0005 lat/lng ≈ 50 meters)
+    const latDiff = Math.abs(this.playerPosition.lat - this.homePosition.lat);
+    const lngDiff = Math.abs(this.playerPosition.lng - this.homePosition.lng);
+    const distance = Math.sqrt(latDiff * latDiff + lngDiff * lngDiff);
+
+    return distance < 0.0005; // ~50 meters
   }
 
   // Set current position as home
@@ -2598,7 +2620,14 @@ class SkillsManager {
 
   // Update player position (called from map.js)
   setPlayerPosition(position) {
+    const wasNearHome = this.isNearHome();
     this.playerPosition = position;
+    const isNearHomeNow = this.isNearHome();
+
+    // Refresh home tab if near-home status changed
+    if (wasNearHome !== isNearHomeNow && this.activeTab === 'home') {
+      this.renderHome();
+    }
   }
 
   // Set map3d reference (called from map.js)
