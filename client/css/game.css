@@ -2803,14 +2803,14 @@ body[class*="ui-"] .item-count {
   box-shadow: 0 0 10px rgba(255, 204, 0, 0.3);
 }
 
+.npc-menu-btn.inspect-btn:hover {
+  border-color: #44aaff;
+  box-shadow: 0 0 10px rgba(68, 170, 255, 0.3);
+}
+
 .npc-menu-btn.battle-btn:hover {
   border-color: #ff4444;
   box-shadow: 0 0 10px rgba(255, 68, 68, 0.3);
-}
-
-.npc-menu-btn.talk-btn:hover {
-  border-color: #44aaff;
-  box-shadow: 0 0 10px rgba(68, 170, 255, 0.3);
 }
 
 .npc-menu-close {

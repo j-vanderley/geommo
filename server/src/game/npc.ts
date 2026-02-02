@@ -245,40 +245,64 @@ const TRAINING_NPC_TEMPLATES = {
   }
 };
 
-// Training NPC spawn locations - starter cities
+// Training NPC spawn locations - cities WITHOUT boss NPCs
+// Boss cities to avoid: New York (Solara), London (Nyx), Tokyo (Voltarus), Sydney (Glacius)
 const TRAINING_NPC_SPAWNS: { npcType: keyof typeof TRAINING_NPC_TEMPLATES; city: string; offsetLat: number; offsetLng: number }[] = [
-  // New York - multiple training mobs
-  { npcType: 'slime', city: 'New York', offsetLat: 0.008, offsetLng: 0.008 },
-  { npcType: 'slime', city: 'New York', offsetLat: 0.010, offsetLng: -0.008 },
-  { npcType: 'rat', city: 'New York', offsetLat: -0.008, offsetLng: 0.010 },
-  { npcType: 'beetle', city: 'New York', offsetLat: 0.012, offsetLng: 0.005 },
-
-  // London - training area
-  { npcType: 'slime', city: 'London', offsetLat: 0.008, offsetLng: 0.008 },
-  { npcType: 'rat', city: 'London', offsetLat: -0.006, offsetLng: 0.008 },
-  { npcType: 'bat', city: 'London', offsetLat: 0.005, offsetLng: -0.010 },
-  { npcType: 'spider', city: 'London', offsetLat: -0.010, offsetLng: -0.008 },
-
-  // Tokyo - training area
-  { npcType: 'slime', city: 'Tokyo', offsetLat: 0.008, offsetLng: 0.010 },
-  { npcType: 'beetle', city: 'Tokyo', offsetLat: -0.008, offsetLng: 0.008 },
-  { npcType: 'spider', city: 'Tokyo', offsetLat: 0.006, offsetLng: -0.010 },
-
-  // Sydney - training area
-  { npcType: 'rat', city: 'Sydney', offsetLat: 0.008, offsetLng: 0.006 },
-  { npcType: 'beetle', city: 'Sydney', offsetLat: -0.006, offsetLng: 0.010 },
-  { npcType: 'bat', city: 'Sydney', offsetLat: 0.010, offsetLng: -0.008 },
-
-  // Paris - training area
+  // Paris - main training hub (no boss)
   { npcType: 'slime', city: 'Paris', offsetLat: 0.006, offsetLng: 0.008 },
   { npcType: 'slime', city: 'Paris', offsetLat: -0.008, offsetLng: 0.006 },
+  { npcType: 'slime', city: 'Paris', offsetLat: 0.004, offsetLng: -0.007 },
   { npcType: 'rat', city: 'Paris', offsetLat: 0.010, offsetLng: -0.006 },
-  { npcType: 'spider', city: 'Paris', offsetLat: -0.006, offsetLng: -0.010 },
+  { npcType: 'rat', city: 'Paris', offsetLat: -0.005, offsetLng: -0.009 },
+  { npcType: 'beetle', city: 'Paris', offsetLat: 0.007, offsetLng: 0.010 },
 
-  // Los Angeles - training area
+  // Los Angeles - training area (no boss)
   { npcType: 'slime', city: 'Los Angeles', offsetLat: 0.008, offsetLng: 0.008 },
-  { npcType: 'beetle', city: 'Los Angeles', offsetLat: -0.006, offsetLng: 0.010 },
+  { npcType: 'slime', city: 'Los Angeles', offsetLat: -0.007, offsetLng: 0.006 },
   { npcType: 'rat', city: 'Los Angeles', offsetLat: 0.010, offsetLng: -0.008 },
+  { npcType: 'beetle', city: 'Los Angeles', offsetLat: -0.006, offsetLng: 0.010 },
+  { npcType: 'spider', city: 'Los Angeles', offsetLat: 0.005, offsetLng: -0.010 },
+
+  // Berlin - training area (no boss)
+  { npcType: 'slime', city: 'Berlin', offsetLat: 0.006, offsetLng: 0.007 },
+  { npcType: 'rat', city: 'Berlin', offsetLat: -0.007, offsetLng: 0.008 },
+  { npcType: 'rat', city: 'Berlin', offsetLat: 0.009, offsetLng: -0.005 },
+  { npcType: 'bat', city: 'Berlin', offsetLat: -0.005, offsetLng: -0.008 },
+  { npcType: 'spider', city: 'Berlin', offsetLat: 0.008, offsetLng: 0.010 },
+
+  // Singapore - training area (no boss)
+  { npcType: 'slime', city: 'Singapore', offsetLat: 0.005, offsetLng: 0.006 },
+  { npcType: 'slime', city: 'Singapore', offsetLat: -0.006, offsetLng: 0.005 },
+  { npcType: 'beetle', city: 'Singapore', offsetLat: 0.008, offsetLng: -0.006 },
+  { npcType: 'beetle', city: 'Singapore', offsetLat: -0.004, offsetLng: -0.008 },
+  { npcType: 'spider', city: 'Singapore', offsetLat: 0.007, offsetLng: 0.009 },
+
+  // Dubai - training area (no boss)
+  { npcType: 'slime', city: 'Dubai', offsetLat: 0.007, offsetLng: 0.006 },
+  { npcType: 'rat', city: 'Dubai', offsetLat: -0.006, offsetLng: 0.008 },
+  { npcType: 'beetle', city: 'Dubai', offsetLat: 0.009, offsetLng: -0.007 },
+  { npcType: 'bat', city: 'Dubai', offsetLat: -0.008, offsetLng: -0.005 },
+
+  // Rio de Janeiro - training area (no boss)
+  { npcType: 'slime', city: 'Rio de Janeiro', offsetLat: 0.006, offsetLng: 0.007 },
+  { npcType: 'slime', city: 'Rio de Janeiro', offsetLat: -0.007, offsetLng: 0.005 },
+  { npcType: 'rat', city: 'Rio de Janeiro', offsetLat: 0.008, offsetLng: -0.006 },
+  { npcType: 'beetle', city: 'Rio de Janeiro', offsetLat: -0.005, offsetLng: -0.009 },
+  { npcType: 'spider', city: 'Rio de Janeiro', offsetLat: 0.010, offsetLng: 0.008 },
+
+  // Mumbai - training area (no boss)
+  { npcType: 'slime', city: 'Mumbai', offsetLat: 0.005, offsetLng: 0.007 },
+  { npcType: 'rat', city: 'Mumbai', offsetLat: -0.006, offsetLng: 0.006 },
+  { npcType: 'rat', city: 'Mumbai', offsetLat: 0.008, offsetLng: -0.005 },
+  { npcType: 'bat', city: 'Mumbai', offsetLat: -0.007, offsetLng: -0.008 },
+  { npcType: 'spider', city: 'Mumbai', offsetLat: 0.009, offsetLng: 0.006 },
+
+  // Cairo - training area (no boss)
+  { npcType: 'slime', city: 'Cairo', offsetLat: 0.006, offsetLng: 0.006 },
+  { npcType: 'slime', city: 'Cairo', offsetLat: -0.005, offsetLng: 0.007 },
+  { npcType: 'beetle', city: 'Cairo', offsetLat: 0.008, offsetLng: -0.006 },
+  { npcType: 'beetle', city: 'Cairo', offsetLat: -0.007, offsetLng: -0.005 },
+  { npcType: 'bat', city: 'Cairo', offsetLat: 0.009, offsetLng: 0.008 },
 ];
 
 // Spawn locations for battle NPCs - each NPC type spawns in multiple cities

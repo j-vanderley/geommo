@@ -1263,16 +1263,14 @@ class SkillsManager {
             <span class="btn-text">Trade</span>
           </button>
           ` : ''}
+          <button class="npc-menu-btn inspect-btn" data-action="inspect">
+            <span class="btn-icon">🔍</span>
+            <span class="btn-text">Inspect</span>
+          </button>
           <button class="npc-menu-btn battle-btn" data-action="battle">
             <span class="btn-icon">⚔️</span>
             <span class="btn-text">Battle</span>
           </button>
-          ${!isBattleOnly ? `
-          <button class="npc-menu-btn talk-btn" data-action="talk">
-            <span class="btn-icon">💬</span>
-            <span class="btn-text">Talk</span>
-          </button>
-          ` : ''}
         </div>
         <button class="npc-menu-close">✕</button>
       </div>
@@ -1294,11 +1292,11 @@ class SkillsManager {
           case 'trade':
             this.showTradeScreen(npcId);
             break;
+          case 'inspect':
+            this.showNPCInspect(npcId);
+            break;
           case 'battle':
             this.startNPCCombat(npcId);
-            break;
-          case 'talk':
-            this.showNPCTalk(npcId);
             break;
         }
       });
@@ -1422,6 +1420,77 @@ class SkillsManager {
       this.activePlayerInspect.element.remove();
     }
     this.activePlayerInspect = null;
+  }
+
+  // Show NPC detailed inspection
+  showNPCInspect(npcId) {
+    const npc = this.npcs.find(n => n.id === npcId);
+    if (!npc) return;
+
+    // Calculate difficulty based on damage and health
+    let difficulty = 'Easy';
+    let difficultyColor = '#88ff88';
+    if (npc.isTraining) {
+      difficulty = 'Very Easy (Training)';
+      difficultyColor = '#88ff88';
+    } else if (npc.isBattleOnly) {
+      if (npc.damage >= 30) {
+        difficulty = 'Medium';
+        difficultyColor = '#ffcc00';
+      } else {
+        difficulty = 'Easy';
+        difficultyColor = '#88ff88';
+      }
+    } else {
+      // Boss
+      if (npc.damage >= 100) {
+        difficulty = 'Very Hard (Boss)';
+        difficultyColor = '#ff4444';
+      } else if (npc.damage >= 75) {
+        difficulty = 'Hard (Boss)';
+        difficultyColor = '#ff8844';
+      } else {
+        difficulty = 'Medium (Boss)';
+        difficultyColor = '#ffcc00';
+      }
+    }
+
+    // Build drops display
+    let dropsHtml = 'None';
+    if (npc.drops && npc.drops.length > 0) {
+      dropsHtml = npc.drops.map(d => {
+        const item = this.itemTypes[d];
+        return item ? `<span class="drop-item" title="${item.name}">${item.icon} ${item.name}</span>` : d;
+      }).join(', ');
+      dropsHtml += ` <span style="color:#888">(${Math.round((npc.dropChance || 0) * 100)}% chance)</span>`;
+    }
+
+    // Build attack items display
+    const attacksHtml = npc.attackItems.map(a => {
+      const item = this.itemTypes[a];
+      return item ? `${item.icon}` : a;
+    }).join(' ');
+
+    // Show detailed stats in chat log
+    if (window.chatManager) {
+      window.chatManager.addLogMessage(`━━━ ${npc.icon} ${npc.name} ━━━`, 'system');
+      window.chatManager.addLogMessage(`📜 ${npc.title}`, 'system');
+      window.chatManager.addLogMessage(`❤️ Health: ${npc.health}/${npc.maxHealth}`, 'system');
+      window.chatManager.addLogMessage(`⚔️ Max Damage: ${npc.damage}`, 'system');
+      window.chatManager.addLogMessage(`🎯 Attacks: ${attacksHtml}`, 'system');
+      window.chatManager.addLogMessage(`📍 Location: ${npc.baseCity}`, 'system');
+      window.chatManager.addLogMessage(`⚠️ Difficulty: ${difficulty}`, 'system');
+      if (npc.drops && npc.drops.length > 0) {
+        window.chatManager.addLogMessage(`🎁 Drops: ${dropsHtml}`, 'system');
+      }
+      if (npc.sellsEquipment) {
+        const sellItem = this.equipmentTypes[npc.sellsEquipment];
+        if (sellItem) {
+          window.chatManager.addLogMessage(`💰 Sells: ${sellItem.icon} ${sellItem.name}`, 'system');
+        }
+      }
+      window.chatManager.addLogMessage(`━━━━━━━━━━━━━━━━`, 'system');
+    }
   }
 
   // Show NPC talk dialog
