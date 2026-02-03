@@ -58,11 +58,19 @@ class Map3D {
 
       // Create scene
       this.scene = new THREE.Scene();
-      this.scene.background = new THREE.Color(0x1a1a1a);
 
-      // Create camera
+      // Set background and fog to match (sky blue for distance fade)
+      const fogColor = GAME_CONFIG.view3d.fogColor || 0x87CEEB;
+      this.scene.background = new THREE.Color(fogColor);
+      this.scene.fog = new THREE.Fog(
+        fogColor,
+        GAME_CONFIG.view3d.fogNear || 150,
+        GAME_CONFIG.view3d.fogFar || 400
+      );
+
+      // Create camera with extended far plane for larger view
       const aspect = this.container.clientWidth / this.container.clientHeight || 1;
-      this.camera = new THREE.PerspectiveCamera(60, aspect, 0.1, 2000);
+      this.camera = new THREE.PerspectiveCamera(60, aspect, 0.1, 1000);
 
       // Create renderer with error handling
       try {
@@ -234,7 +242,9 @@ class Map3D {
     // Create sprite material
     const material = new THREE.SpriteMaterial({
       map: texture,
-      transparent: true
+      transparent: true,
+      alphaTest: 0.1,
+      depthWrite: false
     });
 
     // Create main sprite
@@ -284,6 +294,10 @@ class Map3D {
   }
 
   // Draw player avatar with equipment on canvas
+  // NOTE: To use custom image sprites, replace emoji drawing with:
+  //   const img = new Image();
+  //   img.src = 'path/to/sprite.png';
+  //   ctx.drawImage(img, x, y, width, height);
   drawPlayerCanvas(ctx, avatarText, avatarColor, equipment) {
     const skillsManager = window.skillsManager;
 
@@ -299,98 +313,162 @@ class Map3D {
     ctx.beginPath();
     ctx.arc(64, 64, 56, 0, Math.PI * 2);
     if (skinData) {
-      // Skin equipped - use gradient with skin color
+      // Skin equipped - use multi-layer gradient with skin color
       const gradient = ctx.createRadialGradient(64, 64, 0, 64, 64, 56);
-      gradient.addColorStop(0, this.hexToRgba(skinColor, 0.9));
-      gradient.addColorStop(0.7, this.hexToRgba(skinColor, 0.5));
-      gradient.addColorStop(1, 'rgba(0, 0, 0, 0.7)');
+      gradient.addColorStop(0, this.hexToRgba(skinColor, 1.0));
+      gradient.addColorStop(0.4, this.hexToRgba(skinColor, 0.8));
+      gradient.addColorStop(0.7, this.hexToRgba(skinColor, 0.4));
+      gradient.addColorStop(1, 'rgba(0, 0, 0, 0.8)');
       ctx.fillStyle = gradient;
     } else {
       ctx.fillStyle = 'rgba(0, 0, 0, 0.7)';
     }
     ctx.fill();
 
-    // Draw border with player's color (or skin color)
+    // Draw glowing border with player's color (or skin color)
+    ctx.shadowColor = skinColor || avatarColor;
+    ctx.shadowBlur = 10;
     ctx.strokeStyle = skinColor || avatarColor;
-    ctx.lineWidth = 4;
+    ctx.lineWidth = 5;
     ctx.stroke();
+    ctx.shadowBlur = 0;
 
-    // Draw hat if equipped (above avatar)
+    // Draw hat if equipped (above avatar) - LARGER
     if (equipment.hat && skillsManager) {
       const hatData = skillsManager.equipmentTypes[equipment.hat];
       if (hatData) {
-        ctx.font = 'bold 28px Arial';
+        // Draw glow behind hat
+        ctx.shadowColor = hatData.color;
+        ctx.shadowBlur = 15;
+        ctx.font = 'bold 42px Arial';
         ctx.textAlign = 'center';
         ctx.textBaseline = 'middle';
         ctx.fillStyle = hatData.color;
-        ctx.fillText(hatData.icon, 64, 22);
+        ctx.fillText(hatData.icon, 64, 18);
+        ctx.shadowBlur = 0;
       }
     }
 
     // Draw avatar text in center
-    const fontSize = avatarText.length <= 2 ? 40 : avatarText.length === 3 ? 32 : 24;
+    const fontSize = avatarText.length <= 2 ? 44 : avatarText.length === 3 ? 36 : 28;
     ctx.font = `bold ${fontSize}px "Courier New", monospace`;
     ctx.textAlign = 'center';
     ctx.textBaseline = 'middle';
     ctx.fillStyle = skinColor || avatarColor;
     ctx.fillText(avatarText, 64, 64);
 
-    // Draw held item if equipped (to the right)
+    // Draw held item if equipped (to the right) - LARGER with glow
     if (equipment.held && skillsManager) {
       const heldData = skillsManager.equipmentTypes[equipment.held];
       if (heldData) {
-        ctx.font = 'bold 24px Arial';
+        ctx.shadowColor = heldData.color;
+        ctx.shadowBlur = 12;
+        ctx.font = 'bold 36px Arial';
         ctx.textAlign = 'center';
         ctx.textBaseline = 'middle';
         ctx.fillStyle = heldData.color;
-        ctx.fillText(heldData.icon, 100, 80);
+        ctx.fillText(heldData.icon, 105, 75);
+        ctx.shadowBlur = 0;
       }
     }
 
-    // Draw skin icon if equipped (bottom left indicator)
+    // Draw skin icon if equipped (bottom left indicator) - LARGER with glow
     if (skinData) {
-      ctx.font = 'bold 20px Arial';
+      ctx.shadowColor = skinData.color;
+      ctx.shadowBlur = 10;
+      ctx.font = 'bold 32px Arial';
       ctx.textAlign = 'center';
       ctx.textBaseline = 'middle';
       ctx.fillStyle = skinData.color;
-      ctx.fillText(skinData.icon, 28, 100);
+      ctx.fillText(skinData.icon, 24, 105);
+      ctx.shadowBlur = 0;
     }
   }
 
-  // Create aura particle effect for player
+  // Create extravagant aura particle effect for player
   createPlayerAura(playerId, particleType, color, group) {
-    const particleCount = 20;
+    // Much more particles for impressive effect
+    const innerCount = 30;  // Inner rotating ring
+    const outerCount = 40;  // Outer floating particles
+    const risingCount = 25; // Rising/falling particles
+    const totalCount = innerCount + outerCount + risingCount;
+
     const geometry = new THREE.BufferGeometry();
-    const positions = new Float32Array(particleCount * 3);
-    const colors = new Float32Array(particleCount * 3);
+    const positions = new Float32Array(totalCount * 3);
+    const colors = new Float32Array(totalCount * 3);
+    const sizes = new Float32Array(totalCount);
 
     const colorObj = new THREE.Color(color);
+    // Create color variations for depth
+    const colorLight = new THREE.Color(color).lerp(new THREE.Color('#ffffff'), 0.3);
+    const colorDark = new THREE.Color(color).lerp(new THREE.Color('#000000'), 0.2);
 
-    for (let i = 0; i < particleCount; i++) {
-      const angle = (i / particleCount) * Math.PI * 2;
-      const radius = 1.5 + Math.random() * 0.5;
-      positions[i * 3] = Math.cos(angle) * radius;
-      positions[i * 3 + 1] = Math.random() * 3 + 1;
-      positions[i * 3 + 2] = Math.sin(angle) * radius;
+    let idx = 0;
 
-      colors[i * 3] = colorObj.r;
-      colors[i * 3 + 1] = colorObj.g;
-      colors[i * 3 + 2] = colorObj.b;
+    // Inner rotating ring - tight circle around player
+    for (let i = 0; i < innerCount; i++) {
+      const angle = (i / innerCount) * Math.PI * 2;
+      const radius = 1.2;
+      positions[idx * 3] = Math.cos(angle) * radius;
+      positions[idx * 3 + 1] = 1.5 + Math.sin(angle * 3) * 0.3;
+      positions[idx * 3 + 2] = Math.sin(angle) * radius;
+      colors[idx * 3] = colorObj.r;
+      colors[idx * 3 + 1] = colorObj.g;
+      colors[idx * 3 + 2] = colorObj.b;
+      sizes[idx] = 0.4;
+      idx++;
+    }
+
+    // Outer floating particles - larger orbit
+    for (let i = 0; i < outerCount; i++) {
+      const angle = (i / outerCount) * Math.PI * 2;
+      const radius = 2.0 + Math.random() * 0.8;
+      positions[idx * 3] = Math.cos(angle) * radius;
+      positions[idx * 3 + 1] = Math.random() * 4 + 0.5;
+      positions[idx * 3 + 2] = Math.sin(angle) * radius;
+      colors[idx * 3] = colorLight.r;
+      colors[idx * 3 + 1] = colorLight.g;
+      colors[idx * 3 + 2] = colorLight.b;
+      sizes[idx] = 0.25 + Math.random() * 0.2;
+      idx++;
+    }
+
+    // Rising/falling particles - vertical movement
+    for (let i = 0; i < risingCount; i++) {
+      const angle = Math.random() * Math.PI * 2;
+      const radius = 0.5 + Math.random() * 1.5;
+      positions[idx * 3] = Math.cos(angle) * radius;
+      positions[idx * 3 + 1] = Math.random() * 5;
+      positions[idx * 3 + 2] = Math.sin(angle) * radius;
+      colors[idx * 3] = colorDark.r;
+      colors[idx * 3 + 1] = colorDark.g;
+      colors[idx * 3 + 2] = colorDark.b;
+      sizes[idx] = 0.15 + Math.random() * 0.15;
+      idx++;
     }
 
     geometry.setAttribute('position', new THREE.BufferAttribute(positions, 3));
     geometry.setAttribute('color', new THREE.BufferAttribute(colors, 3));
+    geometry.setAttribute('size', new THREE.BufferAttribute(sizes, 1));
 
     const material = new THREE.PointsMaterial({
-      size: 0.3,
+      size: 0.35,
       vertexColors: true,
       transparent: true,
-      opacity: 0.7,
-      blending: THREE.AdditiveBlending
+      opacity: 0.85,
+      blending: THREE.AdditiveBlending,
+      sizeAttenuation: true
     });
 
     const particles = new THREE.Points(geometry, material);
-    particles.userData = { type: particleType, playerId, time: 0 };
+    particles.userData = {
+      type: particleType,
+      playerId,
+      time: 0,
+      innerCount,
+      outerCount,
+      risingCount
+    };
     group.add(particles);
 
     return particles;
@@ -694,6 +772,9 @@ class Map3D {
       }
     }
 
+    // 6. Reposition home shop if it exists
+    this.updateHomeShopPosition();
+
     return { lat, lng };
   }
 
@@ -728,7 +809,9 @@ class Map3D {
     // Create sprite material
     const material = new THREE.SpriteMaterial({
       map: texture,
-      transparent: true
+      transparent: true,
+      alphaTest: 0.1,
+      depthWrite: false
     });
 
     // Create sprite - larger size for visibility
@@ -879,7 +962,7 @@ class Map3D {
     texture.needsUpdate = true;
 
     // Create sprite
-    const material = new THREE.SpriteMaterial({ map: texture, transparent: true });
+    const material = new THREE.SpriteMaterial({ map: texture, transparent: true, alphaTest: 0.1, depthWrite: false });
     const sprite = new THREE.Sprite(material);
     sprite.scale.set(6, 6, 1); // Larger than players
     sprite.position.y = 3;
@@ -935,6 +1018,103 @@ class Map3D {
     bar.innerHTML = `<div class="npc-health-fill" style="width: 100%"></div>`;
     this.container.appendChild(bar);
     return bar;
+  }
+
+  // Create home shop sprite at the player's home location
+  createHomeShop(position) {
+    // Remove existing home shop if any
+    this.removeHomeShop();
+
+    const color = '#44aa44';
+
+    // Create a group for the home shop
+    const group = new THREE.Group();
+
+    // Create canvas for shop sprite
+    const canvas = document.createElement('canvas');
+    canvas.width = 128;
+    canvas.height = 128;
+    const ctx = canvas.getContext('2d');
+
+    // Draw glowing circular background (green for shop)
+    const gradient = ctx.createRadialGradient(64, 64, 20, 64, 64, 60);
+    gradient.addColorStop(0, '#66cc66');
+    gradient.addColorStop(0.5, 'rgba(68, 170, 68, 0.6)');
+    gradient.addColorStop(1, 'rgba(68, 170, 68, 0.2)');
+    ctx.fillStyle = gradient;
+    ctx.beginPath();
+    ctx.arc(64, 64, 56, 0, Math.PI * 2);
+    ctx.fill();
+
+    // Draw border
+    ctx.strokeStyle = '#ffffff';
+    ctx.lineWidth = 3;
+    ctx.stroke();
+
+    // Draw shop icon
+    ctx.font = 'bold 48px Arial';
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.fillStyle = '#ffffff';
+    ctx.fillText('🏪', 64, 64);
+
+    // Create sprite texture
+    const texture = new THREE.CanvasTexture(canvas);
+    texture.colorSpace = THREE.SRGBColorSpace;
+    texture.needsUpdate = true;
+
+    // Create sprite
+    const material = new THREE.SpriteMaterial({ map: texture, transparent: true, alphaTest: 0.1, depthWrite: false });
+    const sprite = new THREE.Sprite(material);
+    sprite.scale.set(5, 5, 1);
+    sprite.position.y = 3;
+    group.add(sprite);
+
+    // Position group
+    const worldPos = this.latLngToWorld(position.lat, position.lng);
+    group.position.set(worldPos.x, 0, worldPos.z);
+
+    // Add to scene
+    this.scene.add(group);
+
+    // Create label
+    const label = document.createElement('div');
+    label.className = 'npc-name-label home-shop-label';
+    label.innerHTML = `<span class="npc-name">Home Shop</span><span class="npc-title">Buy & Sell</span>`;
+    label.style.color = color;
+    label.style.borderColor = color;
+    this.container.appendChild(label);
+
+    // Make clickable
+    group.userData = { type: 'homeShop' };
+
+    // Store reference
+    this.homeShopData = {
+      sprite, group, canvas, ctx, label,
+      latLng: { lat: position.lat, lng: position.lng }
+    };
+
+    return group;
+  }
+
+  // Remove home shop sprite
+  removeHomeShop() {
+    if (this.homeShopData) {
+      this.scene.remove(this.homeShopData.group);
+      if (this.homeShopData.label) {
+        this.homeShopData.label.remove();
+      }
+      this.homeShopData = null;
+    }
+  }
+
+  // Update home shop position (called on fast travel)
+  updateHomeShopPosition() {
+    if (!this.homeShopData) return;
+
+    const pos = this.homeShopData.latLng;
+    const worldPos = this.latLngToWorld(pos.lat, pos.lng);
+    this.homeShopData.group.position.set(worldPos.x, 0, worldPos.z);
   }
 
   // Update NPC health display
@@ -1008,7 +1188,7 @@ class Map3D {
     ctx.fillText('MISS', 64, 32);
 
     const texture = new THREE.CanvasTexture(canvas);
-    const material = new THREE.SpriteMaterial({ map: texture, transparent: true });
+    const material = new THREE.SpriteMaterial({ map: texture, transparent: true, alphaTest: 0.1, depthWrite: false });
     const sprite = new THREE.Sprite(material);
     sprite.scale.set(3, 1.5, 1);
     sprite.position.copy(position);
@@ -1061,7 +1241,7 @@ class Map3D {
     ctx.fillText(icon, 32, 32);
 
     const texture = new THREE.CanvasTexture(canvas);
-    const material = new THREE.SpriteMaterial({ map: texture, transparent: true });
+    const material = new THREE.SpriteMaterial({ map: texture, transparent: true, alphaTest: 0.1, depthWrite: false });
     const sprite = new THREE.Sprite(material);
     sprite.scale.set(2, 2, 1);
     sprite.position.copy(from);
@@ -1342,7 +1522,7 @@ class Map3D {
     this.particleSystems.delete(entityId);
   }
 
-  // Update player aura particles
+  // Update player aura particles - extravagant multi-layer animation
   updatePlayerAuras() {
     const time = performance.now() * 0.001;
 
@@ -1350,19 +1530,59 @@ class Map3D {
       if (!playerData.auraParticles) continue;
 
       const positions = playerData.auraParticles.geometry.attributes.position;
-      const particleType = playerData.auraParticles.userData.type;
+      const userData = playerData.auraParticles.userData;
+      const { innerCount, outerCount, risingCount, type } = userData;
 
-      for (let i = 0; i < positions.count; i++) {
-        const baseAngle = (i / positions.count) * Math.PI * 2;
-        const angle = baseAngle + time * 0.5;
-        const radius = 1.5 + Math.sin(time * 2 + i) * 0.3;
+      let idx = 0;
 
-        positions.array[i * 3] = Math.cos(angle) * radius;
-        positions.array[i * 3 + 1] = 1 + Math.sin(time * 3 + i * 0.5) * 1.5 + 1;
-        positions.array[i * 3 + 2] = Math.sin(angle) * radius;
+      // Animation speed varies by aura type
+      const speedMult = type === 'lightning' ? 2.0 : type === 'fire' ? 1.5 : type === 'void' ? 0.7 : 1.0;
+
+      // Inner ring - fast rotation, tight orbit
+      for (let i = 0; i < innerCount; i++) {
+        const baseAngle = (i / innerCount) * Math.PI * 2;
+        const angle = baseAngle + time * 1.5 * speedMult;
+        const radius = 1.2 + Math.sin(time * 4 + i * 0.5) * 0.15;
+        const heightWave = Math.sin(time * 3 + i * 0.3) * 0.4;
+
+        positions.array[idx * 3] = Math.cos(angle) * radius;
+        positions.array[idx * 3 + 1] = 1.5 + heightWave;
+        positions.array[idx * 3 + 2] = Math.sin(angle) * radius;
+        idx++;
+      }
+
+      // Outer particles - slow orbit, vertical bob
+      for (let i = 0; i < outerCount; i++) {
+        const baseAngle = (i / outerCount) * Math.PI * 2;
+        const angle = baseAngle - time * 0.3 * speedMult; // Opposite direction
+        const baseRadius = 2.0 + (i % 3) * 0.3;
+        const radius = baseRadius + Math.sin(time * 2 + i) * 0.3;
+        const height = 0.5 + (i % 5) * 0.8 + Math.sin(time * 1.5 + i * 0.7) * 0.6;
+
+        positions.array[idx * 3] = Math.cos(angle) * radius;
+        positions.array[idx * 3 + 1] = height;
+        positions.array[idx * 3 + 2] = Math.sin(angle) * radius;
+        idx++;
+      }
+
+      // Rising/falling particles - vertical spiral
+      for (let i = 0; i < risingCount; i++) {
+        const phase = (time * speedMult + i * 0.4) % 5; // 0-5 cycle
+        const height = phase; // Rise from 0 to 5
+        const spiralAngle = time * 2 + i + phase * 2;
+        const radius = 0.6 + Math.sin(phase * Math.PI) * 1.0; // Expand in middle
+
+        positions.array[idx * 3] = Math.cos(spiralAngle) * radius;
+        positions.array[idx * 3 + 1] = height;
+        positions.array[idx * 3 + 2] = Math.sin(spiralAngle) * radius;
+        idx++;
       }
 
       positions.needsUpdate = true;
+
+      // Pulse the material opacity for extra effect
+      const pulse = 0.7 + Math.sin(time * 3) * 0.15;
+      playerData.auraParticles.material.opacity = pulse;
     }
   }
 
@@ -1449,7 +1669,7 @@ class Map3D {
     this.npcInteractionCallback = callback;
   }
 
-  // Check if click hit an NPC
+  // Check if click hit an NPC or home shop
   checkNPCClick(event) {
     const rect = this.renderer.domElement.getBoundingClientRect();
     this.mouse.x = ((event.clientX - rect.left) / rect.width) * 2 - 1;
@@ -1457,11 +1677,19 @@ class Map3D {
 
     this.raycaster.setFromCamera(this.mouse, this.camera);
 
+    // Check home shop first
+    if (this.homeShopData) {
+      const intersects = this.raycaster.intersectObject(this.homeShopData.sprite);
+      if (intersects.length > 0) {
+        return { type: 'homeShop' };
+      }
+    }
+
     // Check NPCs
     for (const [npcId, npcData] of this.npcSprites) {
       const intersects = this.raycaster.intersectObject(npcData.sprite);
       if (intersects.length > 0) {
-        return npcId;
+        return { type: 'npc', npcId };
       }
     }
     return null;
@@ -1469,10 +1697,31 @@ class Map3D {
 
   // Update NPC overlay positions
   updateNPCOverlays() {
+    // Get player position for distance checking
+    let playerWorldPos = null;
+    if (this.selfPlayerId) {
+      const selfPlayerData = this.playerSprites.get(this.selfPlayerId);
+      if (selfPlayerData) {
+        playerWorldPos = selfPlayerData.group.position;
+      }
+    }
+
+    // Distance threshold for hiding NPC UI (in world units)
+    const maxUIDistance = 120;
+
     this.npcSprites.forEach((npcData, npcId) => {
       if (!npcData.nameLabel || !npcData.healthBar) return;
 
       const worldPos = npcData.group.position.clone();
+
+      // Check distance from player
+      let tooFar = false;
+      if (playerWorldPos) {
+        const dx = worldPos.x - playerWorldPos.x;
+        const dz = worldPos.z - playerWorldPos.z;
+        const distance = Math.sqrt(dx * dx + dz * dz);
+        tooFar = distance > maxUIDistance;
+      }
 
       // Name label position (above NPC)
       const nameLabelPos = worldPos.clone();
@@ -1481,7 +1730,8 @@ class Map3D {
       const x = (screenPos.x * 0.5 + 0.5) * this.container.clientWidth;
       const y = (-screenPos.y * 0.5 + 0.5) * this.container.clientHeight;
 
-      if (screenPos.z < 1) {
+      // Show only if in front of camera AND not too far from player
+      if (screenPos.z < 1 && !tooFar) {
         npcData.nameLabel.style.display = 'block';
         npcData.nameLabel.style.left = `${x}px`;
         npcData.nameLabel.style.top = `${y}px`;
@@ -1494,6 +1744,34 @@ class Map3D {
         npcData.healthBar.style.display = 'none';
       }
     });
+
+    // Update home shop label position
+    if (this.homeShopData && this.homeShopData.label) {
+      const worldPos = this.homeShopData.group.position.clone();
+
+      // Check distance from player
+      let shopTooFar = false;
+      if (playerWorldPos) {
+        const dx = worldPos.x - playerWorldPos.x;
+        const dz = worldPos.z - playerWorldPos.z;
+        const distance = Math.sqrt(dx * dx + dz * dz);
+        shopTooFar = distance > maxUIDistance;
+      }
+
+      const labelPos = worldPos.clone();
+      labelPos.y += 8;
+      const screenPos = labelPos.project(this.camera);
+      const x = (screenPos.x * 0.5 + 0.5) * this.container.clientWidth;
+      const y = (-screenPos.y * 0.5 + 0.5) * this.container.clientHeight;
+
+      if (screenPos.z < 1 && !shopTooFar) {
+        this.homeShopData.label.style.display = 'block';
+        this.homeShopData.label.style.left = `${x}px`;
+        this.homeShopData.label.style.top = `${y}px`;
+      } else {
+        this.homeShopData.label.style.display = 'none';
+      }
+    }
   }
 
   // Dispose everything

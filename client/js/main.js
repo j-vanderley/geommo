@@ -726,19 +726,31 @@ class Geommo {
   }
 
   async startGame() {
-    // Show game screen
+    // Show loading screen first
     document.getElementById('login-screen').classList.add('hidden');
     document.getElementById('username-screen').classList.add('hidden');
     document.getElementById('avatar-screen').classList.add('hidden');
-    document.getElementById('game-screen').classList.remove('hidden');
+    document.getElementById('loading-screen').classList.remove('hidden');
+
+    // Update loading text
+    const loadingText = document.querySelector('.loading-text');
+    if (loadingText) loadingText.textContent = 'Initializing world...';
 
     // Apply saved UI theme
     const savedUITheme = localStorage.getItem('ui_theme') || 'classic';
     this.applyUITheme(savedUITheme);
 
+    // Small delay to show loading screen
+    await new Promise(resolve => setTimeout(resolve, 300));
+
     // Initialize map
+    if (loadingText) loadingText.textContent = 'Loading map tiles...';
     this.mapManager = new MapManager();
     await this.mapManager.init();
+
+    // Wait for tiles to load
+    if (loadingText) loadingText.textContent = 'Preparing environment...';
+    await new Promise(resolve => setTimeout(resolve, 500));
 
     // Initialize player manager
     this.playerManager = new PlayerManager(this.mapManager);
@@ -782,6 +794,23 @@ class Geommo {
 
     // Set up account settings modal
     this.setupAccountSettings();
+
+    // Set up map mode toggle
+    this.setupMapToggle();
+
+    // Show game screen and fade out loading screen
+    document.getElementById('game-screen').classList.remove('hidden');
+
+    // Wait a bit for rendering to complete then fade out loading screen
+    await new Promise(resolve => setTimeout(resolve, 800));
+    const loadingScreen = document.getElementById('loading-screen');
+    loadingScreen.classList.add('fade-out');
+
+    // Remove loading screen from DOM after animation
+    setTimeout(() => {
+      loadingScreen.classList.add('hidden');
+      loadingScreen.classList.remove('fade-out');
+    }, 800);
   }
 
   setupPlayersPanel() {
@@ -807,6 +836,27 @@ class Geommo {
     infoClose.addEventListener('click', () => {
       infoPanel.classList.add('hidden');
       infoButton.classList.remove('hidden');
+    });
+  }
+
+  setupMapToggle() {
+    const blendSlider = document.getElementById('map-blend-slider');
+    if (!blendSlider) return;
+
+    // Initialize slider from saved value
+    setTimeout(() => {
+      if (this.mapManager?.map3d?.tileManager) {
+        const currentBlend = Math.round(this.mapManager.map3d.tileManager.satelliteBlend * 100);
+        blendSlider.value = currentBlend;
+      }
+    }, 1000);
+
+    // Blend slider - 0 = streets, 100 = satellite
+    blendSlider.addEventListener('input', (e) => {
+      const blend = parseInt(e.target.value) / 100;
+      if (this.mapManager?.map3d?.tileManager) {
+        this.mapManager.map3d.tileManager.setSatelliteBlend(blend);
+      }
     });
   }
 

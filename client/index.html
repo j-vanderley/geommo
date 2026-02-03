@@ -105,6 +105,17 @@
     </div>
   </div>
 
+  <!-- Loading Screen -->
+  <div id="loading-screen" class="screen hidden">
+    <div class="loading-container">
+      <div class="loading-globe">🌍</div>
+      <h1 class="loading-title">Geommo</h1>
+      <div class="loading-spinner"></div>
+      <p class="loading-text">Loading world...</p>
+      <div class="loading-particles"></div>
+    </div>
+  </div>
+
   <!-- Game Screen -->
   <div id="game-screen" class="screen hidden">
     <!-- Main Map -->
@@ -144,6 +155,15 @@
         <!-- Info Button -->
         <div id="info-button" class="ui-panel">
           <button id="info-toggle" class="info-toggle-btn">i</button>
+        </div>
+
+        <!-- Map Blend Slider (Streets ↔ Satellite) -->
+        <div id="map-blend-panel" class="ui-panel">
+          <div class="blend-control">
+            <span class="blend-label">🗺️</span>
+            <input type="range" id="map-blend-slider" min="0" max="100" value="0" title="Drag to blend between Street and Satellite view">
+            <span class="blend-label">🛰️</span>
+          </div>
         </div>
       </div>
 

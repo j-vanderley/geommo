@@ -1344,6 +1344,76 @@ body[class*="ui-"] .info-content strong {
   color: var(--ui-text);
 }
 
+/* Map Blend Slider (Streets ↔ Satellite) */
+#map-blend-panel {
+  padding: 6px 10px;
+  width: 130px;
+  box-sizing: border-box;
+}
+
+.blend-control {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  width: 100%;
+}
+
+.blend-label {
+  font-size: 12px;
+  line-height: 1;
+  flex-shrink: 0;
+}
+
+#map-blend-slider {
+  width: 70px;
+  height: 8px;
+  -webkit-appearance: none;
+  appearance: none;
+  background: linear-gradient(90deg, #4a90d9 0%, #2d5a1e 100%);
+  border-radius: 4px;
+  cursor: pointer;
+  flex-shrink: 0;
+}
+
+#map-blend-slider::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 16px;
+  height: 16px;
+  background: var(--osrs-gold);
+  border-radius: 50%;
+  cursor: pointer;
+  border: 2px solid #3d3426;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.3);
+}
+
+#map-blend-slider::-moz-range-thumb {
+  width: 16px;
+  height: 16px;
+  background: var(--osrs-gold);
+  border-radius: 50%;
+  cursor: pointer;
+  border: 2px solid #3d3426;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.3);
+}
+
+/* Theme support for map blend slider */
+body[class*="ui-"] #map-blend-panel {
+  background: var(--ui-background);
+  border-color: var(--ui-border);
+  border-radius: var(--ui-radius);
+}
+
+body[class*="ui-"] #map-blend-slider {
+  background: linear-gradient(90deg, #4a90d9 0%, #2d5a1e 100%);
+}
+
+body[class*="ui-"] #map-blend-slider::-webkit-slider-thumb {
+  background: var(--ui-primary);
+  border-color: var(--ui-panel);
+}
+
 /* Modal Styles */
 .modal {
   position: fixed;
@@ -3203,12 +3273,14 @@ body[class*="ui-"] .item-count {
   font-size: 0.85rem;
 }
 
-/* Combat ammo grid - large icons with quantity */
+/* Combat ammo grid - 2x2 centered layout */
 .combat-ammo-grid {
   display: grid;
-  grid-template-columns: repeat(3, 1fr);
+  grid-template-columns: repeat(2, 1fr);
   gap: 8px;
   padding: 5px;
+  max-width: 180px;
+  margin: 0 auto;
 }
 
 .combat-ammo-slot {
@@ -3363,4 +3435,572 @@ body[class*="ui-"] .item-count {
   font-size: 1.2rem;
   font-weight: bold;
   color: var(--osrs-gold);
+}
+
+/* ============================================
+   TELEPORTS TAB
+   ============================================ */
+
+.teleports-panel {
+  padding: 5px;
+  max-height: 400px;
+  overflow-y: auto;
+}
+
+.teleports-header {
+  text-align: center;
+  margin-bottom: 10px;
+  position: sticky;
+  top: 0;
+  background: var(--osrs-bg);
+  padding: 5px 0;
+  z-index: 1;
+}
+
+.teleports-header h4 {
+  color: var(--osrs-gold);
+  margin-bottom: 5px;
+}
+
+.tp-level-info {
+  font-size: 0.7rem;
+  color: #88aaff;
+}
+
+.teleports-category {
+  margin-bottom: 10px;
+}
+
+.tp-category-header {
+  font-size: 0.8rem;
+  font-weight: bold;
+  color: var(--osrs-gold);
+  padding: 6px 8px;
+  background: rgba(0, 0, 0, 0.4);
+  border-radius: 4px;
+  margin-bottom: 6px;
+  border-left: 3px solid var(--osrs-gold);
+}
+
+.teleports-list {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.teleport-dest {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  padding: 8px;
+  background: rgba(0, 0, 0, 0.3);
+  border-radius: 6px;
+  border: 1px solid #444;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.teleport-dest.available:hover {
+  background: rgba(100, 200, 100, 0.2);
+  border-color: #88ff88;
+  transform: translateX(3px);
+}
+
+.teleport-dest.locked {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.teleport-dest.boss-dest {
+  border-color: #ff6644;
+}
+
+.teleport-dest.boss-dest.available:hover {
+  border-color: #ff8866;
+  background: rgba(200, 100, 50, 0.2);
+}
+
+.tp-name {
+  font-weight: bold;
+  color: #fff;
+  font-size: 0.9rem;
+}
+
+.tp-info {
+  display: flex;
+  gap: 8px;
+}
+
+.tp-difficulty {
+  font-size: 0.7rem;
+  color: #88ff88;
+}
+
+.tp-difficulty.boss {
+  color: #ff8844;
+}
+
+.tp-reqs {
+  display: flex;
+  gap: 10px;
+  font-size: 0.75rem;
+}
+
+.tp-level, .tp-ammo {
+  padding: 2px 6px;
+  border-radius: 3px;
+  background: rgba(0, 0, 0, 0.3);
+}
+
+.tp-level.met, .tp-ammo.met {
+  color: #88ff88;
+}
+
+.tp-level.unmet, .tp-ammo.unmet {
+  color: #ff6666;
+}
+
+/* Category-specific colors */
+.teleport-dest.cat-training {
+  border-left: 3px solid #88ff88;
+}
+
+.teleport-dest.cat-explore {
+  border-left: 3px solid #88aaff;
+}
+
+.teleport-dest.cat-battle {
+  border-left: 3px solid #ffaa44;
+}
+
+.teleport-dest.cat-boss {
+  border-left: 3px solid #ff4466;
+}
+
+/* ============================================
+   TELEPORT ANIMATION OVERLAY
+   ============================================ */
+.teleport-animation-overlay {
+  --tp-color: #88aaff;
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100vw;
+  height: 100vh;
+  background: radial-gradient(circle at center, rgba(0,0,0,0.3) 0%, rgba(0,0,0,0.9) 100%);
+  z-index: 10000;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  animation: teleportOverlayFadeIn 0.3s ease-out;
+}
+
+.teleport-animation-overlay.teleport-fade-out {
+  animation: teleportOverlayFadeOut 0.3s ease-in forwards;
+}
+
+@keyframes teleportOverlayFadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes teleportOverlayFadeOut {
+  from { opacity: 1; }
+  to { opacity: 0; }
+}
+
+.teleport-animation-overlay.teleport-flash {
+  animation: teleportFlash 0.3s ease-out;
+}
+
+@keyframes teleportFlash {
+  0% { background: radial-gradient(circle at center, rgba(0,0,0,0.3) 0%, rgba(0,0,0,0.9) 100%); }
+  50% { background: radial-gradient(circle at center, var(--tp-color) 0%, rgba(255,255,255,0.8) 50%, rgba(0,0,0,0.9) 100%); }
+  100% { background: radial-gradient(circle at center, rgba(255,255,255,0.9) 0%, rgba(255,255,255,0.9) 100%); }
+}
+
+/* Vortex container */
+.teleport-vortex {
+  position: relative;
+  width: 300px;
+  height: 300px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+/* Spinning rings */
+.teleport-ring {
+  position: absolute;
+  border-radius: 50%;
+  border: 4px solid var(--tp-color);
+  box-shadow: 0 0 30px var(--tp-color), inset 0 0 30px rgba(255,255,255,0.1);
+}
+
+.teleport-ring.ring-1 {
+  width: 280px;
+  height: 280px;
+  animation: ringRotate 2s linear infinite, ringPulse 0.8s ease-in-out infinite;
+  border-style: dashed;
+}
+
+.teleport-ring.ring-2 {
+  width: 200px;
+  height: 200px;
+  animation: ringRotateReverse 1.5s linear infinite, ringPulse 0.6s ease-in-out infinite 0.2s;
+  border-width: 6px;
+}
+
+.teleport-ring.ring-3 {
+  width: 120px;
+  height: 120px;
+  animation: ringRotate 1s linear infinite, ringPulse 0.4s ease-in-out infinite 0.4s;
+  border-style: dotted;
+  border-width: 8px;
+}
+
+@keyframes ringRotate {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+
+@keyframes ringRotateReverse {
+  from { transform: rotate(360deg); }
+  to { transform: rotate(0deg); }
+}
+
+@keyframes ringPulse {
+  0%, 100% { opacity: 0.6; transform: scale(1) rotate(0deg); }
+  50% { opacity: 1; transform: scale(1.05); }
+}
+
+/* Center icon */
+.teleport-center-icon {
+  font-size: 64px;
+  z-index: 1;
+  animation: iconPulse 0.5s ease-in-out infinite alternate;
+  filter: drop-shadow(0 0 20px var(--tp-color));
+}
+
+@keyframes iconPulse {
+  from { transform: scale(1); filter: drop-shadow(0 0 20px var(--tp-color)); }
+  to { transform: scale(1.2); filter: drop-shadow(0 0 40px var(--tp-color)); }
+}
+
+/* Teleport text */
+.teleport-text {
+  margin-top: 30px;
+  font-size: 28px;
+  font-weight: bold;
+  color: var(--tp-color);
+  text-shadow: 0 0 20px var(--tp-color), 0 0 40px var(--tp-color);
+  letter-spacing: 4px;
+  text-transform: uppercase;
+  animation: textGlow 0.5s ease-in-out infinite alternate;
+}
+
+@keyframes textGlow {
+  from { text-shadow: 0 0 20px var(--tp-color), 0 0 40px var(--tp-color); }
+  to { text-shadow: 0 0 30px var(--tp-color), 0 0 60px var(--tp-color), 0 0 80px var(--tp-color); }
+}
+
+/* Progress bar */
+.teleport-progress-bar {
+  position: absolute;
+  bottom: 80px;
+  width: 300px;
+  height: 12px;
+  background: rgba(0, 0, 0, 0.6);
+  border-radius: 6px;
+  border: 2px solid var(--tp-color);
+  overflow: hidden;
+  box-shadow: 0 0 15px rgba(0,0,0,0.5);
+}
+
+.teleport-progress-fill {
+  height: 100%;
+  width: 0%;
+  background: linear-gradient(90deg, var(--tp-color), #fff, var(--tp-color));
+  border-radius: 4px;
+  box-shadow: 0 0 10px var(--tp-color);
+}
+
+/* Particle effects */
+.teleport-particles {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+  overflow: hidden;
+}
+
+.teleport-particle {
+  position: absolute;
+  width: 8px;
+  height: 8px;
+  background: var(--tp-color);
+  border-radius: 50%;
+  animation: particleFloat 1s ease-in-out infinite;
+  box-shadow: 0 0 10px var(--tp-color);
+}
+
+@keyframes particleFloat {
+  0% {
+    transform: translateY(0) scale(1);
+    opacity: 0;
+  }
+  50% {
+    opacity: 1;
+  }
+  100% {
+    transform: translateY(-100px) scale(0);
+    opacity: 0;
+  }
+}
+
+/* Animation variations based on ammo type */
+.anim-clouds .teleport-particle {
+  width: 20px;
+  height: 12px;
+  border-radius: 10px;
+  animation: cloudFloat 2s ease-in-out infinite;
+}
+
+@keyframes cloudFloat {
+  0% { transform: translateX(0) scale(0.5); opacity: 0; }
+  50% { opacity: 0.8; }
+  100% { transform: translateX(50px) translateY(-80px) scale(1.5); opacity: 0; }
+}
+
+.anim-rain .teleport-particle {
+  width: 3px;
+  height: 15px;
+  border-radius: 2px;
+  animation: rainFall 0.8s linear infinite;
+}
+
+@keyframes rainFall {
+  0% { transform: translateY(-50px); opacity: 0; }
+  20% { opacity: 1; }
+  100% { transform: translateY(100px); opacity: 0; }
+}
+
+.anim-light .teleport-particle {
+  width: 4px;
+  height: 4px;
+  animation: lightBurst 0.6s ease-out infinite;
+}
+
+@keyframes lightBurst {
+  0% { transform: scale(0) translateY(0); opacity: 1; }
+  100% { transform: scale(3) translateY(-50px); opacity: 0; }
+}
+
+.anim-snow .teleport-particle {
+  width: 10px;
+  height: 10px;
+  animation: snowFall 2s ease-in-out infinite;
+}
+
+@keyframes snowFall {
+  0% { transform: translateY(-30px) rotate(0deg); opacity: 0; }
+  50% { opacity: 1; }
+  100% { transform: translateY(80px) rotate(360deg); opacity: 0; }
+}
+
+.anim-mist .teleport-particle {
+  width: 40px;
+  height: 40px;
+  background: radial-gradient(circle, var(--tp-color) 0%, transparent 70%);
+  animation: mistSwirl 1.5s ease-in-out infinite;
+}
+
+@keyframes mistSwirl {
+  0% { transform: scale(0.3) rotate(0deg); opacity: 0; }
+  50% { opacity: 0.6; }
+  100% { transform: scale(2) rotate(180deg); opacity: 0; }
+}
+
+.anim-lightning .teleport-particle {
+  width: 2px;
+  height: 30px;
+  background: linear-gradient(to bottom, transparent, var(--tp-color), #fff, var(--tp-color), transparent);
+  animation: lightningStrike 0.3s ease-out infinite;
+}
+
+@keyframes lightningStrike {
+  0% { opacity: 0; transform: scaleY(0) skewX(-5deg); }
+  10% { opacity: 1; transform: scaleY(1) skewX(5deg); }
+  20% { opacity: 0.5; transform: scaleY(0.8) skewX(-3deg); }
+  30% { opacity: 1; transform: scaleY(1) skewX(3deg); }
+  100% { opacity: 0; transform: scaleY(0) skewX(0deg); }
+}
+
+/* Home teleport specific styles */
+.anim-home .teleport-particle {
+  width: 12px;
+  height: 12px;
+  background: radial-gradient(circle, #ffcc44 0%, #ff8800 50%, transparent 70%);
+  animation: homeParticle 2s ease-in-out infinite;
+}
+
+@keyframes homeParticle {
+  0% { transform: translateY(0) scale(0.5); opacity: 0; }
+  30% { opacity: 1; }
+  100% { transform: translateY(-120px) scale(1.5); opacity: 0; }
+}
+
+.home-vortex {
+  animation: homeVortexPulse 2s ease-in-out infinite;
+}
+
+@keyframes homeVortexPulse {
+  0%, 100% { transform: scale(1); }
+  50% { transform: scale(1.1); }
+}
+
+.home-glow {
+  position: absolute;
+  width: 150px;
+  height: 150px;
+  background: radial-gradient(circle, rgba(255, 204, 68, 0.4) 0%, transparent 70%);
+  border-radius: 50%;
+  animation: homeGlow 1.5s ease-in-out infinite alternate;
+}
+
+@keyframes homeGlow {
+  from { transform: scale(1); opacity: 0.5; }
+  to { transform: scale(1.3); opacity: 1; }
+}
+
+/* Teleport countdown timer */
+.teleport-timer {
+  position: absolute;
+  bottom: 130px;
+  font-size: 48px;
+  font-weight: bold;
+  color: var(--tp-color);
+  text-shadow: 0 0 20px var(--tp-color), 0 0 40px rgba(0,0,0,0.8);
+  font-family: 'Courier New', monospace;
+  animation: timerPulse 1s ease-in-out infinite;
+}
+
+@keyframes timerPulse {
+  0%, 100% { transform: scale(1); }
+  50% { transform: scale(1.1); }
+}
+
+/* ============================================
+   LOADING SCREEN
+   ============================================ */
+
+#loading-screen {
+  background: radial-gradient(ellipse at center, #1a1a2e 0%, #0d1117 50%, #000000 100%);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  z-index: 9999;
+}
+
+.loading-container {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  position: relative;
+}
+
+.loading-globe {
+  font-size: 100px;
+  animation: loadingGlobeFloat 3s ease-in-out infinite, loadingGlobeSpin 8s linear infinite;
+  filter: drop-shadow(0 0 30px rgba(100, 150, 255, 0.5));
+  margin-bottom: 20px;
+}
+
+@keyframes loadingGlobeFloat {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-15px); }
+}
+
+@keyframes loadingGlobeSpin {
+  from { transform: rotateY(0deg); }
+  to { transform: rotateY(360deg); }
+}
+
+.loading-title {
+  font-family: 'Georgia', serif;
+  font-size: 48px;
+  font-weight: bold;
+  color: #ffb000;
+  text-shadow: 0 0 20px rgba(255, 176, 0, 0.6), 0 4px 15px rgba(0, 0, 0, 0.8);
+  letter-spacing: 4px;
+  margin-bottom: 30px;
+}
+
+.loading-spinner {
+  width: 60px;
+  height: 60px;
+  border: 4px solid rgba(255, 176, 0, 0.2);
+  border-top: 4px solid #ffb000;
+  border-radius: 50%;
+  animation: loadingSpin 1s linear infinite;
+  margin-bottom: 20px;
+}
+
+@keyframes loadingSpin {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+
+.loading-text {
+  font-size: 18px;
+  color: #ffb000;
+  text-shadow: 0 0 10px rgba(255, 176, 0, 0.5);
+  animation: loadingTextPulse 1.5s ease-in-out infinite;
+}
+
+@keyframes loadingTextPulse {
+  0%, 100% { opacity: 0.6; }
+  50% { opacity: 1; }
+}
+
+.loading-particles {
+  position: absolute;
+  width: 300px;
+  height: 300px;
+  pointer-events: none;
+}
+
+.loading-particles::before,
+.loading-particles::after {
+  content: '';
+  position: absolute;
+  width: 100%;
+  height: 100%;
+  border-radius: 50%;
+  border: 2px dashed rgba(255, 176, 0, 0.3);
+  animation: loadingParticleRing 4s linear infinite;
+}
+
+.loading-particles::after {
+  animation-duration: 6s;
+  animation-direction: reverse;
+  border-color: rgba(100, 150, 255, 0.2);
+}
+
+@keyframes loadingParticleRing {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+
+/* Loading screen fade out */
+#loading-screen.fade-out {
+  animation: loadingFadeOut 0.8s ease-out forwards;
+}
+
+@keyframes loadingFadeOut {
+  0% { opacity: 1; }
+  100% { opacity: 0; visibility: hidden; }
 }
