@@ -346,7 +346,11 @@ body {
 
 /* Game Screen */
 #game-screen {
-  position: relative;
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100vw;
+  height: 100vh;
   z-index: 1; /* Game screen is the base layer, login screens are above */
 }
 
@@ -3898,11 +3902,16 @@ body[class*="ui-"] .item-count {
    ============================================ */
 
 #loading-screen {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100vw;
+  height: 100vh;
   background: radial-gradient(ellipse at center, #1a1a2e 0%, #0d1117 50%, #000000 100%);
   display: flex;
   justify-content: center;
   align-items: center;
-  z-index: 9999;
+  z-index: 99999;
 }
 
 .loading-container {

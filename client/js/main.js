@@ -726,11 +726,14 @@ class Geommo {
   }
 
   async startGame() {
-    // Show loading screen first
+    // Show loading screen as overlay
     document.getElementById('login-screen').classList.add('hidden');
     document.getElementById('username-screen').classList.add('hidden');
     document.getElementById('avatar-screen').classList.add('hidden');
     document.getElementById('loading-screen').classList.remove('hidden');
+
+    // Show game screen underneath (loading screen overlays it)
+    document.getElementById('game-screen').classList.remove('hidden');
 
     // Update loading text
     const loadingText = document.querySelector('.loading-text');
@@ -741,16 +744,16 @@ class Geommo {
     this.applyUITheme(savedUITheme);
 
     // Small delay to show loading screen
-    await new Promise(resolve => setTimeout(resolve, 300));
+    await new Promise(resolve => setTimeout(resolve, 100));
 
     // Initialize map
     if (loadingText) loadingText.textContent = 'Loading map tiles...';
     this.mapManager = new MapManager();
     await this.mapManager.init();
 
-    // Wait for tiles to load
+    // Wait for tiles to start loading
     if (loadingText) loadingText.textContent = 'Preparing environment...';
-    await new Promise(resolve => setTimeout(resolve, 500));
+    await new Promise(resolve => setTimeout(resolve, 300));
 
     // Initialize player manager
     this.playerManager = new PlayerManager(this.mapManager);
@@ -798,19 +801,27 @@ class Geommo {
     // Set up map mode toggle
     this.setupMapToggle();
 
-    // Show game screen and fade out loading screen
-    document.getElementById('game-screen').classList.remove('hidden');
+    // Loading screen will be hidden by hideLoadingScreen() called from auth:success
+  }
 
-    // Wait a bit for rendering to complete then fade out loading screen
-    await new Promise(resolve => setTimeout(resolve, 800));
-    const loadingScreen = document.getElementById('loading-screen');
-    loadingScreen.classList.add('fade-out');
+  // Called when player is fully loaded
+  hideLoadingScreen() {
+    const loadingText = document.querySelector('.loading-text');
+    if (loadingText) loadingText.textContent = 'Entering world...';
 
-    // Remove loading screen from DOM after animation
+    // Wait for everything to render
     setTimeout(() => {
-      loadingScreen.classList.add('hidden');
-      loadingScreen.classList.remove('fade-out');
-    }, 800);
+      const loadingScreen = document.getElementById('loading-screen');
+      if (loadingScreen && !loadingScreen.classList.contains('hidden')) {
+        loadingScreen.classList.add('fade-out');
+
+        // Remove loading screen after animation
+        setTimeout(() => {
+          loadingScreen.classList.add('hidden');
+          loadingScreen.classList.remove('fade-out');
+        }, 800);
+      }
+    }, 1000);
   }
 
   setupPlayersPanel() {
@@ -1001,6 +1012,9 @@ class Geommo {
       }
 
       this.chatManager.addSystemMessage('Welcome to Geommo!');
+
+      // Hide loading screen now that player is fully loaded
+      this.hideLoadingScreen();
     });
 
     this.socket.on('auth:error', (data) => {
