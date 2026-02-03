@@ -506,40 +506,47 @@ body {
 /* Minimap Info (Weather & Coords) */
 #minimap-info {
   display: flex;
-  justify-content: space-between;
-  align-items: center;
-  padding: 6px 8px;
-  background: rgba(0, 0, 0, 0.5);
-  border-top: 1px solid var(--osrs-border);
-  font-size: 11px;
+  flex-direction: column;
+  gap: 6px;
+  padding: 10px;
+  background: rgba(0, 0, 0, 0.7);
+  border-top: 2px solid var(--osrs-border);
 }
 
 #weather-display-mini {
   display: flex;
   align-items: center;
-  gap: 4px;
+  justify-content: center;
+  gap: 8px;
   color: var(--osrs-gold);
+  font-size: 16px;
+  font-weight: bold;
 }
 
 #weather-icon-mini {
-  font-size: 14px;
+  font-size: 24px;
 }
 
 #weather-text-mini {
   color: #fff;
+  font-size: 14px;
 }
 
 #minimap-info #player-coords {
-  color: #aaa;
-  font-size: 10px;
+  color: var(--osrs-gold);
+  font-size: 12px;
+  text-align: center;
+  background: rgba(0, 0, 0, 0.4);
+  padding: 4px 8px;
+  border-radius: 4px;
 }
 
 /* Players Panel */
 #players-panel {
-  top: 205px; /* 10px gap from minimap (10 + 150 + ~35 padding/header + 10 gap) */
+  top: 280px; /* Below minimap + info section */
   right: 10px;
   width: 200px;
-  max-height: 300px;
+  max-height: 250px;
   transition: max-height 0.3s ease;
 }
 

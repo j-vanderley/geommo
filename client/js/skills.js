@@ -583,15 +583,6 @@ class SkillsManager {
           </div>
         </div>
 
-        <!-- Fast Travel Section -->
-        <div class="home-section">
-          <h4>✈️ Fast Travel</h4>
-          <select id="home-city-select" class="osrs-select home-select">
-            <option value="">Select a city...</option>
-          </select>
-          <button class="osrs-btn small-btn" id="home-travel-btn">Travel</button>
-        </div>
-
         <!-- Home Location Section -->
         <div class="home-section">
           <h4>🏠 Home Location</h4>
@@ -622,17 +613,6 @@ class SkillsManager {
       </div>
     `;
 
-    // Populate city select
-    const citySelect = document.getElementById('home-city-select');
-    if (citySelect && typeof MAJOR_CITIES !== 'undefined') {
-      MAJOR_CITIES.forEach(city => {
-        const option = document.createElement('option');
-        option.value = JSON.stringify({ lat: city.lat, lng: city.lng });
-        option.textContent = city.name;
-        citySelect.appendChild(option);
-      });
-    }
-
     // Player buttons
     document.getElementById('home-change-avatar-btn')?.addEventListener('click', () => {
       window.game?.showChangeAvatarScreen();
@@ -649,15 +629,6 @@ class SkillsManager {
 
     document.getElementById('home-logout-btn')?.addEventListener('click', () => {
       window.game?.logout();
-    });
-
-    // Fast travel
-    document.getElementById('home-travel-btn')?.addEventListener('click', () => {
-      const select = document.getElementById('home-city-select');
-      if (select && select.value) {
-        const pos = JSON.parse(select.value);
-        window.game?.mapManager?.teleportTo(pos.lat, pos.lng);
-      }
     });
 
     // Set home button
