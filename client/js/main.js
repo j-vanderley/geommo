@@ -479,7 +479,8 @@ class Geommo {
     const linkGoogleBtn = document.getElementById('link-google-btn');
     const changePasswordBtn = document.getElementById('change-password-btn');
 
-    openBtn.addEventListener('click', () => {
+    // Open button may not exist if moved to Home tab
+    openBtn?.addEventListener('click', () => {
       this.updateAccountModal();
       modal.classList.remove('hidden');
     });
@@ -776,17 +777,17 @@ class Geommo {
       this.handleChat(message, type);
     });
 
-    // Set up change avatar button
-    document.getElementById('change-flag-btn').addEventListener('click', () => {
+    // Set up change avatar button (if exists - moved to Home tab)
+    document.getElementById('change-flag-btn')?.addEventListener('click', () => {
       this.showChangeAvatarScreen();
     });
 
-    // Set up logout button
-    document.getElementById('logout-btn').addEventListener('click', () => {
+    // Set up logout button (if exists - moved to Home tab)
+    document.getElementById('logout-btn')?.addEventListener('click', () => {
       this.logout();
     });
 
-    // Set up fast travel
+    // Set up fast travel (if exists - moved to Home tab)
     this.setupFastTravel();
 
     // Set up info panel toggle
@@ -839,14 +840,15 @@ class Geommo {
     const infoPanel = document.getElementById('info-panel');
     const infoClose = document.getElementById('info-close');
 
-    infoToggle.addEventListener('click', () => {
-      infoButton.classList.add('hidden');
-      infoPanel.classList.remove('hidden');
+    // Info toggle button (if exists - may be moved to Home tab)
+    infoToggle?.addEventListener('click', () => {
+      infoButton?.classList.add('hidden');
+      infoPanel?.classList.remove('hidden');
     });
 
-    infoClose.addEventListener('click', () => {
-      infoPanel.classList.add('hidden');
-      infoButton.classList.remove('hidden');
+    infoClose?.addEventListener('click', () => {
+      infoPanel?.classList.add('hidden');
+      infoButton?.classList.remove('hidden');
     });
   }
 
@@ -872,8 +874,12 @@ class Geommo {
   }
 
   setupFastTravel() {
+    // Fast travel is now primarily in the Home tab
+    // This handles the old UI elements if they still exist
     const select = document.getElementById('city-select');
     const travelBtn = document.getElementById('travel-btn');
+
+    if (!select || !travelBtn) return;
 
     // Populate city dropdown
     MAJOR_CITIES.forEach(city => {

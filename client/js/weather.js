@@ -500,35 +500,17 @@ class WeatherManager {
   }
 
   updateWeatherUI() {
-    // Update or create weather display
-    let weatherDisplay = document.getElementById('weather-display');
+    // Update mini weather display under minimap
+    const weatherIcon = document.getElementById('weather-icon-mini');
+    const weatherText = document.getElementById('weather-text-mini');
 
-    if (!weatherDisplay) {
-      weatherDisplay = document.createElement('div');
-      weatherDisplay.id = 'weather-display';
-      weatherDisplay.className = 'ui-panel';
-      weatherDisplay.innerHTML = `
-        <div class="panel-header">Weather</div>
-        <div id="weather-info"></div>
-      `;
-
-      // Insert into left-panels container for flex layout
-      const leftPanels = document.getElementById('left-panels');
-      if (leftPanels) {
-        leftPanels.appendChild(weatherDisplay);
-      }
-    }
-
-    const weatherInfo = document.getElementById('weather-info');
-    if (weatherInfo && this.currentWeather) {
+    if (weatherIcon && weatherText && this.currentWeather) {
       const temp = Math.round(this.currentWeather.temperature);
       const icon = this.getWeatherIcon();
       const timeIcon = this.isDay ? '☀️' : '🌙';
 
-      weatherInfo.innerHTML = `
-        <div class="weather-temp">${icon} ${temp}°C</div>
-        <div class="weather-time">${timeIcon} ${this.isDay ? 'Day' : 'Night'}</div>
-      `;
+      weatherIcon.textContent = icon;
+      weatherText.textContent = `${temp}°C ${timeIcon}`;
     }
   }
 

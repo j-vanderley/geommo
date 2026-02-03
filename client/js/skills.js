@@ -4,9 +4,10 @@ class SkillsManager {
     // User ID for per-account storage
     this.userId = null;
 
-    // Skills - one for each weather type + HP skill
+    // Skills - one for each weather type + HP skill + Teleportation
     this.skills = {
       hitpoints: { name: 'Hitpoints', xp: 0, icon: '❤️', isCombat: true },
+      teleportation: { name: 'Teleportation', xp: 0, icon: '🌀', isTeleport: true },
       sunbathing: { name: 'Sunbathing', weather: 'clear', xp: 0, icon: '☀️' },
       cloudgazing: { name: 'Cloud Gazing', weather: 'cloudy', xp: 0, icon: '☁️' },
       mistwalking: { name: 'Mist Walking', weather: 'fog', xp: 0, icon: '🌫️' },
@@ -14,6 +15,9 @@ class SkillsManager {
       snowdrifting: { name: 'Snow Drifting', weather: 'snow', xp: 0, icon: '❄️' },
       stormchasing: { name: 'Storm Chasing', weather: 'storm', xp: 0, icon: '⛈️' }
     };
+
+    // Teleport animation state
+    this.teleportAnimating = false;
 
     // Items that can be collected
     // accuracyBonus: added to hit chance (base 50% + skill level + accuracyBonus)
@@ -45,29 +49,29 @@ class SkillsManager {
       mega_health_pack: { name: 'Mega Health Pack', icon: '❤️‍🩹', rarity: 'rare', sellValue: 40, healAmount: 400, isConsumable: true, buyPrice: 60 }
     };
 
-    // Equipment items (wearable/visible gear)
+    // Equipment items (wearable/visible gear) - sellValue is 50% of price
     this.equipmentTypes = {
       // Skins (change base body appearance)
-      skin_snowball: { name: 'Snowball', type: 'skin', icon: '⚪', color: '#ffffff', price: 50, particle: 'snow', isEquipment: true },
-      skin_lightning: { name: 'Lightning Ball', type: 'skin', icon: '⚡', color: '#ffff00', price: 75, particle: 'spark', isEquipment: true },
-      skin_flame: { name: 'Flame Spirit', type: 'skin', icon: '🔥', color: '#ff4400', price: 75, particle: 'fire', isEquipment: true },
-      skin_void: { name: 'Void Walker', type: 'skin', icon: '🌑', color: '#330066', price: 100, particle: 'void', isEquipment: true },
+      skin_snowball: { name: 'Snowball', type: 'skin', icon: '⚪', color: '#ffffff', price: 50, sellValue: 25, particle: 'snow', isEquipment: true },
+      skin_lightning: { name: 'Lightning Ball', type: 'skin', icon: '⚡', color: '#ffff00', price: 75, sellValue: 37, particle: 'spark', isEquipment: true },
+      skin_flame: { name: 'Flame Spirit', type: 'skin', icon: '🔥', color: '#ff4400', price: 75, sellValue: 37, particle: 'fire', isEquipment: true },
+      skin_void: { name: 'Void Walker', type: 'skin', icon: '🌑', color: '#330066', price: 100, sellValue: 50, particle: 'void', isEquipment: true },
       // Hats (head-worn items)
-      hat_ice_tiara: { name: 'Ice Tiara', type: 'hat', icon: '👑', color: '#88ddff', price: 30, isEquipment: true },
-      hat_storm_crown: { name: 'Storm Crown', type: 'hat', icon: '⚜️', color: '#9966ff', price: 40, isEquipment: true },
-      hat_sun_halo: { name: 'Sun Halo', type: 'hat', icon: '☀️', color: '#ffcc00', price: 35, isEquipment: true },
-      hat_mist_hood: { name: 'Mist Hood', type: 'hat', icon: '🎭', color: '#aabbcc', price: 25, isEquipment: true },
+      hat_ice_tiara: { name: 'Ice Tiara', type: 'hat', icon: '👑', color: '#88ddff', price: 30, sellValue: 15, isEquipment: true },
+      hat_storm_crown: { name: 'Storm Crown', type: 'hat', icon: '⚜️', color: '#9966ff', price: 40, sellValue: 20, isEquipment: true },
+      hat_sun_halo: { name: 'Sun Halo', type: 'hat', icon: '☀️', color: '#ffcc00', price: 35, sellValue: 17, isEquipment: true },
+      hat_mist_hood: { name: 'Mist Hood', type: 'hat', icon: '🎭', color: '#aabbcc', price: 25, sellValue: 12, isEquipment: true },
       // Held items (objects held by character)
-      held_lightning_bolt: { name: 'Lightning Bolt', type: 'held', icon: '🗡️', color: '#ffff00', price: 45, isEquipment: true },
-      held_frost_staff: { name: 'Frost Staff', type: 'held', icon: '🪄', color: '#88ddff', price: 40, isEquipment: true },
-      held_sun_orb: { name: 'Sun Orb', type: 'held', icon: '🔮', color: '#ffaa00', price: 35, isEquipment: true },
-      held_void_blade: { name: 'Void Blade', type: 'held', icon: '⚔️', color: '#660099', price: 60, isEquipment: true },
+      held_lightning_bolt: { name: 'Lightning Bolt', type: 'held', icon: '🗡️', color: '#ffff00', price: 45, sellValue: 22, isEquipment: true },
+      held_frost_staff: { name: 'Frost Staff', type: 'held', icon: '🪄', color: '#88ddff', price: 40, sellValue: 20, isEquipment: true },
+      held_sun_orb: { name: 'Sun Orb', type: 'held', icon: '🔮', color: '#ffaa00', price: 35, sellValue: 17, isEquipment: true },
+      held_void_blade: { name: 'Void Blade', type: 'held', icon: '⚔️', color: '#660099', price: 60, sellValue: 30, isEquipment: true },
       // Auras (particle effects around character)
-      aura_frost: { name: 'Frost Aura', type: 'aura', icon: '❄️', color: '#88ddff', price: 80, particle: 'frost', isEquipment: true },
-      aura_fire: { name: 'Fire Aura', type: 'aura', icon: '🔥', color: '#ff4400', price: 80, particle: 'fire', isEquipment: true },
-      aura_lightning: { name: 'Lightning Aura', type: 'aura', icon: '⚡', color: '#ffff00', price: 100, particle: 'lightning', isEquipment: true },
-      aura_void: { name: 'Void Aura', type: 'aura', icon: '🌀', color: '#660099', price: 120, particle: 'void', isEquipment: true },
-      aura_holy: { name: 'Holy Aura', type: 'aura', icon: '✨', color: '#ffffaa', price: 150, particle: 'holy', isEquipment: true }
+      aura_frost: { name: 'Frost Aura', type: 'aura', icon: '❄️', color: '#88ddff', price: 80, sellValue: 40, particle: 'frost', isEquipment: true },
+      aura_fire: { name: 'Fire Aura', type: 'aura', icon: '🔥', color: '#ff4400', price: 80, sellValue: 40, particle: 'fire', isEquipment: true },
+      aura_lightning: { name: 'Lightning Aura', type: 'aura', icon: '⚡', color: '#ffff00', price: 100, sellValue: 50, particle: 'lightning', isEquipment: true },
+      aura_void: { name: 'Void Aura', type: 'aura', icon: '🌀', color: '#660099', price: 120, sellValue: 60, particle: 'void', isEquipment: true },
+      aura_holy: { name: 'Holy Aura', type: 'aura', icon: '✨', color: '#ffffaa', price: 150, sellValue: 75, particle: 'holy', isEquipment: true }
     };
 
     // Equipped gear slots
@@ -225,6 +229,35 @@ class SkillsManager {
       }
       this.updateMaxHP();
     }
+  }
+
+  // Get Teleportation level
+  getTeleportationLevel() {
+    return this.getLevel(this.skills.teleportation.xp);
+  }
+
+  // Add Teleportation XP (scales with destination level requirement)
+  addTeleportXP(levelReq) {
+    const oldLevel = this.getTeleportationLevel();
+    // XP scales with level requirement: base 10 + levelReq * 5
+    const xpGain = 10 + levelReq * 5;
+    this.skills.teleportation.xp += xpGain;
+    const newLevel = this.getTeleportationLevel();
+
+    // Show XP gain
+    if (window.chatManager) {
+      window.chatManager.addLogMessage(`🌀 +${xpGain} Teleportation XP`, 'xp');
+    }
+
+    // Check for level up
+    if (newLevel > oldLevel) {
+      if (window.chatManager) {
+        window.chatManager.addLogMessage(`🌀 Teleportation leveled up! (${newLevel})`, 'levelup');
+      }
+    }
+
+    this.save();
+    this.renderSkills();
 
     this.renderSkills();
   }
@@ -283,6 +316,7 @@ class SkillsManager {
           <button class="skills-tab" data-tab="inventory" title="Inventory">📦</button>
           <button class="skills-tab" data-tab="combat" title="Combat">⚔️</button>
           <button class="skills-tab" data-tab="equipment" title="Equipment">🛡️</button>
+          <button class="skills-tab" data-tab="teleports" title="Teleports">🌍</button>
         </div>
       </div>
       <div id="home-content" class="home-content hidden"></div>
@@ -290,6 +324,7 @@ class SkillsManager {
       <div id="inventory-content" class="inventory-content hidden"></div>
       <div id="combat-content" class="combat-content hidden"></div>
       <div id="equipment-content" class="equipment-content hidden"></div>
+      <div id="teleports-content" class="teleports-content hidden"></div>
     `;
 
     // Add to UI overlay
@@ -356,6 +391,7 @@ class SkillsManager {
     document.getElementById('inventory-content').classList.toggle('hidden', tabName !== 'inventory');
     document.getElementById('combat-content').classList.toggle('hidden', tabName !== 'combat');
     document.getElementById('equipment-content').classList.toggle('hidden', tabName !== 'equipment');
+    document.getElementById('teleports-content').classList.toggle('hidden', tabName !== 'teleports');
 
     this.updateUI();
   }
@@ -372,6 +408,8 @@ class SkillsManager {
       this.renderCombat();
     } else if (this.activeTab === 'equipment') {
       this.renderEquipment();
+    } else if (this.activeTab === 'teleports') {
+      this.renderTeleports();
     }
   }
 
@@ -529,8 +567,32 @@ class SkillsManager {
     // Check if player is near home (within ~50 meters)
     const isNearHome = hasHome && this.isNearHome();
 
+    // Get current player name
+    const playerName = window.game?.walletUsername || window.game?.currentUser?.displayName || 'Player';
+
     container.innerHTML = `
       <div class="home-panel">
+        <!-- Player Section -->
+        <div class="home-section player-section">
+          <h4>👤 ${playerName}</h4>
+          <div class="home-buttons-grid">
+            <button class="osrs-btn small-btn" id="home-change-avatar-btn">Avatar</button>
+            <button class="osrs-btn small-btn" id="home-account-btn">Account</button>
+            <button class="osrs-btn small-btn" id="home-info-btn">Info</button>
+            <button class="osrs-btn small-btn logout-btn" id="home-logout-btn">Logout</button>
+          </div>
+        </div>
+
+        <!-- Fast Travel Section -->
+        <div class="home-section">
+          <h4>✈️ Fast Travel</h4>
+          <select id="home-city-select" class="osrs-select home-select">
+            <option value="">Select a city...</option>
+          </select>
+          <button class="osrs-btn small-btn" id="home-travel-btn">Travel</button>
+        </div>
+
+        <!-- Home Location Section -->
         <div class="home-section">
           <h4>🏠 Home Location</h4>
           <p class="home-coords">${posText}</p>
@@ -543,6 +605,7 @@ class SkillsManager {
             </button>
           ` : ''}
         </div>
+
         ${hasHome ? `
         <div class="home-shop-section ${isNearHome ? '' : 'disabled'}">
           <h4>🏪 Home Shop</h4>
@@ -556,12 +619,46 @@ class SkillsManager {
           `}
         </div>
         ` : ''}
-        <div class="home-info">
-          <p>Set your home to respawn here after combat.</p>
-          ${hasHome ? '<p>Visit home to access your shop!</p>' : ''}
-        </div>
       </div>
     `;
+
+    // Populate city select
+    const citySelect = document.getElementById('home-city-select');
+    if (citySelect && typeof MAJOR_CITIES !== 'undefined') {
+      MAJOR_CITIES.forEach(city => {
+        const option = document.createElement('option');
+        option.value = JSON.stringify({ lat: city.lat, lng: city.lng });
+        option.textContent = city.name;
+        citySelect.appendChild(option);
+      });
+    }
+
+    // Player buttons
+    document.getElementById('home-change-avatar-btn')?.addEventListener('click', () => {
+      window.game?.showChangeAvatarScreen();
+    });
+
+    document.getElementById('home-account-btn')?.addEventListener('click', () => {
+      document.getElementById('account-modal')?.classList.remove('hidden');
+    });
+
+    document.getElementById('home-info-btn')?.addEventListener('click', () => {
+      document.getElementById('info-button')?.classList.add('hidden');
+      document.getElementById('info-panel')?.classList.remove('hidden');
+    });
+
+    document.getElementById('home-logout-btn')?.addEventListener('click', () => {
+      window.game?.logout();
+    });
+
+    // Fast travel
+    document.getElementById('home-travel-btn')?.addEventListener('click', () => {
+      const select = document.getElementById('home-city-select');
+      if (select && select.value) {
+        const pos = JSON.parse(select.value);
+        window.game?.mapManager?.teleportTo(pos.lat, pos.lng);
+      }
+    });
 
     // Set home button
     document.getElementById('set-home-btn')?.addEventListener('click', () => {
@@ -599,20 +696,125 @@ class SkillsManager {
     this.save();
     this.renderHome();
 
+    // Create physical home shop entity in 3D world
+    if (this.map3d) {
+      this.map3d.createHomeShop(this.homePosition);
+    }
+
     if (window.chatManager) {
       window.chatManager.addLogMessage('🏠 Home location set!', 'info');
     }
   }
 
-  // Teleport to home position
+  // Teleport to home position (16 game ticks = 9600ms animation)
   teleportHome() {
     if (!this.homePosition || !window.game) return;
 
-    window.game.fastTravelTo(this.homePosition.lat, this.homePosition.lng);
-
-    if (window.chatManager) {
-      window.chatManager.addLogMessage('🏠 Teleported home!', 'info');
+    // Prevent teleporting while already teleporting
+    if (this.teleportAnimating) {
+      if (window.chatManager) {
+        window.chatManager.addLogMessage('❌ Already teleporting!', 'error');
+      }
+      return;
     }
+
+    // Start home teleport animation (16 game ticks = 9600ms)
+    this.teleportAnimating = true;
+    const animDuration = 9600; // 16 ticks * 600ms
+
+    // Show casting message
+    if (window.chatManager) {
+      window.chatManager.addLogMessage('🏠 Casting Home Teleport... (this takes a while)', 'info');
+    }
+
+    // Show home teleport animation (generic/home style)
+    this.showHomeTeleportAnimation(animDuration);
+
+    // After animation, perform actual teleport
+    setTimeout(() => {
+      window.game.fastTravelTo(this.homePosition.lat, this.homePosition.lng);
+
+      if (window.chatManager) {
+        window.chatManager.addLogMessage('🏠 Teleported home!', 'info');
+      }
+
+      this.teleportAnimating = false;
+    }, animDuration);
+  }
+
+  // Show home teleport animation (longer, generic style)
+  showHomeTeleportAnimation(duration) {
+    // Remove any existing animation
+    const existing = document.querySelector('.teleport-animation-overlay');
+    if (existing) existing.remove();
+
+    // Create overlay with home-specific style
+    const overlay = document.createElement('div');
+    overlay.className = 'teleport-animation-overlay anim-home';
+    overlay.innerHTML = `
+      <div class="teleport-vortex home-vortex">
+        <div class="teleport-ring ring-1"></div>
+        <div class="teleport-ring ring-2"></div>
+        <div class="teleport-ring ring-3"></div>
+        <div class="home-glow"></div>
+        <div class="teleport-center-icon">🏠</div>
+      </div>
+      <div class="teleport-particles"></div>
+      <div class="teleport-text">Home Teleport</div>
+      <div class="teleport-timer"></div>
+      <div class="teleport-progress-bar">
+        <div class="teleport-progress-fill"></div>
+      </div>
+    `;
+
+    // Set home teleport color (warm golden)
+    overlay.style.setProperty('--tp-color', '#ffcc44');
+
+    document.body.appendChild(overlay);
+
+    // Generate particles (more for longer animation)
+    const particleContainer = overlay.querySelector('.teleport-particles');
+    for (let i = 0; i < 80; i++) {
+      const particle = document.createElement('div');
+      particle.className = 'teleport-particle';
+      particle.style.left = `${Math.random() * 100}%`;
+      particle.style.top = `${Math.random() * 100}%`;
+      particle.style.animationDelay = `${Math.random() * 2}s`;
+      particle.style.animationDuration = `${1 + Math.random() * 2}s`;
+      particleContainer.appendChild(particle);
+    }
+
+    // Animate progress bar
+    const progressFill = overlay.querySelector('.teleport-progress-fill');
+    progressFill.style.transition = `width ${duration}ms linear`;
+    requestAnimationFrame(() => {
+      progressFill.style.width = '100%';
+    });
+
+    // Update countdown timer
+    const timerEl = overlay.querySelector('.teleport-timer');
+    let remaining = Math.ceil(duration / 1000);
+    timerEl.textContent = `${remaining}s`;
+    const timerInterval = setInterval(() => {
+      remaining--;
+      if (remaining > 0) {
+        timerEl.textContent = `${remaining}s`;
+      } else {
+        clearInterval(timerInterval);
+      }
+    }, 1000);
+
+    // Flash effect at end
+    setTimeout(() => {
+      overlay.classList.add('teleport-flash');
+    }, duration - 300);
+
+    // Remove overlay after animation
+    setTimeout(() => {
+      clearInterval(timerInterval);
+      overlay.classList.add('teleport-fade-out');
+      setTimeout(() => overlay.remove(), 300);
+    }, duration);
   }
 
   // Show home shop dialog
@@ -620,11 +822,12 @@ class SkillsManager {
     // Close any existing shop
     this.closeHomeShop();
 
-    // Get sellable items from inventory
+    // Get sellable items from inventory (including equipment)
     const sellableItems = this.inventorySlots
       .filter(slot => slot && slot.count > 0)
       .map(slot => {
-        const item = this.itemTypes[slot.itemKey];
+        // Check both itemTypes and equipmentTypes
+        const item = this.itemTypes[slot.itemKey] || this.equipmentTypes[slot.itemKey];
         return item ? { ...slot, item } : null;
       })
       .filter(Boolean);
@@ -738,14 +941,15 @@ class SkillsManager {
     }
   }
 
-  // Sell a single item
+  // Sell a single item (including equipment)
   sellItem(itemKey, count = 1) {
     const slotIndex = this.inventorySlots.findIndex(
       s => s && s.itemKey === itemKey && s.count > 0
     );
     if (slotIndex === -1) return;
 
-    const item = this.itemTypes[itemKey];
+    // Check both itemTypes and equipmentTypes
+    const item = this.itemTypes[itemKey] || this.equipmentTypes[itemKey];
     if (!item) return;
 
     const sellValue = item.sellValue || 1;
@@ -766,7 +970,7 @@ class SkillsManager {
     }
   }
 
-  // Sell all items in inventory
+  // Sell all items in inventory (including equipment)
   sellAllItems() {
     let totalValue = 0;
     let itemsSold = 0;
@@ -775,7 +979,8 @@ class SkillsManager {
       const slot = this.inventorySlots[i];
       if (!slot || slot.count <= 0) continue;
 
-      const item = this.itemTypes[slot.itemKey];
+      // Check both itemTypes and equipmentTypes
+      const item = this.itemTypes[slot.itemKey] || this.equipmentTypes[slot.itemKey];
       if (!item) continue;
 
       // Don't sell health packs or consumables
@@ -956,6 +1161,309 @@ class SkillsManager {
         this.unequipGear(slotType);
       });
     });
+  }
+
+  // Teleport destinations with level requirements and ammo costs
+  // Scaling: Training (1-20), Battle NPCs (20-40), Boss (40+)
+  getTeleportDestinations() {
+    return [
+      // === TRAINING CITIES (Level 1-20) ===
+      // Beginner - cloudwisp/raindrop (common ammo)
+      { name: 'Paris', lat: 48.8566, lng: 2.3522, levelReq: 1, ammoCost: 1, ammoType: 'cloudwisp', difficulty: 'Training', category: 'training' },
+      { name: 'Los Angeles', lat: 34.0522, lng: -118.2437, levelReq: 1, ammoCost: 1, ammoType: 'cloudwisp', difficulty: 'Training', category: 'training' },
+      { name: 'Berlin', lat: 52.5200, lng: 13.4050, levelReq: 3, ammoCost: 1, ammoType: 'raindrop', difficulty: 'Training', category: 'training' },
+      { name: 'Singapore', lat: 1.3521, lng: 103.8198, levelReq: 5, ammoCost: 2, ammoType: 'cloudwisp', difficulty: 'Training', category: 'training' },
+      { name: 'Dubai', lat: 25.2048, lng: 55.2708, levelReq: 7, ammoCost: 2, ammoType: 'raindrop', difficulty: 'Training', category: 'training' },
+      { name: 'Rio de Janeiro', lat: -22.9068, lng: -43.1729, levelReq: 10, ammoCost: 2, ammoType: 'cloudwisp', difficulty: 'Training', category: 'training' },
+      { name: 'Mumbai', lat: 19.0760, lng: 72.8777, levelReq: 12, ammoCost: 3, ammoType: 'raindrop', difficulty: 'Training', category: 'training' },
+      { name: 'Cairo', lat: 30.0444, lng: 31.2357, levelReq: 15, ammoCost: 3, ammoType: 'cloudwisp', difficulty: 'Training', category: 'training' },
+
+      // === EXPLORATION CITIES (Level 5-25) - No NPCs ===
+      { name: 'San Francisco', lat: 37.7749, lng: -122.4194, levelReq: 5, ammoCost: 2, ammoType: 'cloudwisp', difficulty: 'Exploration', category: 'explore' },
+      { name: 'Chicago', lat: 41.8781, lng: -87.6298, levelReq: 8, ammoCost: 2, ammoType: 'raindrop', difficulty: 'Exploration', category: 'explore' },
+      { name: 'Miami', lat: 25.7617, lng: -80.1918, levelReq: 10, ammoCost: 2, ammoType: 'sunstone', difficulty: 'Exploration', category: 'explore' },
+      { name: 'Toronto', lat: 43.6532, lng: -79.3832, levelReq: 12, ammoCost: 3, ammoType: 'snowflake', difficulty: 'Exploration', category: 'explore' },
+      { name: 'Vancouver', lat: 49.2827, lng: -123.1207, levelReq: 15, ammoCost: 3, ammoType: 'raindrop', difficulty: 'Exploration', category: 'explore' },
+      { name: 'Mexico City', lat: 19.4326, lng: -99.1332, levelReq: 15, ammoCost: 3, ammoType: 'sunstone', difficulty: 'Exploration', category: 'explore' },
+      { name: 'Buenos Aires', lat: -34.6037, lng: -58.3816, levelReq: 18, ammoCost: 3, ammoType: 'cloudwisp', difficulty: 'Exploration', category: 'explore' },
+      { name: 'Rome', lat: 41.9028, lng: 12.4964, levelReq: 18, ammoCost: 3, ammoType: 'sunstone', difficulty: 'Exploration', category: 'explore' },
+      { name: 'Madrid', lat: 40.4168, lng: -3.7038, levelReq: 20, ammoCost: 3, ammoType: 'sunstone', difficulty: 'Exploration', category: 'explore' },
+      { name: 'Amsterdam', lat: 52.3676, lng: 4.9041, levelReq: 20, ammoCost: 3, ammoType: 'raindrop', difficulty: 'Exploration', category: 'explore' },
+      { name: 'Barcelona', lat: 41.3851, lng: 2.1734, levelReq: 22, ammoCost: 4, ammoType: 'sunstone', difficulty: 'Exploration', category: 'explore' },
+      { name: 'Vienna', lat: 48.2082, lng: 16.3738, levelReq: 22, ammoCost: 4, ammoType: 'snowflake', difficulty: 'Exploration', category: 'explore' },
+      { name: 'Prague', lat: 50.0755, lng: 14.4378, levelReq: 25, ammoCost: 4, ammoType: 'mistessence', difficulty: 'Exploration', category: 'explore' },
+
+      // === BATTLE NPC CITIES (Level 20-40) ===
+      { name: 'Seoul', lat: 37.5665, lng: 126.9780, levelReq: 20, ammoCost: 4, ammoType: 'snowflake', difficulty: 'Battle NPCs', category: 'battle' },
+      { name: 'Beijing', lat: 39.9042, lng: 116.4074, levelReq: 22, ammoCost: 4, ammoType: 'sunstone', difficulty: 'Battle NPCs', category: 'battle' },
+      { name: 'Shanghai', lat: 31.2304, lng: 121.4737, levelReq: 25, ammoCost: 5, ammoType: 'snowflake', difficulty: 'Battle NPCs', category: 'battle' },
+      { name: 'Hong Kong', lat: 22.3193, lng: 114.1694, levelReq: 28, ammoCost: 5, ammoType: 'mistessence', difficulty: 'Battle NPCs', category: 'battle' },
+      { name: 'Bangkok', lat: 13.7563, lng: 100.5018, levelReq: 30, ammoCost: 5, ammoType: 'sunstone', difficulty: 'Battle NPCs', category: 'battle' },
+      { name: 'Moscow', lat: 55.7558, lng: 37.6173, levelReq: 32, ammoCost: 6, ammoType: 'snowflake', difficulty: 'Battle NPCs', category: 'battle' },
+      { name: 'Melbourne', lat: -37.8136, lng: 144.9631, levelReq: 35, ammoCost: 6, ammoType: 'mistessence', difficulty: 'Battle NPCs', category: 'battle' },
+      { name: 'Brisbane', lat: -27.4698, lng: 153.0251, levelReq: 38, ammoCost: 6, ammoType: 'snowflake', difficulty: 'Battle NPCs', category: 'battle' },
+      { name: 'Auckland', lat: -36.8509, lng: 174.7645, levelReq: 40, ammoCost: 7, ammoType: 'mistessence', difficulty: 'Battle NPCs', category: 'battle' },
+      { name: 'Cape Town', lat: -33.9249, lng: 18.4241, levelReq: 42, ammoCost: 7, ammoType: 'lightningshard', difficulty: 'Battle NPCs', category: 'battle' },
+      { name: 'Lagos', lat: 6.5244, lng: 3.3792, levelReq: 45, ammoCost: 8, ammoType: 'lightningshard', difficulty: 'Battle NPCs', category: 'battle' },
+
+      // === BOSS CITIES (Level 40+) ===
+      { name: 'Sydney', lat: -33.8688, lng: 151.2093, levelReq: 40, ammoCost: 8, ammoType: 'snowflake', difficulty: 'Boss: Glacius', boss: true, category: 'boss' },
+      { name: 'Tokyo', lat: 35.6762, lng: 139.6503, levelReq: 50, ammoCost: 10, ammoType: 'lightningshard', difficulty: 'Boss: Voltarus', boss: true, category: 'boss' },
+      { name: 'London', lat: 51.5074, lng: -0.1278, levelReq: 60, ammoCost: 12, ammoType: 'mistessence', difficulty: 'Boss: Nyx', boss: true, category: 'boss' },
+      { name: 'New York', lat: 40.758896, lng: -73.985130, levelReq: 70, ammoCost: 15, ammoType: 'lightningshard', difficulty: 'Boss: Solara', boss: true, category: 'boss' }
+    ];
+  }
+
+  // Render teleports tab
+  renderTeleports() {
+    const container = document.getElementById('teleports-content');
+    if (!container) return;
+
+    // Don't allow new teleports while animating
+    if (this.teleportAnimating) return;
+
+    // Preserve scroll position before re-render
+    const existingPanel = container.querySelector('.teleports-panel');
+    const scrollTop = existingPanel ? existingPanel.scrollTop : 0;
+
+    const destinations = this.getTeleportDestinations();
+    const teleportLevel = this.getTeleportationLevel();
+
+    // Group destinations by category
+    const categories = {
+      training: { name: '🎯 Training Cities', icon: '🎯', destinations: [] },
+      explore: { name: '🗺️ Exploration Cities', icon: '🗺️', destinations: [] },
+      battle: { name: '⚔️ Battle NPC Cities', icon: '⚔️', destinations: [] },
+      boss: { name: '👑 Boss Cities', icon: '👑', destinations: [] }
+    };
+
+    for (const dest of destinations) {
+      const cat = dest.category || 'explore';
+      if (categories[cat]) {
+        categories[cat].destinations.push(dest);
+      }
+    }
+
+    let html = `
+      <div class="teleports-panel">
+        <div class="teleports-header">
+          <h4>🌀 Teleport Destinations</h4>
+          <p class="tp-level-info">Teleportation Level: ${teleportLevel} | Requires level & ammo</p>
+        </div>
+    `;
+
+    // Render each category
+    for (const [catKey, category] of Object.entries(categories)) {
+      if (category.destinations.length === 0) continue;
+
+      html += `
+        <div class="teleports-category">
+          <div class="tp-category-header">${category.name}</div>
+          <div class="teleports-list">
+      `;
+
+      for (const dest of category.destinations) {
+        const meetsLevel = teleportLevel >= dest.levelReq;
+        const ammoItem = this.itemTypes[dest.ammoType];
+        const ammoCount = this.getItemCount(dest.ammoType);
+        const hasAmmo = ammoCount >= dest.ammoCost;
+        const canTeleport = meetsLevel && hasAmmo;
+
+        html += `
+          <div class="teleport-dest ${canTeleport ? 'available' : 'locked'} ${dest.boss ? 'boss-dest' : ''} cat-${catKey}"
+               data-lat="${dest.lat}" data-lng="${dest.lng}" data-ammo="${dest.ammoType}" data-cost="${dest.ammoCost}"
+               data-levelreq="${dest.levelReq}" data-name="${dest.name}">
+            <div class="tp-name">${dest.name}</div>
+            <div class="tp-info">
+              <span class="tp-difficulty ${dest.boss ? 'boss' : ''}">${dest.difficulty}</span>
+            </div>
+            <div class="tp-reqs">
+              <span class="tp-level ${meetsLevel ? 'met' : 'unmet'}">Lv.${dest.levelReq}</span>
+              <span class="tp-ammo ${hasAmmo ? 'met' : 'unmet'}">${ammoItem?.icon || '?'} ${dest.ammoCost} (${ammoCount})</span>
+            </div>
+          </div>
+        `;
+      }
+
+      html += `
+          </div>
+        </div>
+      `;
+    }
+
+    html += `</div>`;
+
+    container.innerHTML = html;
+
+    // Restore scroll position after re-render
+    const newPanel = container.querySelector('.teleports-panel');
+    if (newPanel && scrollTop > 0) {
+      newPanel.scrollTop = scrollTop;
+    }
+
+    // Click handlers for teleport
+    container.querySelectorAll('.teleport-dest.available').forEach(el => {
+      el.addEventListener('click', () => {
+        if (this.teleportAnimating) return; // Prevent double-click
+        const lat = parseFloat(el.dataset.lat);
+        const lng = parseFloat(el.dataset.lng);
+        const ammoType = el.dataset.ammo;
+        const ammoCost = parseInt(el.dataset.cost);
+        const levelReq = parseInt(el.dataset.levelreq);
+        const destName = el.dataset.name;
+        this.teleportTo(lat, lng, ammoType, ammoCost, levelReq, destName);
+      });
+    });
+  }
+
+  // Teleport to a destination (consumes ammo, plays animation)
+  teleportTo(lat, lng, ammoType, ammoCost, levelReq, destName) {
+    // Prevent teleporting while already teleporting
+    if (this.teleportAnimating) {
+      if (window.chatManager) {
+        window.chatManager.addLogMessage('❌ Already teleporting!', 'error');
+      }
+      return;
+    }
+
+    // Find and consume ammo first
+    let remaining = ammoCost;
+    for (let i = 0; i < this.inventorySlots.length && remaining > 0; i++) {
+      const slot = this.inventorySlots[i];
+      if (slot && slot.itemKey === ammoType && slot.count > 0) {
+        const take = Math.min(slot.count, remaining);
+        slot.count -= take;
+        remaining -= take;
+        if (slot.count <= 0) {
+          this.inventorySlots[i] = null;
+        }
+      }
+    }
+
+    if (remaining > 0) {
+      if (window.chatManager) {
+        window.chatManager.addLogMessage('❌ Not enough ammo to teleport!', 'error');
+      }
+      return;
+    }
+
+    // Start teleport animation (4 game ticks = 2400ms)
+    this.teleportAnimating = true;
+    const animDuration = 2400;
+    const ammoItem = this.itemTypes[ammoType];
+
+    // Show casting message
+    if (window.chatManager) {
+      window.chatManager.addLogMessage(`🌀 Casting teleport to ${destName}...`, 'info');
+    }
+
+    // Create full-screen teleport animation overlay
+    this.showTeleportAnimation(ammoType, animDuration);
+
+    // Save and update UI immediately (ammo consumed)
+    this.save();
+    this.renderInventory();
+    this.renderTeleports();
+
+    // After animation, perform actual teleport
+    setTimeout(() => {
+      // Perform teleport
+      if (window.game) {
+        window.game.fastTravelTo(lat, lng);
+      }
+
+      // Add teleportation XP
+      this.addTeleportXP(levelReq);
+
+      if (window.chatManager) {
+        window.chatManager.addLogMessage(`🌀 Teleported to ${destName}! Used ${ammoCost}x ${ammoItem?.icon || ''} ${ammoItem?.name || 'ammo'}`, 'info');
+      }
+
+      this.teleportAnimating = false;
+      this.renderTeleports();
+    }, animDuration);
+  }
+
+  // Show full-screen teleport animation based on ammo type
+  showTeleportAnimation(ammoType, duration) {
+    // Remove any existing animation
+    const existing = document.querySelector('.teleport-animation-overlay');
+    if (existing) existing.remove();
+
+    // Determine animation style based on ammo type
+    const animStyles = {
+      cloudwisp: { color: '#aabbcc', icon: '💨', particles: 'clouds', name: 'Cloud Vortex' },
+      raindrop: { color: '#4488ff', icon: '💧', particles: 'rain', name: 'Rain Portal' },
+      sunstone: { color: '#ffaa00', icon: '☀️', particles: 'light', name: 'Solar Warp' },
+      snowflake: { color: '#88ddff', icon: '❄️', particles: 'snow', name: 'Frost Gate' },
+      mistessence: { color: '#9966ff', icon: '🫧', particles: 'mist', name: 'Mist Rift' },
+      lightningshard: { color: '#ffff00', icon: '⚡', particles: 'lightning', name: 'Storm Jump' }
+    };
+
+    const style = animStyles[ammoType] || animStyles.cloudwisp;
+
+    // Create overlay
+    const overlay = document.createElement('div');
+    overlay.className = `teleport-animation-overlay anim-${style.particles}`;
+    overlay.innerHTML = `
+      <div class="teleport-vortex">
+        <div class="teleport-ring ring-1"></div>
+        <div class="teleport-ring ring-2"></div>
+        <div class="teleport-ring ring-3"></div>
+        <div class="teleport-center-icon">${style.icon}</div>
+      </div>
+      <div class="teleport-particles"></div>
+      <div class="teleport-text">${style.name}</div>
+      <div class="teleport-progress-bar">
+        <div class="teleport-progress-fill"></div>
+      </div>
+    `;
+
+    // Set custom color
+    overlay.style.setProperty('--tp-color', style.color);
+
+    document.body.appendChild(overlay);
+
+    // Generate particles
+    const particleContainer = overlay.querySelector('.teleport-particles');
+    for (let i = 0; i < 50; i++) {
+      const particle = document.createElement('div');
+      particle.className = 'teleport-particle';
+      particle.style.left = `${Math.random() * 100}%`;
+      particle.style.top = `${Math.random() * 100}%`;
+      particle.style.animationDelay = `${Math.random() * 1}s`;
+      particle.style.animationDuration = `${0.5 + Math.random() * 1}s`;
+      particleContainer.appendChild(particle);
+    }
+
+    // Animate progress bar
+    const progressFill = overlay.querySelector('.teleport-progress-fill');
+    progressFill.style.transition = `width ${duration}ms linear`;
+    requestAnimationFrame(() => {
+      progressFill.style.width = '100%';
+    });
+
+    // Flash effect at end
+    setTimeout(() => {
+      overlay.classList.add('teleport-flash');
+    }, duration - 300);
+
+    // Remove overlay after animation
+    setTimeout(() => {
+      overlay.classList.add('teleport-fade-out');
+      setTimeout(() => overlay.remove(), 300);
+    }, duration);
+  }
+
+  // Get count of an item in inventory
+  getItemCount(itemKey) {
+    let count = 0;
+    for (const slot of this.inventorySlots) {
+      if (slot && slot.itemKey === itemKey) {
+        count += slot.count;
+      }
+    }
+    return count;
   }
 
   // Check if an item key is equipment
@@ -1176,12 +1684,13 @@ class SkillsManager {
     this.renderCombat();
   }
 
-  // Get items that can be sold for Light
+  // Get items that can be sold for Light (including equipment)
   getSellableItems() {
     const items = [];
     for (const slot of this.inventorySlots) {
       if (slot && slot.count > 0) {
-        const itemType = this.itemTypes[slot.itemKey];
+        // Check both itemTypes and equipmentTypes
+        const itemType = this.itemTypes[slot.itemKey] || this.equipmentTypes[slot.itemKey];
         if (itemType && itemType.sellValue && !itemType.isCurrency) {
           const existing = items.find(i => i.itemKey === slot.itemKey);
           if (existing) {
@@ -1195,9 +1704,10 @@ class SkillsManager {
     return items;
   }
 
-  // Sell one item for Light
+  // Sell one item for Light (including equipment)
   sellItem(itemKey, count = 1) {
-    const itemType = this.itemTypes[itemKey];
+    // Check both itemTypes and equipmentTypes
+    const itemType = this.itemTypes[itemKey] || this.equipmentTypes[itemKey];
     if (!itemType || !itemType.sellValue) return false;
 
     // Find and remove items from inventory
@@ -1228,7 +1738,7 @@ class SkillsManager {
     return false;
   }
 
-  // Sell all items for Light
+  // Sell all items for Light (including equipment)
   sellAllItems() {
     const sellable = this.getSellableItems();
     if (sellable.length === 0) return;
@@ -1237,16 +1747,18 @@ class SkillsManager {
     let totalItems = 0;
 
     for (const item of sellable) {
-      const itemType = this.itemTypes[item.itemKey];
+      // Check both itemTypes and equipmentTypes
+      const itemType = this.itemTypes[item.itemKey] || this.equipmentTypes[item.itemKey];
       totalLight += item.count * itemType.sellValue;
       totalItems += item.count;
     }
 
-    // Clear sellable items from inventory
+    // Clear sellable items from inventory (including equipment)
     for (let i = 0; i < this.inventorySlots.length; i++) {
       const slot = this.inventorySlots[i];
       if (slot) {
-        const itemType = this.itemTypes[slot.itemKey];
+        // Check both itemTypes and equipmentTypes
+        const itemType = this.itemTypes[slot.itemKey] || this.equipmentTypes[slot.itemKey];
         if (itemType && itemType.sellValue && !itemType.isCurrency) {
           this.inventorySlots[i] = null;
         }
@@ -1919,16 +2431,34 @@ class SkillsManager {
     const npc = this.npcs.find(n => n.id === npcId);
     if (!npc) return;
 
-    // Check if we have the item
-    const slotIndex = this.inventorySlots.findIndex(
+    // Check if we have the selected ammo
+    let slotIndex = this.inventorySlots.findIndex(
       s => s && s.itemKey === this.selectedCombatItem && s.count > 0
     );
 
+    // If current ammo is empty, try to auto-equip another ammo type
+    if (slotIndex === -1) {
+      const availableAmmo = this.getCombatItems();
+      if (availableAmmo.length > 0) {
+        // Auto-equip the first available ammo
+        this.selectedCombatItem = availableAmmo[0].itemKey;
+        slotIndex = this.inventorySlots.findIndex(
+          s => s && s.itemKey === this.selectedCombatItem && s.count > 0
+        );
+        const newItem = this.itemTypes[this.selectedCombatItem];
+        if (window.chatManager) {
+          window.chatManager.addLogMessage(`⚔️ Auto-equipped ${newItem?.icon || ''} ${newItem?.name || 'ammo'}!`, 'combat');
+        }
+        this.renderCombat();
+      }
+    }
+
+    // If still no ammo, player can't attack but combat continues
     if (slotIndex === -1) {
       if (window.chatManager) {
-        window.chatManager.addLogMessage('⚔️ No ammo left!', 'error');
+        window.chatManager.addLogMessage('⚔️ No ammo! You cannot attack!', 'error');
       }
-      this.endNPCCombat();
+      // Don't end combat - NPC will keep attacking. Player can eat food or flee.
       return;
     }
 
@@ -1991,7 +2521,8 @@ class SkillsManager {
     const attackItemKey = attackItems[Math.floor(Math.random() * attackItems.length)];
     const attackItem = this.itemTypes[attackItemKey];
 
-    const damage = npc.damage;
+    // Random damage from 0 to max hit
+    const damage = Math.floor(Math.random() * (npc.damage + 1));
     this.combatHealth -= damage;
 
     // Show attack particle effect
@@ -1999,8 +2530,14 @@ class SkillsManager {
       this.map3d.showCombatEffect('npc_attack', npcId, attackItem?.icon || '💀', damage);
     }
 
-    if (window.chatManager) {
-      window.chatManager.addLogMessage(`💥 ${npc.name} hits you with ${attackItem?.icon || '💀'} for ${damage} damage!`, 'combat');
+    if (damage === 0) {
+      if (window.chatManager) {
+        window.chatManager.addLogMessage(`💨 ${npc.name} missed!`, 'combat');
+      }
+    } else {
+      if (window.chatManager) {
+        window.chatManager.addLogMessage(`💥 ${npc.name} hits you with ${attackItem?.icon || '💀'} for ${damage} damage!`, 'combat');
+      }
     }
 
     // Update combat HUD
@@ -2104,7 +2641,23 @@ class SkillsManager {
       window.chatManager.addLogMessage(`✨ Received ${lightReward} Light!`, 'item');
     }
 
-    // Check for item drops (battle NPCs only)
+    // Always drop ammo based on NPC level/difficulty
+    // NPCs drop ammo from their attack items list
+    const attackItems = npc.attackItems || ['cloudwisp'];
+    const ammoDropKey = attackItems[Math.floor(Math.random() * attackItems.length)];
+    const ammoItem = this.itemTypes[ammoDropKey];
+
+    // Amount scales with NPC difficulty (maxHealth / 100, min 1, max 10)
+    const ammoAmount = Math.max(1, Math.min(10, Math.floor(npc.maxHealth / 100)));
+
+    if (ammoItem) {
+      const added = this.addItemToInventory(ammoDropKey, ammoAmount);
+      if (added && window.chatManager) {
+        window.chatManager.addLogMessage(`📦 Dropped: ${ammoItem.icon} ${ammoItem.name} x${ammoAmount}`, 'item');
+      }
+    }
+
+    // Check for rare item drops (battle NPCs only)
     if (npc.isBattleOnly && npc.drops && npc.drops.length > 0 && npc.dropChance) {
       const roll = Math.random();
       if (roll < npc.dropChance) {
@@ -2117,13 +2670,13 @@ class SkillsManager {
           // Add item to inventory
           const added = this.addItemToInventory(droppedItemKey, 1);
           if (added && window.chatManager) {
-            window.chatManager.addLogMessage(`🎁 ${npc.name} dropped: ${droppedItem.icon} ${droppedItem.name}!`, 'item');
+            window.chatManager.addLogMessage(`🎁 Rare drop: ${droppedItem.icon} ${droppedItem.name}!`, 'item');
           }
         }
       } else {
-        // No drop this time
+        // No rare drop this time
         if (window.chatManager) {
-          window.chatManager.addLogMessage(`${npc.name} didn't drop anything this time.`, 'system');
+          window.chatManager.addLogMessage(`No rare drop this time.`, 'system');
         }
       }
     }
@@ -2167,13 +2720,15 @@ class SkillsManager {
     return null;
   }
 
-  // Get items available for combat (only gathered items, not equipment)
+  // Get items available for combat (only gathered items, not equipment or consumables)
   getCombatItems() {
     const items = [];
     for (const slot of this.inventorySlots) {
       if (slot && slot.count > 0) {
+        const itemType = this.itemTypes[slot.itemKey];
         // Only include gathered items (those in itemTypes, not equipmentTypes)
-        const isGatheredItem = this.itemTypes[slot.itemKey] && !this.itemTypes[slot.itemKey].isCurrency;
+        // Exclude currency and consumables (health packs)
+        const isGatheredItem = itemType && !itemType.isCurrency && !itemType.isConsumable;
         const isEquipment = this.equipmentTypes[slot.itemKey];
 
         if (isGatheredItem && !isEquipment) {
@@ -2633,6 +3188,11 @@ class SkillsManager {
   // Set map3d reference (called from map.js)
   setMap3D(map3d) {
     this.map3d = map3d;
+
+    // Create home shop entity if home position is already set
+    if (this.homePosition && this.map3d) {
+      this.map3d.createHomeShop(this.homePosition);
+    }
   }
 
   // Show notification - now at center top

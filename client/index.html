@@ -127,36 +127,18 @@
       <div id="minimap-container" class="ui-panel">
         <div class="panel-header">World Map</div>
         <div id="minimap"></div>
+        <!-- Weather and Position under minimap -->
+        <div id="minimap-info">
+          <div id="weather-display-mini">
+            <span id="weather-icon-mini">☀️</span>
+            <span id="weather-text-mini">Clear</span>
+          </div>
+          <div id="player-coords">0.000, 0.000</div>
+        </div>
       </div>
 
       <!-- Left Side Panels Container -->
       <div id="left-panels">
-        <!-- Player Info -->
-        <div id="player-info" class="ui-panel">
-          <div class="panel-header">Player</div>
-          <div id="player-name">Loading...</div>
-          <div id="player-coords">0.000, 0.000</div>
-          <div class="player-buttons">
-            <button id="change-flag-btn" class="osrs-btn small-btn">Change Avatar</button>
-            <button id="account-settings-btn" class="osrs-btn small-btn">Account</button>
-            <button id="logout-btn" class="osrs-btn small-btn logout-btn">Logout</button>
-          </div>
-        </div>
-
-        <!-- Fast Travel -->
-        <div id="fast-travel" class="ui-panel">
-          <div class="panel-header">Fast Travel</div>
-          <select id="city-select" class="osrs-select">
-            <option value="">Select a city...</option>
-          </select>
-          <button id="travel-btn" class="osrs-btn small-btn">Travel</button>
-        </div>
-
-        <!-- Info Button -->
-        <div id="info-button" class="ui-panel">
-          <button id="info-toggle" class="info-toggle-btn">i</button>
-        </div>
-
         <!-- Map Blend Slider (Streets ↔ Satellite) -->
         <div id="map-blend-panel" class="ui-panel">
           <div class="blend-control">
@@ -166,6 +148,9 @@
           </div>
         </div>
       </div>
+
+      <!-- Hidden player name for internal use -->
+      <div id="player-name" style="display:none;">Loading...</div>
 
       <!-- Online Players (right side) -->
       <div id="players-panel" class="ui-panel">

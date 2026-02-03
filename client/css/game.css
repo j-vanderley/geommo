@@ -503,6 +503,37 @@ body {
   height: 150px;
 }
 
+/* Minimap Info (Weather & Coords) */
+#minimap-info {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 6px 8px;
+  background: rgba(0, 0, 0, 0.5);
+  border-top: 1px solid var(--osrs-border);
+  font-size: 11px;
+}
+
+#weather-display-mini {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  color: var(--osrs-gold);
+}
+
+#weather-icon-mini {
+  font-size: 14px;
+}
+
+#weather-text-mini {
+  color: #fff;
+}
+
+#minimap-info #player-coords {
+  color: #aaa;
+  font-size: 10px;
+}
+
 /* Players Panel */
 #players-panel {
   top: 205px; /* 10px gap from minimap (10 + 150 + ~35 padding/header + 10 gap) */
@@ -1627,12 +1658,42 @@ body[class*="ui-"] .weather-time {
 }
 
 .home-section {
-  margin-bottom: 15px;
+  margin-bottom: 12px;
+  padding-bottom: 10px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.home-section:last-child {
+  border-bottom: none;
+  margin-bottom: 0;
 }
 
 .home-section h4 {
   color: var(--osrs-gold);
-  margin-bottom: 10px;
+  margin-bottom: 8px;
+  font-size: 12px;
+}
+
+.home-section.player-section h4 {
+  font-size: 13px;
+}
+
+.home-buttons-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 6px;
+}
+
+.home-buttons-grid .osrs-btn {
+  padding: 5px 8px;
+  font-size: 11px;
+}
+
+.home-select {
+  width: 100%;
+  margin-bottom: 8px;
+  font-size: 11px;
+  padding: 5px;
 }
 
 .home-coords {
