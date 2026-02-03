@@ -385,66 +385,39 @@ class Map3D {
     }
   }
 
-  // Create extravagant aura particle effect for player
+  // Create aura particle effect for player (matches NPC particle style)
   createPlayerAura(playerId, particleType, color, group) {
-    // Much more particles for impressive effect
-    const innerCount = 30;  // Inner rotating ring
-    const outerCount = 40;  // Outer floating particles
-    const risingCount = 25; // Rising/falling particles
-    const totalCount = innerCount + outerCount + risingCount;
-
+    const particleCount = 30;
     const geometry = new THREE.BufferGeometry();
-    const positions = new Float32Array(totalCount * 3);
-    const colors = new Float32Array(totalCount * 3);
-    const sizes = new Float32Array(totalCount);
+    const positions = new Float32Array(particleCount * 3);
+    const colors = new Float32Array(particleCount * 3);
+    const sizes = new Float32Array(particleCount);
+    const velocities = [];
 
+    // Parse color
     const colorObj = new THREE.Color(color);
-    // Create color variations for depth
-    const colorLight = new THREE.Color(color).lerp(new THREE.Color('#ffffff'), 0.3);
-    const colorDark = new THREE.Color(color).lerp(new THREE.Color('#000000'), 0.2);
 
-    let idx = 0;
-
-    // Inner rotating ring - tight circle around player
-    for (let i = 0; i < innerCount; i++) {
-      const angle = (i / innerCount) * Math.PI * 2;
-      const radius = 1.2;
-      positions[idx * 3] = Math.cos(angle) * radius;
-      positions[idx * 3 + 1] = 1.5 + Math.sin(angle * 3) * 0.3;
-      positions[idx * 3 + 2] = Math.sin(angle) * radius;
-      colors[idx * 3] = colorObj.r;
-      colors[idx * 3 + 1] = colorObj.g;
-      colors[idx * 3 + 2] = colorObj.b;
-      sizes[idx] = 0.4;
-      idx++;
-    }
-
-    // Outer floating particles - larger orbit
-    for (let i = 0; i < outerCount; i++) {
-      const angle = (i / outerCount) * Math.PI * 2;
-      const radius = 2.0 + Math.random() * 0.8;
-      positions[idx * 3] = Math.cos(angle) * radius;
-      positions[idx * 3 + 1] = Math.random() * 4 + 0.5;
-      positions[idx * 3 + 2] = Math.sin(angle) * radius;
-      colors[idx * 3] = colorLight.r;
-      colors[idx * 3 + 1] = colorLight.g;
-      colors[idx * 3 + 2] = colorLight.b;
-      sizes[idx] = 0.25 + Math.random() * 0.2;
-      idx++;
-    }
-
-    // Rising/falling particles - vertical movement
-    for (let i = 0; i < risingCount; i++) {
+    for (let i = 0; i < particleCount; i++) {
+      // Random position around center
       const angle = Math.random() * Math.PI * 2;
-      const radius = 0.5 + Math.random() * 1.5;
-      positions[idx * 3] = Math.cos(angle) * radius;
-      positions[idx * 3 + 1] = Math.random() * 5;
-      positions[idx * 3 + 2] = Math.sin(angle) * radius;
-      colors[idx * 3] = colorDark.r;
-      colors[idx * 3 + 1] = colorDark.g;
-      colors[idx * 3 + 2] = colorDark.b;
-      sizes[idx] = 0.15 + Math.random() * 0.15;
-      idx++;
+      const radius = 1 + Math.random() * 2;
+      positions[i * 3] = Math.cos(angle) * radius;
+      positions[i * 3 + 1] = Math.random() * 4;
+      positions[i * 3 + 2] = Math.sin(angle) * radius;
+
+      // Color variation
+      colors[i * 3] = colorObj.r * (0.8 + Math.random() * 0.2);
+      colors[i * 3 + 1] = colorObj.g * (0.8 + Math.random() * 0.2);
+      colors[i * 3 + 2] = colorObj.b * (0.8 + Math.random() * 0.2);
+
+      sizes[i] = 0.2 + Math.random() * 0.3;
+
+      // Velocity based on particle type (same as NPC)
+      velocities.push({
+        x: (Math.random() - 0.5) * 0.02,
+        y: particleType === 'fire' || particleType === 'holy' ? 0.02 + Math.random() * 0.02 : (Math.random() - 0.5) * 0.01,
+        z: (Math.random() - 0.5) * 0.02
+      });
     }
 
     geometry.setAttribute('position', new THREE.BufferAttribute(positions, 3));
@@ -452,22 +425,18 @@ class Map3D {
     geometry.setAttribute('size', new THREE.BufferAttribute(sizes, 1));
 
     const material = new THREE.PointsMaterial({
-      size: 0.35,
+      size: 0.5,
       vertexColors: true,
       transparent: true,
-      opacity: 0.85,
-      blending: THREE.AdditiveBlending,
-      sizeAttenuation: true
+      opacity: 0.8,
+      blending: THREE.AdditiveBlending
     });
 
     const particles = new THREE.Points(geometry, material);
     particles.userData = {
       type: particleType,
       playerId,
-      time: 0,
-      innerCount,
-      outerCount,
-      risingCount
+      velocities
     };
     group.add(particles);
 
@@ -1522,67 +1491,33 @@ class Map3D {
     this.particleSystems.delete(entityId);
   }
 
-  // Update player aura particles - extravagant multi-layer animation
+  // Update player aura particles (matches NPC particle animation style)
   updatePlayerAuras() {
-    const time = performance.now() * 0.001;
-
     for (const [playerId, playerData] of this.playerSprites) {
       if (!playerData.auraParticles) continue;
 
       const positions = playerData.auraParticles.geometry.attributes.position;
-      const userData = playerData.auraParticles.userData;
-      const { innerCount, outerCount, risingCount, type } = userData;
+      const velocities = playerData.auraParticles.userData.velocities;
 
-      let idx = 0;
+      if (!velocities) continue;
 
-      // Animation speed varies by aura type
-      const speedMult = type === 'lightning' ? 2.0 : type === 'fire' ? 1.5 : type === 'void' ? 0.7 : 1.0;
+      for (let i = 0; i < positions.count; i++) {
+        positions.array[i * 3] += velocities[i].x;
+        positions.array[i * 3 + 1] += velocities[i].y;
+        positions.array[i * 3 + 2] += velocities[i].z;
 
-      // Inner ring - fast rotation, tight orbit
-      for (let i = 0; i < innerCount; i++) {
-        const baseAngle = (i / innerCount) * Math.PI * 2;
-        const angle = baseAngle + time * 1.5 * speedMult;
-        const radius = 1.2 + Math.sin(time * 4 + i * 0.5) * 0.15;
-        const heightWave = Math.sin(time * 3 + i * 0.3) * 0.4;
-
-        positions.array[idx * 3] = Math.cos(angle) * radius;
-        positions.array[idx * 3 + 1] = 1.5 + heightWave;
-        positions.array[idx * 3 + 2] = Math.sin(angle) * radius;
-        idx++;
-      }
-
-      // Outer particles - slow orbit, vertical bob
-      for (let i = 0; i < outerCount; i++) {
-        const baseAngle = (i / outerCount) * Math.PI * 2;
-        const angle = baseAngle - time * 0.3 * speedMult; // Opposite direction
-        const baseRadius = 2.0 + (i % 3) * 0.3;
-        const radius = baseRadius + Math.sin(time * 2 + i) * 0.3;
-        const height = 0.5 + (i % 5) * 0.8 + Math.sin(time * 1.5 + i * 0.7) * 0.6;
-
-        positions.array[idx * 3] = Math.cos(angle) * radius;
-        positions.array[idx * 3 + 1] = height;
-        positions.array[idx * 3 + 2] = Math.sin(angle) * radius;
-        idx++;
-      }
-
-      // Rising/falling particles - vertical spiral
-      for (let i = 0; i < risingCount; i++) {
-        const phase = (time * speedMult + i * 0.4) % 5; // 0-5 cycle
-        const height = phase; // Rise from 0 to 5
-        const spiralAngle = time * 2 + i + phase * 2;
-        const radius = 0.6 + Math.sin(phase * Math.PI) * 1.0; // Expand in middle
-
-        positions.array[idx * 3] = Math.cos(spiralAngle) * radius;
-        positions.array[idx * 3 + 1] = height;
-        positions.array[idx * 3 + 2] = Math.sin(spiralAngle) * radius;
-        idx++;
+        // Reset particle if too far (same as NPC)
+        const y = positions.array[i * 3 + 1];
+        if (y > 6 || y < 0) {
+          const angle = Math.random() * Math.PI * 2;
+          const radius = 1 + Math.random() * 2;
+          positions.array[i * 3] = Math.cos(angle) * radius;
+          positions.array[i * 3 + 1] = Math.random() * 2;
+          positions.array[i * 3 + 2] = Math.sin(angle) * radius;
+        }
       }
 
       positions.needsUpdate = true;
-
-      // Pulse the material opacity for extra effect
-      const pulse = 0.7 + Math.sin(time * 3) * 0.15;
-      playerData.auraParticles.material.opacity = pulse;
     }
   }
 
