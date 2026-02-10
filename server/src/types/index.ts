@@ -101,6 +101,7 @@ export interface ClientToServerEvents {
   'npc:attack': (data: { npcId: string; itemKey: string; accuracy: number; maxHit: number }) => void;
   'npc:startCombat': (data: { npcId: string }) => void;
   'npc:endCombat': (data: { npcId: string }) => void;
+  'npc:attackedPlayer': (data: { npcId: string; npcName: string; itemKey: string; damage: number; didHit: boolean }) => void;
   // PvP Combat events
   'pvp:attack': (data: { targetId: string; itemKey: string; accuracy: number; maxHit: number }) => void;
 }
@@ -130,6 +131,7 @@ export interface ServerToClientEvents {
   'npc:attackPlayer': (data: { npcId: string; npcName: string; damage: number; playerHealth: number; playerMaxHealth: number }) => void;
   'npc:defeated': (data: { npcId: string; npcName: string; drops: string[] }) => void;
   'npc:respawned': (data: { npcId: string }) => void;
+  'npc:attackedPlayerEffect': (data: { playerId: string; playerName: string; npcId: string; npcName: string; itemKey: string; damage: number; didHit: boolean }) => void;
   // PvP Combat events
   'pvp:attackResult': (data: { targetId: string; damage: number; didHit: boolean; targetHealth: number; targetMaxHealth: number }) => void;
   'pvp:damaged': (data: { attackerId: string; attackerName: string; damage: number; health: number; maxHealth: number }) => void;

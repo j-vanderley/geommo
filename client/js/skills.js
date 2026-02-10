@@ -3182,7 +3182,7 @@ class SkillsManager {
     }
 
     // Consume 1 ammo
-    this.removeItem(this.selectedCombatItem, 1);
+    this.removeItemFromInventory(this.selectedCombatItem, 1);
 
     // Get accuracy and max hit for server-side calculation
     const accuracy = this.getAccuracy(this.selectedCombatItem);
@@ -3378,7 +3378,7 @@ class SkillsManager {
     const maxHealth = player.maxHealth ?? 100;
     const healthPct = Math.max(0, Math.min(100, (health / maxHealth) * 100));
     const healthColor = healthPct > 50 ? '#44ff44' : healthPct > 25 ? '#ffaa00' : '#ff4444';
-    const combatLevel = player.combatLevel ?? this.getLevelFromXP(0);
+    const combatLevel = player.combatLevel ?? this.getLevel(0);
 
     // Create comprehensive inspect tooltip
     const inspect = document.createElement('div');
@@ -3976,6 +3976,17 @@ class SkillsManager {
     // Show attack particle effect
     if (this.map3d) {
       this.map3d.showCombatEffect('npc_attack', npcId, attackItem?.icon || '💀', damage);
+    }
+
+    // Broadcast NPC attack to other players via server
+    if (window.game && window.game.socket && window.game.socket.connected) {
+      window.game.socket.emit('npc:attackedPlayer', {
+        npcId: npcId,
+        npcName: npc.name,
+        itemKey: attackItemKey,
+        damage: damage,
+        didHit: damage > 0
+      });
     }
 
     if (damage === 0) {

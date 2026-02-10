@@ -391,6 +391,23 @@ io.on('connection', (socket) => {
     }
   });
 
+  // NPC attacked player - Broadcast to all players so spectators can see
+  socket.on('npc:attackedPlayer', (data) => {
+    const player = playerManager.getPlayer(socket.id);
+    if (!player) return;
+
+    // Broadcast NPC attack effect to ALL players so they can see the fight
+    io.emit('npc:attackedPlayerEffect', {
+      playerId: socket.id,
+      playerName: player.username,
+      npcId: data.npcId,
+      npcName: data.npcName,
+      itemKey: data.itemKey,
+      damage: data.damage,
+      didHit: data.didHit
+    });
+  });
+
   // PvP Attack - Server calculates damage and manages health
   socket.on('pvp:attack', (data) => {
     const attacker = playerManager.getPlayer(socket.id);
