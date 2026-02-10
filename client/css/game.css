@@ -5523,3 +5523,185 @@ body[class*="ui-"] .item-count {
 .admin-panel-content::-webkit-scrollbar-thumb:hover {
   background: #883333;
 }
+
+/* ========================================
+   INSPECT TOOLTIPS (NPC & Player)
+   ======================================== */
+.inspect-tooltip {
+  position: fixed;
+  z-index: 1000;
+  min-width: 240px;
+  max-width: 320px;
+  background: linear-gradient(180deg, #2a2a3a 0%, #1a1a2a 100%);
+  border: 2px solid #4a4a6a;
+  border-radius: 8px;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.6);
+  font-family: 'Courier New', monospace;
+  animation: inspectFadeIn 0.2s ease-out;
+}
+
+@keyframes inspectFadeIn {
+  from {
+    opacity: 0;
+    transform: translate(-50%, -50%) scale(0.95);
+  }
+  to {
+    opacity: 1;
+    transform: translate(-50%, -50%) scale(1);
+  }
+}
+
+.inspect-tooltip.npc-inspect {
+  border-color: #6a4a4a;
+}
+
+.inspect-tooltip.player-inspect {
+  border-color: #4a6a4a;
+}
+
+.inspect-header {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 12px;
+  background: rgba(0, 0, 0, 0.3);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 6px 6px 0 0;
+}
+
+.inspect-icon {
+  font-size: 28px;
+  min-width: 36px;
+  text-align: center;
+}
+
+.inspect-title {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.inspect-name {
+  font-size: 14px;
+  font-weight: bold;
+  color: var(--osrs-gold);
+}
+
+.inspect-subtitle {
+  font-size: 10px;
+  color: #888;
+}
+
+.inspect-close {
+  background: transparent;
+  border: none;
+  color: #888;
+  font-size: 16px;
+  cursor: pointer;
+  padding: 4px 8px;
+  border-radius: 4px;
+  transition: all 0.15s;
+}
+
+.inspect-close:hover {
+  background: rgba(255, 0, 0, 0.2);
+  color: #ff6666;
+}
+
+.inspect-body {
+  padding: 10px 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.inspect-stat-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 10px;
+}
+
+.inspect-label {
+  font-size: 11px;
+  color: #aaa;
+  white-space: nowrap;
+}
+
+.inspect-value {
+  font-size: 11px;
+  color: #fff;
+  text-align: right;
+}
+
+.inspect-health-bar {
+  flex: 1;
+  height: 14px;
+  background: rgba(0, 0, 0, 0.4);
+  border: 1px solid #333;
+  border-radius: 3px;
+  position: relative;
+  overflow: hidden;
+  max-width: 120px;
+}
+
+.inspect-health-fill {
+  height: 100%;
+  border-radius: 2px;
+  transition: width 0.3s ease;
+}
+
+.inspect-health-text {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  font-size: 9px;
+  color: #fff;
+  text-shadow: 0 0 2px #000;
+  white-space: nowrap;
+}
+
+.inspect-actions {
+  display: flex;
+  gap: 6px;
+  padding: 10px 12px;
+  border-top: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.inspect-action-btn {
+  flex: 1;
+  padding: 8px 6px;
+  font-size: 10px;
+  background: rgba(60, 60, 80, 0.8);
+  border: 1px solid #555;
+  border-radius: 4px;
+  color: #ddd;
+  cursor: pointer;
+  transition: all 0.15s;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+}
+
+.inspect-action-btn:hover {
+  background: rgba(80, 80, 100, 0.9);
+  border-color: #888;
+  color: #fff;
+}
+
+.inspect-action-btn.trade:hover {
+  background: rgba(80, 100, 60, 0.9);
+  border-color: var(--osrs-gold);
+}
+
+.inspect-action-btn.attack:hover {
+  background: rgba(100, 60, 60, 0.9);
+  border-color: #ff6666;
+}
+
+.inspect-action-btn span:first-child {
+  font-size: 14px;
+}

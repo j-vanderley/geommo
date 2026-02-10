@@ -2932,8 +2932,11 @@ class SkillsManager {
     const npc = this.npcs.find(n => n.id === npcId);
     if (!npc) return;
 
-    // Close any existing menu
+    // Close any existing menus
     this.closeNPCMenu();
+    this.closePlayerInteractionMenu();
+    this.closePlayerInspect();
+    this.closeNPCInspect();
 
     // Build menu options based on NPC type
     const isBattleOnly = npc.isBattleOnly;
@@ -3027,17 +3030,19 @@ class SkillsManager {
   showPlayerInteractionMenu(playerId, clientX, clientY) {
     // Close any existing menu
     this.closePlayerInteractionMenu();
+    this.closeNPCMenu();
+    this.closePlayerInspect();
+    this.closeNPCInspect();
 
-    // Get player info from the map manager
-    const playerInfo = window.mapManager?.map3d?.playerSprites?.get(playerId);
-    if (!playerInfo) return;
-
-    // Try to get more info about the player from socket connection
-    const players = window.gameSocket?.players || [];
-    const player = players.find(p => p.id === playerId) || { id: playerId };
+    // Get player info from the player manager
+    const player = window.playerManager?.getPlayer(playerId);
+    if (!player) {
+      console.log('Player not found:', playerId);
+      return;
+    }
 
     const playerName = player.username || player.name || 'Unknown Player';
-    const playerFlag = player.flag || '🙂';
+    const playerFlag = player.avatar?.text || player.flag || '🙂';
 
     // Create the tooltip menu
     const menu = document.createElement('div');
@@ -3216,107 +3221,121 @@ class SkillsManager {
     this.renderSkills();
   }
 
-  // Show player inspection dialog
+  // Show player inspection dialog (tooltip style)
   showPlayerInspect(player) {
     if (!player) return;
 
-    // Close any existing menu
+    // Close any existing menus
     this.closePlayerInspect();
+    this.closeNPCInspect();
 
     // Get player's equipment display
     const equipment = player.equipment || {};
-    const equipDisplay = [];
+    const equipItems = [];
     if (equipment.skin) {
       const item = this.equipmentTypes[equipment.skin];
-      if (item) equipDisplay.push(`<span title="${item.name}">${item.icon}</span>`);
+      if (item) equipItems.push(`<span title="${item.name}">${item.icon}</span>`);
     }
     if (equipment.hat) {
       const item = this.equipmentTypes[equipment.hat];
-      if (item) equipDisplay.push(`<span title="${item.name}">${item.icon}</span>`);
+      if (item) equipItems.push(`<span title="${item.name}">${item.icon}</span>`);
     }
     if (equipment.held) {
       const item = this.equipmentTypes[equipment.held];
-      if (item) equipDisplay.push(`<span title="${item.name}">${item.icon}</span>`);
+      if (item) equipItems.push(`<span title="${item.name}">${item.icon}</span>`);
     }
     if (equipment.aura) {
       const item = this.equipmentTypes[equipment.aura];
-      if (item) equipDisplay.push(`<span title="${item.name}">${item.icon}</span>`);
+      if (item) equipItems.push(`<span title="${item.name}">${item.icon}</span>`);
     }
 
     const avatarText = player.avatar?.text || player.flag || ':-)';
     const avatarColor = player.avatar?.color || '#ffb000';
+    const equipHtml = equipItems.length > 0 ? equipItems.join(' ') : '<span style="color:#666">None</span>';
 
-    // Create inspection menu
-    const menu = document.createElement('div');
-    menu.className = 'player-inspect-menu';
-    menu.innerHTML = `
-      <div class="npc-menu-overlay"></div>
-      <div class="npc-menu-content">
-        <div class="npc-menu-header">
-          <span class="npc-menu-icon" style="color: ${avatarColor}">${avatarText}</span>
-          <div class="npc-menu-info">
-            <h3>${player.username}</h3>
-            <span class="npc-menu-title">Player</span>
-          </div>
+    // Create inspect tooltip (same style as NPC inspect)
+    const inspect = document.createElement('div');
+    inspect.className = 'inspect-tooltip player-inspect';
+    inspect.innerHTML = `
+      <div class="inspect-header">
+        <span class="inspect-icon" style="color:${avatarColor}">${avatarText}</span>
+        <div class="inspect-title">
+          <span class="inspect-name">${player.username}</span>
+          <span class="inspect-subtitle">Player</span>
         </div>
-        <div class="npc-stats">
-          <div class="npc-stat">
-            <span class="stat-icon">🎮</span>
-            <span class="stat-value">Online</span>
-          </div>
-          <div class="npc-stat">
-            <span class="stat-icon">📍</span>
-            <span class="stat-value">${player.position ? `${player.position.lat.toFixed(4)}, ${player.position.lng.toFixed(4)}` : 'Unknown'}</span>
-          </div>
-          ${equipDisplay.length > 0 ? `
-          <div class="npc-stat equipment-display">
-            <span class="stat-icon">🛡️</span>
-            <span class="stat-value">${equipDisplay.join(' ')}</span>
-          </div>
-          ` : ''}
+        <button class="inspect-close">✕</button>
+      </div>
+      <div class="inspect-body">
+        <div class="inspect-stat-row">
+          <span class="inspect-label">🎮 Status</span>
+          <span class="inspect-value" style="color:#44ff44">Online</span>
         </div>
-        <div class="npc-menu-options">
-          <button class="npc-menu-btn" data-action="center">
-            <span class="btn-icon">📍</span>
-            <span class="btn-text">Go To</span>
-          </button>
-          ${this.selectedCombatItem ? `
-          <button class="npc-menu-btn battle-btn" data-action="attack">
-            <span class="btn-icon">⚔️</span>
-            <span class="btn-text">Attack</span>
-          </button>
-          ` : ''}
+        <div class="inspect-stat-row">
+          <span class="inspect-label">📍 Location</span>
+          <span class="inspect-value">${player.position ? `${player.position.lat.toFixed(4)}, ${player.position.lng.toFixed(4)}` : 'Unknown'}</span>
         </div>
-        <button class="npc-menu-close">✕</button>
+        <div class="inspect-stat-row">
+          <span class="inspect-label">🛡️ Equipment</span>
+          <span class="inspect-value">${equipHtml}</span>
+        </div>
+      </div>
+      <div class="inspect-actions">
+        <button class="inspect-action-btn" data-action="goto">
+          <span>📍</span> Go To
+        </button>
+        <button class="inspect-action-btn trade" data-action="trade">
+          <span>💰</span> Trade
+        </button>
+        <button class="inspect-action-btn attack" data-action="attack">
+          <span>⚔️</span> Attack
+        </button>
       </div>
     `;
 
-    document.body.appendChild(menu);
-    this.activePlayerInspect = { element: menu, player };
+    // Position in center of screen
+    inspect.style.position = 'fixed';
+    inspect.style.left = '50%';
+    inspect.style.top = '50%';
+    inspect.style.transform = 'translate(-50%, -50%)';
 
-    // Event handlers
-    menu.querySelector('.npc-menu-overlay')?.addEventListener('click', () => this.closePlayerInspect());
-    menu.querySelector('.npc-menu-close')?.addEventListener('click', () => this.closePlayerInspect());
+    document.body.appendChild(inspect);
+    this.activePlayerInspect = { element: inspect, player };
 
-    menu.querySelectorAll('.npc-menu-btn').forEach(btn => {
+    // Close button
+    inspect.querySelector('.inspect-close').addEventListener('click', () => {
+      this.closePlayerInspect();
+    });
+
+    // Action buttons
+    inspect.querySelectorAll('.inspect-action-btn').forEach(btn => {
       btn.addEventListener('click', () => {
         const action = btn.dataset.action;
         this.closePlayerInspect();
 
         switch (action) {
-          case 'center':
+          case 'goto':
             if (this.map3d && player.position) {
               this.map3d.centerOn(player.position.lat, player.position.lng);
             }
             break;
+          case 'trade':
+            this.initiatePlayerTrade(player.id, player);
+            break;
           case 'attack':
-            if (window.game) {
-              window.game.attackPlayer(player.id);
-            }
+            this.initiatePlayerAttack(player.id, player);
             break;
         }
       });
     });
+
+    // Close on click outside
+    const closeHandler = (e) => {
+      if (!inspect.contains(e.target)) {
+        this.closePlayerInspect();
+        document.removeEventListener('click', closeHandler);
+      }
+    };
+    setTimeout(() => document.addEventListener('click', closeHandler), 10);
   }
 
   // Close player inspection menu
@@ -3327,16 +3346,19 @@ class SkillsManager {
     this.activePlayerInspect = null;
   }
 
-  // Show NPC detailed inspection
+  // Show NPC detailed inspection as UI tooltip
   showNPCInspect(npcId) {
     const npc = this.npcs.find(n => n.id === npcId);
     if (!npc) return;
+
+    // Close any existing inspect
+    this.closeNPCInspect();
 
     // Calculate difficulty based on damage and health
     let difficulty = 'Easy';
     let difficultyColor = '#88ff88';
     if (npc.isTraining) {
-      difficulty = 'Very Easy (Training)';
+      difficulty = 'Very Easy';
       difficultyColor = '#88ff88';
     } else if (npc.isBattleOnly) {
       if (npc.damage >= 30) {
@@ -3349,53 +3371,116 @@ class SkillsManager {
     } else {
       // Boss
       if (npc.damage >= 100) {
-        difficulty = 'Very Hard (Boss)';
+        difficulty = 'Very Hard';
         difficultyColor = '#ff4444';
       } else if (npc.damage >= 75) {
-        difficulty = 'Hard (Boss)';
+        difficulty = 'Hard';
         difficultyColor = '#ff8844';
       } else {
-        difficulty = 'Medium (Boss)';
+        difficulty = 'Medium';
         difficultyColor = '#ffcc00';
       }
     }
 
     // Build drops display
-    let dropsHtml = 'None';
+    let dropsHtml = '<span style="color:#666">None</span>';
     if (npc.drops && npc.drops.length > 0) {
       dropsHtml = npc.drops.map(d => {
         const item = this.itemTypes[d];
-        return item ? `<span class="drop-item" title="${item.name}">${item.icon} ${item.name}</span>` : d;
-      }).join(', ');
-      dropsHtml += ` <span style="color:#888">(${Math.round((npc.dropChance || 0) * 100)}% chance)</span>`;
+        return item ? `<span title="${item.name}">${item.icon}</span>` : d;
+      }).join(' ');
+      dropsHtml += ` <span style="color:#888;font-size:9px">(${Math.round((npc.dropChance || 0) * 100)}%)</span>`;
     }
 
     // Build attack items display
     const attacksHtml = npc.attackItems.map(a => {
       const item = this.itemTypes[a];
-      return item ? `${item.icon}` : a;
+      return item ? `<span title="${item.name}">${item.icon}</span>` : a;
     }).join(' ');
 
-    // Show detailed stats in chat log
-    if (window.chatManager) {
-      window.chatManager.addLogMessage(`━━━ ${npc.icon} ${npc.name} ━━━`, 'system');
-      window.chatManager.addLogMessage(`📜 ${npc.title}`, 'system');
-      window.chatManager.addLogMessage(`❤️ Health: ${npc.health}/${npc.maxHealth}`, 'system');
-      window.chatManager.addLogMessage(`⚔️ Max Damage: ${npc.damage}`, 'system');
-      window.chatManager.addLogMessage(`🎯 Attacks: ${attacksHtml}`, 'system');
-      window.chatManager.addLogMessage(`📍 Location: ${npc.baseCity}`, 'system');
-      window.chatManager.addLogMessage(`⚠️ Difficulty: ${difficulty}`, 'system');
-      if (npc.drops && npc.drops.length > 0) {
-        window.chatManager.addLogMessage(`🎁 Drops: ${dropsHtml}`, 'system');
+    // Health percentage for bar
+    const healthPct = Math.max(0, Math.min(100, (npc.health / npc.maxHealth) * 100));
+    const healthColor = healthPct > 50 ? '#44ff44' : healthPct > 25 ? '#ffaa00' : '#ff4444';
+
+    // Create inspect tooltip
+    const inspect = document.createElement('div');
+    inspect.className = 'inspect-tooltip npc-inspect';
+    inspect.innerHTML = `
+      <div class="inspect-header">
+        <span class="inspect-icon">${npc.icon}</span>
+        <div class="inspect-title">
+          <span class="inspect-name">${npc.name}</span>
+          <span class="inspect-subtitle">${npc.title}</span>
+        </div>
+        <button class="inspect-close">✕</button>
+      </div>
+      <div class="inspect-body">
+        <div class="inspect-stat-row">
+          <span class="inspect-label">❤️ Health</span>
+          <div class="inspect-health-bar">
+            <div class="inspect-health-fill" style="width:${healthPct}%;background:${healthColor}"></div>
+            <span class="inspect-health-text">${npc.health}/${npc.maxHealth}</span>
+          </div>
+        </div>
+        <div class="inspect-stat-row">
+          <span class="inspect-label">⚔️ Max Hit</span>
+          <span class="inspect-value">${npc.damage}</span>
+        </div>
+        <div class="inspect-stat-row">
+          <span class="inspect-label">🎯 Attacks</span>
+          <span class="inspect-value">${attacksHtml}</span>
+        </div>
+        <div class="inspect-stat-row">
+          <span class="inspect-label">📍 Location</span>
+          <span class="inspect-value">${npc.baseCity}</span>
+        </div>
+        <div class="inspect-stat-row">
+          <span class="inspect-label">⚠️ Difficulty</span>
+          <span class="inspect-value" style="color:${difficultyColor}">${difficulty}</span>
+        </div>
+        <div class="inspect-stat-row">
+          <span class="inspect-label">🎁 Drops</span>
+          <span class="inspect-value">${dropsHtml}</span>
+        </div>
+        ${npc.sellsEquipment ? `
+        <div class="inspect-stat-row">
+          <span class="inspect-label">💰 Sells</span>
+          <span class="inspect-value">${this.equipmentTypes[npc.sellsEquipment]?.icon || ''} ${this.equipmentTypes[npc.sellsEquipment]?.name || ''}</span>
+        </div>
+        ` : ''}
+      </div>
+    `;
+
+    // Position in center of screen
+    inspect.style.position = 'fixed';
+    inspect.style.left = '50%';
+    inspect.style.top = '50%';
+    inspect.style.transform = 'translate(-50%, -50%)';
+
+    document.body.appendChild(inspect);
+    this.activeNPCInspect = { element: inspect, npcId };
+
+    // Close button
+    inspect.querySelector('.inspect-close').addEventListener('click', () => {
+      this.closeNPCInspect();
+    });
+
+    // Close on click outside
+    const closeHandler = (e) => {
+      if (!inspect.contains(e.target)) {
+        this.closeNPCInspect();
+        document.removeEventListener('click', closeHandler);
       }
-      if (npc.sellsEquipment) {
-        const sellItem = this.equipmentTypes[npc.sellsEquipment];
-        if (sellItem) {
-          window.chatManager.addLogMessage(`💰 Sells: ${sellItem.icon} ${sellItem.name}`, 'system');
-        }
-      }
-      window.chatManager.addLogMessage(`━━━━━━━━━━━━━━━━`, 'system');
+    };
+    setTimeout(() => document.addEventListener('click', closeHandler), 10);
+  }
+
+  // Close NPC inspect tooltip
+  closeNPCInspect() {
+    if (this.activeNPCInspect && this.activeNPCInspect.element) {
+      this.activeNPCInspect.element.remove();
     }
+    this.activeNPCInspect = null;
   }
 
   // Show NPC talk dialog
