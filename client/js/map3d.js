@@ -652,6 +652,30 @@ class Map3D {
     this.removeChatBubble(playerId);
   }
 
+  // Update player's health (for health bar display)
+  updatePlayerHealth(playerId, health, maxHealth) {
+    const playerData = this.playerSprites.get(playerId);
+    if (!playerData) return;
+
+    // Store health data on the player
+    playerData.health = health;
+    playerData.maxHealth = maxHealth;
+
+    // Update health bar if player has one
+    if (playerData.healthBar) {
+      const fill = playerData.healthBar.querySelector('.player-health-fill');
+      if (fill) {
+        const pct = Math.max(0, Math.min(100, (health / maxHealth) * 100));
+        fill.style.width = `${pct}%`;
+        fill.style.backgroundColor = pct > 50 ? '#44ff44' : pct > 25 ? '#ffaa00' : '#ff4444';
+      }
+      const text = playerData.healthBar.querySelector('.player-health-text');
+      if (text) {
+        text.textContent = `${health}/${maxHealth}`;
+      }
+    }
+  }
+
   // Update player's avatar (text and color)
   updatePlayerAvatar(playerId, avatar) {
     const playerData = this.playerSprites.get(playerId);
@@ -2250,8 +2274,8 @@ class Map3D {
 
     this.raycaster.setFromCamera(this.mouse, this.camera);
 
-    // Click radius in pixels for screen-space detection
-    const clickRadius = 30;
+    // Click radius in pixels for screen-space detection (larger = easier to click)
+    const clickRadius = 60;
 
     // Helper to project world pos to screen
     const worldToScreen = (worldPos) => {

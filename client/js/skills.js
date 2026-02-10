@@ -146,6 +146,12 @@ class SkillsManager {
     this.npcCombatTarget = null;
     this.npcsInitialized = false;
 
+    // PvP Combat system
+    this.pvpCombatTarget = null;  // Player ID we're attacking
+    this.pvpCombatTargetName = null;  // Player name for messages
+    this.pvpTurnTick = 0;  // Tick counter for PvP turns
+    this.PVP_COMBAT_TICKS = 4;  // 4 ticks = 2.4 seconds between PvP attacks
+
     // Game tick system (600ms ticks for future features)
     this.TICK_DURATION = 600; // 0.6 seconds per tick
     this.COMBAT_TICKS = 4; // 4 ticks = 2.4 seconds between attacks
@@ -320,7 +326,7 @@ class SkillsManager {
 
   // Called every game tick (600ms)
   onGameTick() {
-    // Handle combat turns and NPC following
+    // Handle NPC combat turns and NPC following
     if (this.inCombat && this.npcCombatTarget) {
       const npc = this.npcs.find(n => n.id === this.npcCombatTarget);
 
@@ -340,6 +346,17 @@ class SkillsManager {
       if (this.combatTurnTick >= this.COMBAT_TICKS) {
         this.combatTurnTick = 0;
         this.processCombatTurn();
+      }
+    }
+
+    // Handle PvP combat turns (auto-attack)
+    if (this.pvpCombatTarget) {
+      this.pvpTurnTick++;
+
+      // Every 4 ticks (2.4 seconds), process a PvP attack
+      if (this.pvpTurnTick >= this.PVP_COMBAT_TICKS) {
+        this.pvpTurnTick = 0;
+        this.processPvPTurn();
       }
     }
   }
@@ -3181,6 +3198,44 @@ class SkillsManager {
       return;
     }
 
+    // Check if switching targets
+    const isNewTarget = this.pvpCombatTarget !== playerId;
+
+    // Start or switch PvP combat target
+    this.pvpCombatTarget = playerId;
+    this.pvpCombatTargetName = playerName;
+
+    if (isNewTarget) {
+      // Reset turn tick for new target - attack immediately
+      this.pvpTurnTick = this.PVP_COMBAT_TICKS;
+
+      if (window.chatManager) {
+        window.chatManager.addLogMessage(`⚔️ Engaging ${playerName} in combat!`, 'combat');
+      }
+    }
+
+    // Process immediate attack
+    this.sendPvPAttack(playerId, playerName);
+  }
+
+  // Send a single PvP attack to server
+  sendPvPAttack(playerId, playerName) {
+    // Check if we have any of the selected ammo
+    const ammoCount = this.getItemCount(this.selectedCombatItem);
+    if (ammoCount <= 0) {
+      // Try to auto-equip another ammo type
+      const availableAmmo = this.getCombatItems();
+      if (availableAmmo.length > 0) {
+        this.selectedCombatItem = availableAmmo[0].itemKey;
+      } else {
+        if (window.chatManager) {
+          window.chatManager.addLogMessage(`❌ Out of ammo! Combat ended.`, 'error');
+        }
+        this.endPvPCombat();
+        return;
+      }
+    }
+
     // Consume 1 ammo
     this.removeItemFromInventory(this.selectedCombatItem, 1);
 
@@ -3199,27 +3254,46 @@ class SkillsManager {
 
     // Send attack to server for damage calculation
     if (window.game && window.game.socket && window.game.socket.connected) {
-      console.log('Sending pvp:attack to server');
       window.game.socket.emit('pvp:attack', {
         targetId: playerId,
         itemKey: this.selectedCombatItem,
         accuracy,
         maxHit
       });
-
-      if (window.chatManager) {
-        window.chatManager.addLogMessage(`⚔️ Attacking ${playerName}...`, 'combat');
-      }
-    } else {
-      // Offline fallback
-      if (window.chatManager) {
-        window.chatManager.addLogMessage(`⚔️ Cannot attack while offline!`, 'error');
-      }
     }
 
     this.save();
     this.renderInventory();
     this.renderCombat();
+  }
+
+  // Process automatic PvP turn (called by game tick system)
+  processPvPTurn() {
+    if (!this.pvpCombatTarget) return;
+
+    // Check if target is still online
+    const targetPlayer = window.playerManager?.getPlayer(this.pvpCombatTarget);
+    if (!targetPlayer) {
+      if (window.chatManager) {
+        window.chatManager.addLogMessage(`⚔️ ${this.pvpCombatTargetName || 'Target'} left. Combat ended.`, 'combat');
+      }
+      this.endPvPCombat();
+      return;
+    }
+
+    // Send attack
+    this.sendPvPAttack(this.pvpCombatTarget, this.pvpCombatTargetName);
+  }
+
+  // End PvP combat
+  endPvPCombat() {
+    if (this.pvpCombatTarget && window.chatManager) {
+      window.chatManager.addLogMessage(`⚔️ Combat with ${this.pvpCombatTargetName || 'player'} ended.`, 'combat');
+    }
+    this.pvpCombatTarget = null;
+    this.pvpCombatTargetName = null;
+    this.pvpTurnTick = 0;
+    this.lastPvPTarget = null;
   }
 
   // Handle PvP attack result from server
@@ -3248,6 +3322,11 @@ class SkillsManager {
       }
       // Add combat XP
       this.addCombatXP(data.damage);
+
+      // Check if target was defeated
+      if (data.targetHealth <= 0) {
+        this.handlePvPTargetDefeated(data.targetId);
+      }
     } else {
       if (window.chatManager) {
         window.chatManager.addLogMessage(`⚔️ You missed ${target.playerName}! (${item?.icon || ''})`, 'combat');
@@ -3274,6 +3353,21 @@ class SkillsManager {
       window.chatManager.addLogMessage(`💥 ${data.attackerName} hit you for ${data.damage} damage! (${this.combatHealth}/${this.maxCombatHealth} HP)`, 'damage');
     }
 
+    // Auto-retaliate if not already attacking someone
+    if (!this.pvpCombatTarget && this.selectedCombatItem) {
+      // Get attacker player data
+      const attackerPlayer = window.playerManager?.getPlayer(data.attackerId);
+      if (attackerPlayer) {
+        if (window.chatManager) {
+          window.chatManager.addLogMessage(`⚔️ Auto-retaliating against ${data.attackerName}!`, 'combat');
+        }
+        // Set target for auto-attack (don't attack immediately, let tick handle it)
+        this.pvpCombatTarget = data.attackerId;
+        this.pvpCombatTargetName = data.attackerName;
+        this.pvpTurnTick = 0;
+      }
+    }
+
     // Update health display
     this.renderCombat();
 
@@ -3285,6 +3379,10 @@ class SkillsManager {
 
   // Handle being defeated by another player
   handlePvPDefeated(data) {
+    // End all combat
+    this.endPvPCombat();
+    this.endNPCCombat();
+
     if (window.chatManager) {
       window.chatManager.addLogMessage(`💀 You were defeated by ${data.killerName}!`, 'death');
     }
@@ -3303,6 +3401,16 @@ class SkillsManager {
 
         this.map3d.playPlayerRespawnAnimation();
       });
+    }
+  }
+
+  // Handle when we defeat another player
+  handlePvPTargetDefeated(targetId) {
+    if (this.pvpCombatTarget === targetId) {
+      if (window.chatManager) {
+        window.chatManager.addLogMessage(`🏆 You defeated ${this.pvpCombatTargetName}!`, 'combat');
+      }
+      this.endPvPCombat();
     }
   }
 
