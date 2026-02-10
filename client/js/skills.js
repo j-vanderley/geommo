@@ -245,6 +245,18 @@ class SkillsManager {
         window.chatManager.addLogMessage(`❤️ Hitpoints leveled up! (${newLevel})`, 'levelup');
       }
       this.updateMaxHP();
+      this.syncCombatStatsToServer();
+    }
+  }
+
+  // Sync combat stats to server for PvP
+  syncCombatStatsToServer() {
+    if (window.game && window.game.socket && window.game.socket.connected) {
+      window.game.socket.emit('player:updateCombatStats', {
+        health: this.combatHealth,
+        maxHealth: this.maxCombatHealth,
+        combatLevel: this.getHPLevel()
+      });
     }
   }
 
@@ -3145,7 +3157,7 @@ class SkillsManager {
     }
   }
 
-  // Initiate attack on another player (PvP combat)
+  // Initiate attack on another player (PvP combat) - server-side calculation
   initiatePlayerAttack(playerId, player) {
     const playerName = player?.username || player?.name || 'Unknown';
 
@@ -3167,51 +3179,96 @@ class SkillsManager {
       return;
     }
 
-    // Perform attack - consume 1 ammo and send attack to server
+    // Consume 1 ammo
     this.removeItem(this.selectedCombatItem, 1);
 
-    // Calculate damage (same formula as NPC combat)
+    // Get accuracy and max hit for server-side calculation
     const accuracy = this.getAccuracy(this.selectedCombatItem);
     const maxHit = this.getMaxHit(this.selectedCombatItem);
-    const hitRoll = Math.random() * 100;
-    const didHit = hitRoll < accuracy;
-    const damage = didHit ? Math.floor(Math.random() * (maxHit + 1)) : 0;
 
-    // Send attack to server (server will validate and apply damage)
+    // Store target info for result handler
+    this.lastPvPTarget = { playerId, playerName, itemKey: this.selectedCombatItem };
+
+    // Send attack to server for damage calculation
     if (window.game && window.game.socket && window.game.socket.connected) {
-      window.game.socket.emit('player:attack', {
+      window.game.socket.emit('pvp:attack', {
         targetId: playerId,
-        damage: damage,
-        didHit: didHit,
-        ammoUsed: this.selectedCombatItem
+        itemKey: this.selectedCombatItem,
+        accuracy,
+        maxHit
       });
-
-      // Show attack message
-      const item = this.itemTypes[this.selectedCombatItem];
-      if (didHit) {
-        if (window.chatManager) {
-          window.chatManager.addLogMessage(`⚔️ You hit ${playerName} for ${damage} damage! (${item?.icon || ''})`, 'combat');
-        }
-      } else {
-        if (window.chatManager) {
-          window.chatManager.addLogMessage(`⚔️ You missed ${playerName}! (${item?.icon || ''})`, 'combat');
-        }
-      }
-
-      // Add combat XP
-      if (damage > 0) {
-        this.addCombatXP(damage);
-      }
     } else {
-      // Offline - just show message
+      // Offline fallback
       if (window.chatManager) {
-        window.chatManager.addLogMessage(`⚔️ Attack sent! (${didHit ? damage + ' damage' : 'missed'})`, 'combat');
+        window.chatManager.addLogMessage(`⚔️ Cannot attack while offline!`, 'error');
       }
     }
 
     this.save();
     this.renderInventory();
     this.renderCombat();
+  }
+
+  // Handle PvP attack result from server
+  handlePvPAttackResult(data) {
+    const target = this.lastPvPTarget;
+    if (!target) return;
+
+    const item = this.itemTypes[target.itemKey];
+
+    if (data.didHit) {
+      if (window.chatManager) {
+        window.chatManager.addLogMessage(`⚔️ You hit ${target.playerName} for ${data.damage} damage! (${item?.icon || ''})`, 'combat');
+      }
+      // Add combat XP
+      this.addCombatXP(data.damage);
+    } else {
+      if (window.chatManager) {
+        window.chatManager.addLogMessage(`⚔️ You missed ${target.playerName}! (${item?.icon || ''})`, 'combat');
+      }
+    }
+  }
+
+  // Handle being damaged by another player
+  handlePvPDamaged(data) {
+    // Update our health
+    this.combatHealth = data.health;
+    this.maxCombatHealth = data.maxHealth;
+
+    if (window.chatManager) {
+      window.chatManager.addLogMessage(`💥 ${data.attackerName} hit you for ${data.damage} damage! (${this.combatHealth}/${this.maxCombatHealth} HP)`, 'damage');
+    }
+
+    // Update health display
+    this.renderCombat();
+
+    // Check if dead
+    if (this.combatHealth <= 0) {
+      // Will receive pvp:defeated event
+    }
+  }
+
+  // Handle being defeated by another player
+  handlePvPDefeated(data) {
+    if (window.chatManager) {
+      window.chatManager.addLogMessage(`💀 You were defeated by ${data.killerName}!`, 'death');
+    }
+
+    // Play death animation and respawn
+    if (this.map3d) {
+      this.map3d.playPlayerDeathAnimation(() => {
+        // Respawn with full health
+        this.combatHealth = this.maxCombatHealth;
+        this.renderCombat();
+
+        // Teleport home
+        if (this.homePosition && window.game) {
+          window.game.teleportTo(this.homePosition.lat, this.homePosition.lng);
+        }
+
+        this.map3d.playPlayerRespawnAnimation();
+      });
+    }
   }
 
   // Add combat XP based on damage dealt
@@ -3590,7 +3647,7 @@ class SkillsManager {
     this.isPlayerTurn = !this.isPlayerTurn;
   }
 
-  // Player attacks NPC with visual effects
+  // Player attacks NPC - sends to server for damage calculation
   playerAttackNPC(npcId) {
     const npc = this.npcs.find(n => n.id === npcId);
     if (!npc) return;
@@ -3622,7 +3679,6 @@ class SkillsManager {
       if (window.chatManager) {
         window.chatManager.addLogMessage('⚔️ No ammo! You cannot attack!', 'error');
       }
-      // Don't end combat - NPC will keep attacking. Player can eat food or flee.
       return;
     }
 
@@ -3632,22 +3688,44 @@ class SkillsManager {
       this.inventorySlots[slotIndex] = null;
     }
 
-    // Roll damage (0 to max hit) with accuracy check
-    const combatResult = this.rollCombatDamage(this.selectedCombatItem);
-    const damage = combatResult.damage;
-    npc.health -= damage;
-
-    const item = this.itemTypes[this.selectedCombatItem];
+    // Get accuracy and max hit for server
     const accuracy = this.getAccuracy(this.selectedCombatItem);
+    const maxHit = this.getMaxHit(this.selectedCombatItem);
 
-    // Award HP XP for attacking (XP = damage dealt / 4, min 1 even on miss for effort)
-    // HP XP scales with damage dealt (damage * 4 for faster leveling)
-    const hpXP = combatResult.hit ? Math.max(5, damage * 4) : 2;
+    // Send attack to server for damage calculation
+    if (window.game && window.game.socket && window.game.socket.connected) {
+      window.game.socket.emit('npc:attack', {
+        npcId,
+        itemKey: this.selectedCombatItem,
+        accuracy,
+        maxHit
+      });
+    } else {
+      // Fallback: local calculation if offline
+      this.playerAttackNPCLocal(npcId, accuracy, maxHit);
+    }
+
+    this.save();
+    this.renderCombat();
+  }
+
+  // Local fallback for NPC attack (offline mode)
+  playerAttackNPCLocal(npcId, accuracy, maxHit) {
+    const npc = this.npcs.find(n => n.id === npcId);
+    if (!npc) return;
+
+    const hitRoll = Math.random() * 100;
+    const didHit = hitRoll < accuracy;
+    const damage = didHit ? Math.floor(Math.random() * (maxHit + 1)) : 0;
+
+    npc.health -= damage;
+    const item = this.itemTypes[this.selectedCombatItem];
+
+    const hpXP = didHit ? Math.max(5, damage * 4) : 2;
     this.addHPXP(hpXP);
 
-    // Show attack particle effect
     if (this.map3d) {
-      if (combatResult.hit) {
+      if (didHit) {
         this.map3d.showCombatEffect('player_attack', npcId, item?.icon || '⚔️', damage);
       } else {
         this.map3d.showCombatEffect('player_miss', npcId, '💨', 0);
@@ -3656,22 +3734,107 @@ class SkillsManager {
     }
 
     if (window.chatManager) {
-      if (combatResult.hit) {
-        window.chatManager.addLogMessage(`⚔️ You hit ${npc.name} with ${item?.icon || '⚔️'} for ${damage} damage! (max: ${combatResult.maxHit})`, 'combat');
+      if (didHit) {
+        window.chatManager.addLogMessage(`⚔️ You hit ${npc.name} for ${damage} damage!`, 'combat');
       } else {
-        window.chatManager.addLogMessage(`💨 You miss ${npc.name}! (${Math.round(accuracy)}% accuracy)`, 'combat');
+        window.chatManager.addLogMessage(`💨 You miss ${npc.name}!`, 'combat');
+      }
+    }
+
+    this.updateCombatHUD(npcId);
+
+    if (npc.health <= 0) {
+      this.defeatNPC(npcId);
+    }
+  }
+
+  // Handle NPC attack result from server
+  handleNPCAttackResult(data) {
+    const npc = this.npcs.find(n => n.id === data.npcId);
+    if (!npc) return;
+
+    // Update local NPC health from server
+    npc.health = data.npcHealth;
+
+    const item = this.itemTypes[this.selectedCombatItem];
+
+    // Award HP XP
+    const hpXP = data.didHit ? Math.max(5, data.damage * 4) : 2;
+    this.addHPXP(hpXP);
+
+    // Show attack particle effect
+    if (this.map3d) {
+      if (data.didHit) {
+        this.map3d.showCombatEffect('player_attack', data.npcId, item?.icon || '⚔️', data.damage);
+      } else {
+        this.map3d.showCombatEffect('player_miss', data.npcId, '💨', 0);
+      }
+      this.map3d.updateNPCHealth(data.npcId, data.npcHealth, data.npcMaxHealth);
+    }
+
+    if (window.chatManager) {
+      if (data.didHit) {
+        window.chatManager.addLogMessage(`⚔️ You hit ${npc.name} for ${data.damage} damage!`, 'combat');
+      } else {
+        window.chatManager.addLogMessage(`💨 You miss ${npc.name}!`, 'combat');
       }
     }
 
     // Update combat HUD
-    this.updateCombatHUD(npcId);
+    this.updateCombatHUD(data.npcId);
+  }
 
+  // Handle NPC health update from server (for all players)
+  updateNPCHealthFromServer(data) {
+    const npc = this.npcs.find(n => n.id === data.npcId);
+    if (npc) {
+      npc.health = data.health;
+      if (this.map3d) {
+        this.map3d.updateNPCHealth(data.npcId, data.health, data.maxHealth);
+      }
+    }
+  }
+
+  // Handle NPC defeated from server
+  handleNPCDefeated(data) {
+    const npc = this.npcs.find(n => n.id === data.npcId);
+    if (!npc) return;
+
+    npc.health = 0;
+
+    // Award drops from server
+    if (data.drops && data.drops.length > 0) {
+      for (const dropKey of data.drops) {
+        this.addItem(dropKey, 1);
+        const item = this.itemTypes[dropKey] || this.equipmentTypes[dropKey];
+        if (window.chatManager && item) {
+          window.chatManager.addLogMessage(`🎁 ${npc.name} dropped ${item.icon} ${item.name}!`, 'drop');
+        }
+      }
+    }
+
+    if (window.chatManager) {
+      window.chatManager.addLogMessage(`🏆 You defeated ${npc.name}!`, 'victory');
+    }
+
+    // Play death animation
+    if (this.map3d) {
+      this.map3d.playNPCDeathAnimation(data.npcId);
+    }
+
+    this.endNPCCombat();
     this.save();
-    this.renderCombat();
+    this.renderEquipment();
+  }
 
-    // Check if NPC defeated
-    if (npc.health <= 0) {
-      this.defeatNPC(npcId);
+  // Handle NPC respawned from server
+  handleNPCRespawned(data) {
+    const npc = this.npcs.find(n => n.id === data.npcId);
+    if (npc) {
+      npc.health = npc.maxHealth;
+      if (this.map3d) {
+        this.map3d.playNPCRespawnAnimation(data.npcId);
+      }
     }
   }
 
@@ -4755,6 +4918,9 @@ class SkillsManager {
       if (data.lightBalance !== undefined) {
         this.lightBalance = data.lightBalance;
       }
+
+      // Sync combat stats to server for PvP
+      setTimeout(() => this.syncCombatStatsToServer(), 1000);
     } catch (e) {
       console.error('Failed to load skills data:', e);
     }

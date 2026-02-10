@@ -298,6 +298,168 @@ io.on('connection', (socket) => {
     console.log(`Combat: ${attacker.username} attacked ${target.username} for ${data.damage} damage`);
   });
 
+  // Player combat stats update
+  socket.on('player:updateCombatStats', (data) => {
+    const player = playerManager.getPlayer(socket.id);
+    if (player) {
+      player.health = data.health;
+      player.maxHealth = data.maxHealth;
+      player.combatLevel = data.combatLevel;
+    }
+  });
+
+  // NPC Attack - Server calculates damage and updates NPC health
+  socket.on('npc:attack', (data) => {
+    const player = playerManager.getPlayer(socket.id);
+    if (!player) return;
+
+    const npc = npcManager.getNPC(data.npcId);
+    if (!npc) {
+      console.log(`NPC attack failed: NPC ${data.npcId} not found`);
+      return;
+    }
+
+    // Calculate hit based on accuracy (server-side)
+    const hitRoll = Math.random() * 100;
+    const didHit = hitRoll < data.accuracy;
+
+    // Calculate damage (0 to maxHit if hit, 0 if miss)
+    const damage = didHit ? Math.floor(Math.random() * (data.maxHit + 1)) : 0;
+
+    // Apply damage to NPC
+    const newHealth = npcManager.damageNPC(data.npcId, damage);
+
+    // Send result to attacker
+    socket.emit('npc:attackResult', {
+      npcId: data.npcId,
+      damage,
+      didHit,
+      npcHealth: newHealth,
+      npcMaxHealth: npc.maxHealth
+    });
+
+    // Broadcast NPC health to all nearby players
+    io.emit('npc:healthUpdate', {
+      npcId: data.npcId,
+      health: newHealth,
+      maxHealth: npc.maxHealth
+    });
+
+    // Check if NPC is defeated
+    if (newHealth <= 0) {
+      // Calculate drops
+      const drops: string[] = [];
+      if (npc.drops && npc.drops.length > 0 && npc.dropChance) {
+        if (Math.random() < npc.dropChance) {
+          // Random drop from available drops
+          const randomDrop = npc.drops[Math.floor(Math.random() * npc.drops.length)];
+          drops.push(randomDrop);
+        }
+      }
+
+      socket.emit('npc:defeated', {
+        npcId: data.npcId,
+        npcName: npc.name,
+        drops
+      });
+
+      console.log(`NPC ${npc.name} defeated by ${player.username}! Drops: ${drops.join(', ') || 'none'}`);
+
+      // Respawn NPC after delay
+      const respawnTime = npc.isTraining ? 30000 : (npc.isBattleOnly ? 60000 : 120000);
+      setTimeout(() => {
+        npcManager.resetNPCHealth(data.npcId);
+        io.emit('npc:respawned', { npcId: data.npcId });
+        io.emit('npc:healthUpdate', {
+          npcId: data.npcId,
+          health: npc.maxHealth,
+          maxHealth: npc.maxHealth
+        });
+        console.log(`NPC ${npc.name} respawned`);
+      }, respawnTime);
+    }
+  });
+
+  // PvP Attack - Server calculates damage and manages health
+  socket.on('pvp:attack', (data) => {
+    const attacker = playerManager.getPlayer(socket.id);
+    const target = playerManager.getPlayer(data.targetId);
+
+    if (!attacker || !target) return;
+
+    // Check safe zones
+    const attackerSafeZone = isInSafeZone(attacker.position.lat, attacker.position.lng);
+    if (attackerSafeZone) {
+      socket.emit('combat:blocked', { reason: `You cannot attack from ${attackerSafeZone} safe zone` });
+      return;
+    }
+
+    const targetSafeZone = isInSafeZone(target.position.lat, target.position.lng);
+    if (targetSafeZone) {
+      socket.emit('combat:blocked', { reason: `${target.username} is protected in ${targetSafeZone} safe zone` });
+      return;
+    }
+
+    // Calculate hit based on accuracy (server-side)
+    const hitRoll = Math.random() * 100;
+    const didHit = hitRoll < data.accuracy;
+
+    // Calculate damage
+    const damage = didHit ? Math.floor(Math.random() * (data.maxHit + 1)) : 0;
+
+    // Apply damage to target
+    const targetHealth = Math.max(0, (target.health || 100) - damage);
+    target.health = targetHealth;
+    const targetMaxHealth = target.maxHealth || 100;
+
+    // Send result to attacker
+    socket.emit('pvp:attackResult', {
+      targetId: data.targetId,
+      damage,
+      didHit,
+      targetHealth,
+      targetMaxHealth
+    });
+
+    // Notify target they were damaged
+    io.to(data.targetId).emit('pvp:damaged', {
+      attackerId: socket.id,
+      attackerName: attacker.username,
+      damage,
+      health: targetHealth,
+      maxHealth: targetMaxHealth
+    });
+
+    // Broadcast health update
+    io.emit('player:healthUpdated', {
+      id: data.targetId,
+      health: targetHealth,
+      maxHealth: targetMaxHealth
+    });
+
+    // Check if target is defeated
+    if (targetHealth <= 0) {
+      io.to(data.targetId).emit('pvp:defeated', {
+        killerId: socket.id,
+        killerName: attacker.username
+      });
+
+      // Reset target health after short delay (respawn)
+      setTimeout(() => {
+        target.health = target.maxHealth || 100;
+        io.emit('player:healthUpdated', {
+          id: data.targetId,
+          health: target.health,
+          maxHealth: target.maxHealth || 100
+        });
+      }, 5000);
+
+      console.log(`PvP: ${attacker.username} defeated ${target.username}!`);
+    } else {
+      console.log(`PvP: ${attacker.username} hit ${target.username} for ${damage} damage (${targetHealth}/${targetMaxHealth} HP)`);
+    }
+  });
+
   // Chat messages
   socket.on('chat:send', (data) => {
     const player = playerManager.getPlayer(socket.id);

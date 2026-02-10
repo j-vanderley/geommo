@@ -25,6 +25,10 @@ export interface Player {
   avatar?: Avatar;
   equipment?: Equipment;
   lastSeen: Date;
+  // Combat stats
+  health?: number;
+  maxHealth?: number;
+  combatLevel?: number;
 }
 
 export interface ChatMessage {
@@ -91,7 +95,14 @@ export interface ClientToServerEvents {
   'player:updateName': (data: { username: string }) => void;
   'player:updateEquipment': (data: { equipment: Equipment }) => void;
   'player:setHome': (data: { position: Position }) => void;
+  'player:updateCombatStats': (data: { health: number; maxHealth: number; combatLevel: number }) => void;
   'combat:attack': (data: { targetId: string; itemKey: string; damage: number }) => void;
+  // NPC Combat events
+  'npc:attack': (data: { npcId: string; itemKey: string; accuracy: number; maxHit: number }) => void;
+  'npc:startCombat': (data: { npcId: string }) => void;
+  'npc:endCombat': (data: { npcId: string }) => void;
+  // PvP Combat events
+  'pvp:attack': (data: { targetId: string; itemKey: string; accuracy: number; maxHit: number }) => void;
 }
 
 export interface ServerToClientEvents {
@@ -103,6 +114,7 @@ export interface ServerToClientEvents {
   'player:nameUpdated': (data: { id: string; username: string }) => void;
   'player:equipmentUpdated': (data: { id: string; equipment: Equipment }) => void;
   'player:homeUpdated': (data: { position: Position }) => void;
+  'player:healthUpdated': (data: { id: string; health: number; maxHealth: number }) => void;
   'chat:message': (data: ChatMessage) => void;
   'world:state': (data: WorldState) => void;
   'auth:success': (data: { player: Player }) => void;
@@ -111,4 +123,14 @@ export interface ServerToClientEvents {
   'combat:hit': (data: { targetId: string; damage: number; targetHealth: number }) => void;
   'combat:died': (data: { playerId: string; killerName: string }) => void;
   'combat:blocked': (data: { reason: string }) => void;
+  // NPC Combat events
+  'npc:healthUpdate': (data: { npcId: string; health: number; maxHealth: number }) => void;
+  'npc:attackResult': (data: { npcId: string; damage: number; didHit: boolean; npcHealth: number; npcMaxHealth: number }) => void;
+  'npc:attackPlayer': (data: { npcId: string; npcName: string; damage: number; playerHealth: number; playerMaxHealth: number }) => void;
+  'npc:defeated': (data: { npcId: string; npcName: string; drops: string[] }) => void;
+  'npc:respawned': (data: { npcId: string }) => void;
+  // PvP Combat events
+  'pvp:attackResult': (data: { targetId: string; damage: number; didHit: boolean; targetHealth: number; targetMaxHealth: number }) => void;
+  'pvp:damaged': (data: { attackerId: string; attackerName: string; damage: number; health: number; maxHealth: number }) => void;
+  'pvp:defeated': (data: { killerId: string; killerName: string }) => void;
 }

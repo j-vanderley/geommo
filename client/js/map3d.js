@@ -142,6 +142,14 @@ class Map3D {
     // Ignore if we were rotating the camera
     if (this.cameraController && this.cameraController.isRotating) return;
 
+    // Check if clicking on an entity (NPC, player, or home shop) first
+    // If so, don't trigger movement - let the entity click handler deal with it
+    const clickTarget = this.getClickTarget(e);
+    if (clickTarget) {
+      // Entity was clicked - don't move, the separate click handler will show the tooltip
+      return;
+    }
+
     // Calculate mouse position in normalized device coordinates
     const rect = this.renderer.domElement.getBoundingClientRect();
     this.mouse.x = ((e.clientX - rect.left) / rect.width) * 2 - 1;

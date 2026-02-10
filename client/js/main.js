@@ -1260,6 +1260,58 @@ class Geommo {
         this.mapManager.skillsManager.homePosition = data.position;
       }
     });
+
+    // NPC Combat events (server-side calculations)
+    this.socket.on('npc:attackResult', (data) => {
+      if (this.mapManager.skillsManager) {
+        this.mapManager.skillsManager.handleNPCAttackResult(data);
+      }
+    });
+
+    this.socket.on('npc:healthUpdate', (data) => {
+      // Update NPC health display for all players
+      if (this.mapManager.skillsManager) {
+        this.mapManager.skillsManager.updateNPCHealthFromServer(data);
+      }
+    });
+
+    this.socket.on('npc:defeated', (data) => {
+      if (this.mapManager.skillsManager) {
+        this.mapManager.skillsManager.handleNPCDefeated(data);
+      }
+    });
+
+    this.socket.on('npc:respawned', (data) => {
+      if (this.mapManager.skillsManager) {
+        this.mapManager.skillsManager.handleNPCRespawned(data);
+      }
+    });
+
+    // PvP Combat events (server-side calculations)
+    this.socket.on('pvp:attackResult', (data) => {
+      if (this.mapManager.skillsManager) {
+        this.mapManager.skillsManager.handlePvPAttackResult(data);
+      }
+    });
+
+    this.socket.on('pvp:damaged', (data) => {
+      if (this.mapManager.skillsManager) {
+        this.mapManager.skillsManager.handlePvPDamaged(data);
+      }
+    });
+
+    this.socket.on('pvp:defeated', (data) => {
+      if (this.mapManager.skillsManager) {
+        this.mapManager.skillsManager.handlePvPDefeated(data);
+      }
+    });
+
+    this.socket.on('player:healthUpdated', (data) => {
+      // Update other player's health display
+      if (this.mapManager?.map3d) {
+        this.mapManager.map3d.updatePlayerHealth(data.id, data.health, data.maxHealth);
+      }
+    });
   }
 
   // Set current position as home
