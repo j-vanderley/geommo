@@ -28,6 +28,7 @@ export class PlayerManager {
     let playerAvatar = avatar || { text: ':-)', color: '#ffb000' }; // Default avatar
     let playerUsername = username; // Default to provided username
     let playerEquipment: Equipment | undefined = undefined; // Equipment loaded from Firestore
+    let playerHomePosition: Position | undefined = undefined; // Home position loaded from Firestore
 
     if (playerDoc.exists) {
       const data = playerDoc.data();
@@ -49,6 +50,10 @@ export class PlayerManager {
       if (data?.equipment) {
         playerEquipment = data.equipment;
       }
+      // Load saved home position
+      if (data?.homePosition) {
+        playerHomePosition = data.homePosition;
+      }
     }
 
     const player: Player = {
@@ -56,6 +61,7 @@ export class PlayerManager {
       odId,
       username: playerUsername,
       position: playerPosition,
+      homePosition: playerHomePosition,
       flag: playerFlag,
       avatar: playerAvatar,
       equipment: playerEquipment,
@@ -151,11 +157,24 @@ export class PlayerManager {
     return player;
   }
 
+  async updateHomePosition(socketId: string, position: Position): Promise<Player | undefined> {
+    const player = this.players.get(socketId);
+    if (player) {
+      player.homePosition = position;
+      player.lastSeen = new Date();
+
+      // Save to Firestore
+      await this.savePlayer(player);
+    }
+    return player;
+  }
+
   private async savePlayer(player: Player): Promise<void> {
     try {
       await this.db.collection('players').doc(player.odId).set({
         username: player.username,
         position: player.position,
+        homePosition: player.homePosition,
         flag: player.flag,
         avatar: player.avatar,
         equipment: player.equipment,

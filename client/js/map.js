@@ -20,6 +20,12 @@ class MapManager {
     this.selfPlayerId = null;
     this.onMoveCallback = null;
 
+    // Minimap markers
+    this.minimapMarkers = new Map(); // socketId -> google.maps.Marker
+    this.minimapNPCMarkers = new Map(); // npcId -> google.maps.Marker
+    this.minimapHomeMarker = null;
+    this.minimapSelfMarker = null;
+
     // API key (extracted from page)
     this.apiKey = 'AIzaSyA215L_qSgleCyUM7brvtNUIXKx0GxEErA';
 
@@ -55,7 +61,131 @@ class MapManager {
       styles: this.getMapStyle()
     });
 
+    // Create self marker for minimap (yellow dot)
+    this.minimapSelfMarker = new google.maps.Marker({
+      position: GAME_CONFIG.defaultPosition,
+      map: this.minimap,
+      icon: {
+        path: google.maps.SymbolPath.CIRCLE,
+        scale: 6,
+        fillColor: '#FFD700',
+        fillOpacity: 1,
+        strokeColor: '#000',
+        strokeWeight: 2
+      },
+      zIndex: 1000,
+      title: 'You'
+    });
+
     return this;
+  }
+
+  // Create a minimap marker for another player
+  createMinimapPlayerMarker(playerId, position, username) {
+    if (!this.minimap || playerId === this.selfPlayerId) return;
+
+    // Remove existing marker if any
+    this.removeMinimapPlayerMarker(playerId);
+
+    const marker = new google.maps.Marker({
+      position: position,
+      map: this.minimap,
+      icon: {
+        path: google.maps.SymbolPath.CIRCLE,
+        scale: 4,
+        fillColor: '#00FF00',
+        fillOpacity: 0.8,
+        strokeColor: '#000',
+        strokeWeight: 1
+      },
+      zIndex: 500,
+      title: username || 'Player'
+    });
+
+    this.minimapMarkers.set(playerId, marker);
+  }
+
+  // Update minimap player marker position
+  updateMinimapPlayerMarker(playerId, position) {
+    if (playerId === this.selfPlayerId) return;
+
+    const marker = this.minimapMarkers.get(playerId);
+    if (marker) {
+      marker.setPosition(position);
+    }
+  }
+
+  // Remove minimap player marker
+  removeMinimapPlayerMarker(playerId) {
+    const marker = this.minimapMarkers.get(playerId);
+    if (marker) {
+      marker.setMap(null);
+      this.minimapMarkers.delete(playerId);
+    }
+  }
+
+  // Create minimap markers for NPCs
+  createMinimapNPCMarkers(npcs) {
+    if (!this.minimap) return;
+
+    // Clear existing NPC markers
+    this.minimapNPCMarkers.forEach(marker => marker.setMap(null));
+    this.minimapNPCMarkers.clear();
+
+    npcs.forEach(npc => {
+      // Determine marker color based on NPC level/type
+      let fillColor = '#FF4444'; // Red for enemies
+      if (npc.friendly) {
+        fillColor = '#4444FF'; // Blue for friendly
+      } else if (npc.level >= 50) {
+        fillColor = '#FF00FF'; // Purple for high level
+      } else if (npc.level >= 25) {
+        fillColor = '#FF8800'; // Orange for mid level
+      }
+
+      const marker = new google.maps.Marker({
+        position: { lat: npc.lat, lng: npc.lng },
+        map: this.minimap,
+        icon: {
+          path: google.maps.SymbolPath.CIRCLE,
+          scale: 3,
+          fillColor: fillColor,
+          fillOpacity: 0.9,
+          strokeColor: '#000',
+          strokeWeight: 1
+        },
+        zIndex: 400,
+        title: `${npc.name} (Lvl ${npc.level})`
+      });
+
+      this.minimapNPCMarkers.set(npc.id, marker);
+    });
+  }
+
+  // Create home marker on minimap
+  createMinimapHomeMarker(position) {
+    if (!this.minimap) return;
+
+    // Remove existing home marker
+    if (this.minimapHomeMarker) {
+      this.minimapHomeMarker.setMap(null);
+    }
+
+    this.minimapHomeMarker = new google.maps.Marker({
+      position: position,
+      map: this.minimap,
+      icon: {
+        path: 'M10 20v-6h4v6h5v-8h3L12 3 2 12h3v8z',
+        fillColor: '#00BFFF',
+        fillOpacity: 1,
+        strokeColor: '#000',
+        strokeWeight: 1,
+        scale: 0.8,
+        anchor: new google.maps.Point(12, 20)
+      },
+      zIndex: 600,
+      title: 'Home'
+    });
   }
 
   // Initialize 3D view
@@ -118,13 +248,21 @@ class MapManager {
   setupNPCInteraction() {
     if (!this.map3d) return;
 
-    // Add click listener for NPCs
+    // Add click listener for NPCs, players, and home shop
     this.map3d.renderer.domElement.addEventListener('click', (event) => {
-      // Check if clicking on an NPC
-      const npcId = this.map3d.checkNPCClick(event);
-      if (npcId && this.skillsManager) {
-        // Show NPC dialog
-        this.skillsManager.showNPCDialog(npcId);
+      // Check if clicking on an NPC, player, or home shop
+      const clickResult = this.map3d.getClickTarget(event);
+      if (clickResult && this.skillsManager) {
+        if (clickResult.type === 'homeShop') {
+          // Show home choice dialog (Bank or Shop)
+          this.skillsManager.showHomeChoice();
+        } else if (clickResult.type === 'npc') {
+          // Show NPC tooltip menu at click position
+          this.skillsManager.showNPCDialog(clickResult.npcId, event.clientX, event.clientY);
+        } else if (clickResult.type === 'player') {
+          // Show player interaction menu at click position
+          this.skillsManager.showPlayerInteractionMenu(clickResult.playerId, event.clientX, event.clientY);
+        }
       }
     });
   }
@@ -184,6 +322,9 @@ class MapManager {
         if (this.weatherManager) {
           this.weatherManager.fetchWeather(player.position.lat, player.position.lng);
         }
+      } else {
+        // Create minimap marker for other players
+        this.createMinimapPlayerMarker(player.id, player.position, player.username);
       }
 
       return sprite;
@@ -276,6 +417,9 @@ class MapManager {
         markerData.overlay.setPosition(position);
       }
     }
+
+    // Update minimap marker
+    this.updateMinimapPlayerMarker(playerId, position);
   }
 
   // Simple animation between positions (2D fallback)
@@ -313,6 +457,9 @@ class MapManager {
 
     this.markers.delete(playerId);
     this.removeChatBubble(playerId);
+
+    // Remove minimap marker
+    this.removeMinimapPlayerMarker(playerId);
   }
 
   // Center map on position
@@ -326,6 +473,11 @@ class MapManager {
     // Always update minimap
     if (this.minimap) {
       this.minimap.setCenter(position);
+    }
+
+    // Update self marker on minimap
+    if (this.minimapSelfMarker) {
+      this.minimapSelfMarker.setPosition(position);
     }
   }
 
@@ -343,14 +495,23 @@ class MapManager {
       this.minimap.setCenter(position);
     }
 
+    // Update self marker on minimap
+    if (this.minimapSelfMarker) {
+      this.minimapSelfMarker.setPosition(position);
+    }
+
     // Update coordinates display
     document.getElementById('player-coords').textContent =
       `${position.lat.toFixed(6)}, ${position.lng.toFixed(6)}`;
 
-    // Update weather for new position
+    // Update weather for new position (isolated - won't affect player state)
     this.currentPosition = position;
     if (this.weatherManager) {
-      this.weatherManager.fetchWeather(position.lat, position.lng);
+      // Weather fetch is rate-limited and only updates visual effects
+      this.weatherManager.fetchWeather(position.lat, position.lng).catch(err => {
+        console.warn('Weather fetch failed:', err);
+        // Silently fail - weather is cosmetic only
+      });
     }
 
     // Update skills manager with player position (for dropped items)

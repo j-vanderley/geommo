@@ -195,32 +195,50 @@ class WeatherManager {
       return this.currentWeather;
     }
 
+    // Mark that we're fetching to prevent interruption
+    this.isFetching = true;
+
     try {
       // Open-Meteo API - free, no key needed
       const url = `https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lng}&current=temperature_2m,weather_code,is_day&daily=sunrise,sunset&timezone=auto`;
 
       const response = await fetch(url);
+
+      // Check if fetch was aborted or failed
+      if (!response.ok) {
+        throw new Error(`Weather API returned ${response.status}`);
+      }
+
       const data = await response.json();
+
+      // Validate data before applying
+      if (!data.current || data.current.temperature_2m === undefined) {
+        throw new Error('Invalid weather data received');
+      }
 
       this.currentWeather = {
         temperature: data.current.temperature_2m,
         weatherCode: data.current.weather_code,
         isDay: data.current.is_day === 1,
-        sunrise: data.daily.sunrise[0],
-        sunset: data.daily.sunset[0]
+        sunrise: data.daily?.sunrise?.[0] || null,
+        sunset: data.daily?.sunset?.[0] || null
       };
 
       this.lastFetchTime = now;
       this.lastLat = lat;
       this.lastLng = lng;
 
-      // Apply weather effects
+      // Apply weather effects (visual only - does not affect player state)
       this.applyWeather();
 
       return this.currentWeather;
     } catch (error) {
-      console.error('Failed to fetch weather:', error);
-      return null;
+      // Silently handle errors - weather is purely cosmetic
+      // Don't let weather issues affect gameplay
+      console.warn('Weather fetch failed (cosmetic only):', error.message);
+      return this.currentWeather; // Return cached weather if available
+    } finally {
+      this.isFetching = false;
     }
   }
 

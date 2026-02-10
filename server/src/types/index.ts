@@ -20,6 +20,7 @@ export interface Player {
   odId: string;
   username: string;
   position: Position;
+  homePosition?: Position;
   flag: string;
   avatar?: Avatar;
   equipment?: Equipment;
@@ -89,6 +90,7 @@ export interface ClientToServerEvents {
   'player:updateAvatar': (data: { avatar: Avatar }) => void;
   'player:updateName': (data: { username: string }) => void;
   'player:updateEquipment': (data: { equipment: Equipment }) => void;
+  'player:setHome': (data: { position: Position }) => void;
   'combat:attack': (data: { targetId: string; itemKey: string; damage: number }) => void;
 }
 
@@ -100,6 +102,7 @@ export interface ServerToClientEvents {
   'player:avatarUpdated': (data: { id: string; avatar: Avatar }) => void;
   'player:nameUpdated': (data: { id: string; username: string }) => void;
   'player:equipmentUpdated': (data: { id: string; equipment: Equipment }) => void;
+  'player:homeUpdated': (data: { position: Position }) => void;
   'chat:message': (data: ChatMessage) => void;
   'world:state': (data: WorldState) => void;
   'auth:success': (data: { player: Player }) => void;
@@ -107,4 +110,5 @@ export interface ServerToClientEvents {
   'combat:attacked': (data: { attackerId: string; attackerName: string; damage: number; itemKey: string }) => void;
   'combat:hit': (data: { targetId: string; damage: number; targetHealth: number }) => void;
   'combat:died': (data: { playerId: string; killerName: string }) => void;
+  'combat:blocked': (data: { reason: string }) => void;
 }

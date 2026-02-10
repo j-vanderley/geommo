@@ -1,0 +1,39 @@
+# This file specifies files that are *not* uploaded to Google Cloud
+# We need to explicitly NOT ignore dist/ because it contains compiled code
+
+.gcloudignore
+.git
+.gitignore
+
+# Dependencies (installed during build)
+node_modules/
+
+# Environment files
+.env
+.env.local
+.env.*.local
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log
+npm-debug.log*
+
+# Firebase
+.firebase/
+firebase-debug.log
+
+# Secrets
+*-credentials.json
+serviceAccount.json
+
+# TypeScript source maps
+*.js.map

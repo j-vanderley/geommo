@@ -46,6 +46,9 @@ class Map3D {
 
     // Particle systems
     this.particleSystems = new Map(); // entityId -> particleSystem
+
+    // Safe zone visuals
+    this.safeZoneMeshes = []; // Array of { mesh, lat, lng }
   }
 
   async init() {
@@ -116,6 +119,9 @@ class Map3D {
       // Start animation loop
       this.animate();
 
+      // Render safe zones after a short delay (wait for skillsManager)
+      setTimeout(() => this.renderSafeZones(), 500);
+
       console.log('Map3D: Initialization complete');
       return this;
     } catch (error) {
@@ -170,6 +176,9 @@ class Map3D {
     // Update camera controller (for keyboard input)
     if (this.cameraController) {
       this.cameraController.update();
+
+      // Update compass to show north direction based on camera rotation
+      this.updateCompass();
     }
 
     // Update HTML overlay positions (name labels and chat bubbles)
@@ -212,6 +221,14 @@ class Map3D {
     this.centerLng = lng;
     this.tileManager.centerLat = lat;
     this.tileManager.centerLng = lng;
+
+    // Update safe zone positions when center changes
+    if (this.safeZoneMeshes.length > 0) {
+      this.updateSafeZonePositions();
+    } else {
+      // Safe zones not rendered yet, render them now
+      this.renderSafeZones();
+    }
   }
 
   // Create a player sprite (custom avatar with text and color)
@@ -495,6 +512,27 @@ class Map3D {
     return label;
   }
 
+  // Update compass and minimap rotation based on camera direction
+  updateCompass() {
+    const compassNeedle = document.getElementById('compass-needle');
+    const minimapRotator = document.getElementById('minimap-rotator');
+
+    if (this.cameraController) {
+      // Camera angle is in radians, 0 = facing north (positive Z)
+      // Rotate compass to show where north is relative to camera facing
+      const angleDegrees = (this.cameraController.angle * 180 / Math.PI);
+
+      if (compassNeedle) {
+        compassNeedle.style.transform = `rotate(${angleDegrees}deg)`;
+      }
+
+      // Rotate minimap to match camera direction
+      if (minimapRotator) {
+        minimapRotator.style.transform = `translate(-50%, -50%) rotate(${angleDegrees}deg)`;
+      }
+    }
+  }
+
   // Update all HTML overlay positions (names and chat bubbles)
   updateOverlayPositions() {
     // Update name labels
@@ -744,6 +782,9 @@ class Map3D {
     // 6. Reposition home shop if it exists
     this.updateHomeShopPosition();
 
+    // 7. Update safe zone positions
+    this.updateSafeZonePositions();
+
     return { lat, lng };
   }
 
@@ -808,6 +849,101 @@ class Map3D {
 
     // Add to scene
     this.scene.add(group);
+
+    // Store reference
+    this.droppedItems.set(id, { sprite, group, canvas });
+
+    return group;
+  }
+
+  // Create a dropped item that animates from center outward (for death explosions)
+  createDroppedItemAnimated(id, item, startPosition, endPosition) {
+    // Create canvas for item sprite
+    const canvas = document.createElement('canvas');
+    canvas.width = 64;
+    canvas.height = 64;
+    const ctx = canvas.getContext('2d');
+
+    // Draw glowing background
+    const gradient = ctx.createRadialGradient(32, 32, 0, 32, 32, 32);
+    gradient.addColorStop(0, 'rgba(255, 255, 100, 0.8)');
+    gradient.addColorStop(0.5, 'rgba(255, 200, 50, 0.4)');
+    gradient.addColorStop(1, 'rgba(255, 150, 0, 0)');
+    ctx.fillStyle = gradient;
+    ctx.fillRect(0, 0, 64, 64);
+
+    // Draw item icon
+    ctx.font = 'bold 32px Arial';
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.fillStyle = '#ffffff';
+    ctx.fillText(item.icon, 32, 32);
+
+    // Create sprite texture
+    const texture = new THREE.CanvasTexture(canvas);
+    texture.colorSpace = THREE.SRGBColorSpace;
+    texture.needsUpdate = true;
+
+    // Create sprite material
+    const material = new THREE.SpriteMaterial({
+      map: texture,
+      transparent: true,
+      alphaTest: 0.1,
+      depthWrite: false
+    });
+
+    // Create sprite
+    const sprite = new THREE.Sprite(material);
+    sprite.scale.set(4, 4, 1);
+
+    // Create group
+    const group = new THREE.Group();
+    group.add(sprite);
+
+    // Start position (center of explosion)
+    const startWorldPos = this.latLngToWorld(startPosition.lat, startPosition.lng);
+    const endWorldPos = this.latLngToWorld(endPosition.lat, endPosition.lng);
+
+    group.position.set(startWorldPos.x, 2, startWorldPos.z);
+    sprite.position.y = 0;
+
+    // Add to scene
+    this.scene.add(group);
+
+    // Animate outward from center
+    const animDuration = 500; // 0.5 seconds
+    const startTime = performance.now();
+    const arcHeight = 5 + Math.random() * 3; // Random arc height
+
+    const animateOutward = () => {
+      const elapsed = performance.now() - startTime;
+      const progress = Math.min(elapsed / animDuration, 1);
+
+      // Ease out
+      const easeProgress = 1 - Math.pow(1 - progress, 3);
+
+      // Lerp position
+      group.position.x = startWorldPos.x + (endWorldPos.x - startWorldPos.x) * easeProgress;
+      group.position.z = startWorldPos.z + (endWorldPos.z - startWorldPos.z) * easeProgress;
+
+      // Arc upward then down
+      const arcProgress = Math.sin(progress * Math.PI);
+      sprite.position.y = arcProgress * arcHeight;
+
+      if (progress < 1) {
+        requestAnimationFrame(animateOutward);
+      } else {
+        // Animation complete, set up bobbing
+        group.userData = {
+          baseY: 1.5,
+          bobOffset: Math.random() * Math.PI * 2,
+          falling: false
+        };
+        sprite.position.y = 1.5;
+      }
+    };
+
+    animateOutward();
 
     // Store reference
     this.droppedItems.set(id, { sprite, group, canvas });
@@ -1020,12 +1156,12 @@ class Map3D {
     ctx.lineWidth = 3;
     ctx.stroke();
 
-    // Draw shop icon
+    // Draw home icon
     ctx.font = 'bold 48px Arial';
     ctx.textAlign = 'center';
     ctx.textBaseline = 'middle';
     ctx.fillStyle = '#ffffff';
-    ctx.fillText('🏪', 64, 64);
+    ctx.fillText('🏠', 64, 64);
 
     // Create sprite texture
     const texture = new THREE.CanvasTexture(canvas);
@@ -1049,7 +1185,7 @@ class Map3D {
     // Create label
     const label = document.createElement('div');
     label.className = 'npc-name-label home-shop-label';
-    label.innerHTML = `<span class="npc-name">Home Shop</span><span class="npc-title">Buy & Sell</span>`;
+    label.innerHTML = `<span class="npc-name">Home</span><span class="npc-title">Shop & Bank</span>`;
     label.style.color = color;
     label.style.borderColor = color;
     this.container.appendChild(label);
@@ -1101,6 +1237,274 @@ class Map3D {
       else if (percent > 30) fill.style.background = '#ffcc00';
       else fill.style.background = '#f44336';
     }
+  }
+
+  // Update NPC position (for following player) - instant move
+  updateNPCPosition(npcId, position) {
+    const npcData = this.npcSprites.get(npcId);
+    if (!npcData || !this.center) return;
+
+    const worldPos = this.latLngToWorld(position.lat, position.lng);
+    npcData.group.position.set(worldPos.x, npcData.group.position.y, worldPos.z);
+    npcData.latLng = { lat: position.lat, lng: position.lng };
+  }
+
+  // Move NPC to position with animation (for following player)
+  moveNPCToPosition(npcId, position) {
+    const npcData = this.npcSprites.get(npcId);
+    if (!npcData || !this.center) return;
+
+    const targetWorldPos = this.latLngToWorld(position.lat, position.lng);
+    const startPos = npcData.group.position.clone();
+    const endPos = new THREE.Vector3(targetWorldPos.x, startPos.y, targetWorldPos.z);
+
+    // Animate movement over 300ms
+    const duration = 300;
+    const startTime = Date.now();
+
+    const animateMove = () => {
+      const elapsed = Date.now() - startTime;
+      const progress = Math.min(elapsed / duration, 1);
+
+      // Ease out
+      const easeProgress = 1 - Math.pow(1 - progress, 2);
+
+      // Lerp position
+      npcData.group.position.lerpVectors(startPos, endPos, easeProgress);
+
+      if (progress < 1) {
+        requestAnimationFrame(animateMove);
+      } else {
+        // Update stored lat/lng
+        npcData.latLng = { lat: position.lat, lng: position.lng };
+      }
+    };
+
+    animateMove();
+  }
+
+  // Play NPC death animation (fade out, then hide)
+  playNPCDeathAnimation(npcId, callback) {
+    const npcData = this.npcSprites.get(npcId);
+    if (!npcData) {
+      if (callback) callback();
+      return;
+    }
+
+    const duration = 1500; // 1.5 seconds
+    const startTime = Date.now();
+    const startY = npcData.group.position.y;
+
+    // Store original position for respawn
+    npcData.deathPosition = npcData.group.position.clone();
+
+    const animateDeath = () => {
+      const elapsed = Date.now() - startTime;
+      const progress = Math.min(elapsed / duration, 1);
+
+      // Fade out sprite
+      if (npcData.sprite && npcData.sprite.material) {
+        npcData.sprite.material.opacity = 1 - progress;
+      }
+
+      // Sink into ground slightly
+      npcData.group.position.y = startY - progress * 2;
+
+      // Fade out UI
+      if (npcData.nameLabel) {
+        npcData.nameLabel.style.opacity = 1 - progress;
+      }
+      if (npcData.healthBar) {
+        npcData.healthBar.style.opacity = 1 - progress;
+      }
+
+      if (progress < 1) {
+        requestAnimationFrame(animateDeath);
+      } else {
+        // Hide NPC completely
+        npcData.group.visible = false;
+        if (npcData.nameLabel) npcData.nameLabel.style.display = 'none';
+        if (npcData.healthBar) npcData.healthBar.style.display = 'none';
+        npcData.isDead = true;
+
+        if (callback) callback();
+      }
+    };
+
+    animateDeath();
+  }
+
+  // Play NPC respawn animation (drop from sky)
+  playNPCRespawnAnimation(npcId) {
+    const npcData = this.npcSprites.get(npcId);
+    if (!npcData) return;
+
+    // Reset position and visibility
+    const groundY = 0;
+    const dropHeight = 50; // Start 50 units above ground
+    npcData.group.position.y = dropHeight;
+    npcData.group.visible = true;
+    npcData.isDead = false;
+
+    // Reset opacity
+    if (npcData.sprite && npcData.sprite.material) {
+      npcData.sprite.material.opacity = 1;
+    }
+    if (npcData.nameLabel) {
+      npcData.nameLabel.style.opacity = 1;
+      npcData.nameLabel.style.display = 'block';
+    }
+    if (npcData.healthBar) {
+      npcData.healthBar.style.opacity = 1;
+      npcData.healthBar.style.display = 'block';
+    }
+
+    // Animate dropping from sky
+    const duration = 1000; // 1 second drop
+    const startTime = Date.now();
+
+    const animateRespawn = () => {
+      const elapsed = Date.now() - startTime;
+      const progress = Math.min(elapsed / duration, 1);
+
+      // Ease out bounce effect
+      const easeOutBounce = (t) => {
+        if (t < 0.7) {
+          return 1 - Math.pow(1 - t / 0.7, 2);
+        } else {
+          const bounceProgress = (t - 0.7) / 0.3;
+          return 1 + Math.sin(bounceProgress * Math.PI) * 0.1 * (1 - bounceProgress);
+        }
+      };
+
+      const easedProgress = easeOutBounce(progress);
+      npcData.group.position.y = dropHeight - (dropHeight - groundY) * easedProgress;
+
+      if (progress < 1) {
+        requestAnimationFrame(animateRespawn);
+      } else {
+        npcData.group.position.y = groundY;
+
+        // Show landing effect
+        const landingPos = { lat: npcData.latLng.lat, lng: npcData.latLng.lng };
+        this.showExplosionEffect(landingPos);
+      }
+    };
+
+    animateRespawn();
+  }
+
+  // Get NPC world position (for item drops)
+  getNPCWorldPosition(npcId) {
+    const npcData = this.npcSprites.get(npcId);
+    if (!npcData) return null;
+    return npcData.group.position.clone();
+  }
+
+  // Play player death animation (fade out and sink)
+  playPlayerDeathAnimation(callback) {
+    if (!this.selfPlayerId) {
+      if (callback) callback();
+      return;
+    }
+
+    const playerData = this.playerSprites.get(this.selfPlayerId);
+    if (!playerData) {
+      if (callback) callback();
+      return;
+    }
+
+    const duration = 1200; // 1.2 seconds
+    const startTime = Date.now();
+    const startY = playerData.group.position.y;
+
+    const animateDeath = () => {
+      const elapsed = Date.now() - startTime;
+      const progress = Math.min(elapsed / duration, 1);
+
+      // Fade out sprite
+      if (playerData.sprite && playerData.sprite.material) {
+        playerData.sprite.material.opacity = 1 - progress;
+      }
+
+      // Sink into ground and spin
+      playerData.group.position.y = startY - progress * 3;
+      playerData.group.rotation.y += 0.1;
+
+      // Scale down
+      const scale = 1 - progress * 0.5;
+      if (playerData.sprite) {
+        playerData.sprite.scale.set(
+          GAME_CONFIG.view3d.playerSpriteSize * scale,
+          GAME_CONFIG.view3d.playerSpriteSize * scale,
+          1
+        );
+      }
+
+      if (progress < 1) {
+        requestAnimationFrame(animateDeath);
+      } else {
+        if (callback) callback();
+      }
+    };
+
+    animateDeath();
+  }
+
+  // Play player respawn animation (drop from sky)
+  playPlayerRespawnAnimation() {
+    if (!this.selfPlayerId) return;
+
+    const playerData = this.playerSprites.get(this.selfPlayerId);
+    if (!playerData) return;
+
+    // Reset opacity and scale
+    if (playerData.sprite && playerData.sprite.material) {
+      playerData.sprite.material.opacity = 1;
+      playerData.sprite.scale.set(
+        GAME_CONFIG.view3d.playerSpriteSize,
+        GAME_CONFIG.view3d.playerSpriteSize,
+        1
+      );
+    }
+
+    // Reset rotation
+    playerData.group.rotation.y = 0;
+
+    // Start high in sky
+    const groundY = 0;
+    const dropHeight = 40;
+    playerData.group.position.y = dropHeight;
+
+    // Animate dropping from sky
+    const duration = 800;
+    const startTime = Date.now();
+
+    const animateRespawn = () => {
+      const elapsed = Date.now() - startTime;
+      const progress = Math.min(elapsed / duration, 1);
+
+      // Ease out bounce
+      const easeOutBounce = (t) => {
+        if (t < 0.7) {
+          return 1 - Math.pow(1 - t / 0.7, 2);
+        } else {
+          const bounceProgress = (t - 0.7) / 0.3;
+          return 1 + Math.sin(bounceProgress * Math.PI) * 0.15 * (1 - bounceProgress);
+        }
+      };
+
+      const easedProgress = easeOutBounce(progress);
+      playerData.group.position.y = dropHeight - (dropHeight - groundY) * easedProgress;
+
+      if (progress < 1) {
+        requestAnimationFrame(animateRespawn);
+      } else {
+        playerData.group.position.y = groundY;
+      }
+    };
+
+    animateRespawn();
   }
 
   // Show combat visual effect (attack particles and damage numbers)
@@ -1311,6 +1715,110 @@ class Map3D {
     };
 
     animateParticles();
+  }
+
+  // Show explosion effect at a lat/lng position (for NPC death, player death)
+  showExplosionEffect(latLngPosition) {
+    if (!this.center || !latLngPosition) return;
+
+    const worldPos = this.latLngToWorld(latLngPosition.lat, latLngPosition.lng);
+    const position = new THREE.Vector3(worldPos.x, 1, worldPos.z);
+
+    // Create larger explosion with multiple particle systems
+    const colors = ['#ff4444', '#ffaa00', '#ffff00', '#ffffff'];
+
+    // Main explosion burst
+    const particleCount = 40;
+    const geometry = new THREE.BufferGeometry();
+    const positions = new Float32Array(particleCount * 3);
+    const colorArray = new Float32Array(particleCount * 3);
+    const velocities = [];
+
+    for (let i = 0; i < particleCount; i++) {
+      positions[i * 3] = position.x;
+      positions[i * 3 + 1] = position.y;
+      positions[i * 3 + 2] = position.z;
+
+      // Random outward velocity (stronger than impact effect)
+      const angle = Math.random() * Math.PI * 2;
+      const speed = 0.3 + Math.random() * 0.4;
+      velocities.push({
+        x: Math.cos(angle) * speed,
+        y: 0.2 + Math.random() * 0.4,
+        z: Math.sin(angle) * speed
+      });
+
+      // Random color from palette
+      const color = new THREE.Color(colors[Math.floor(Math.random() * colors.length)]);
+      colorArray[i * 3] = color.r;
+      colorArray[i * 3 + 1] = color.g;
+      colorArray[i * 3 + 2] = color.b;
+    }
+
+    geometry.setAttribute('position', new THREE.BufferAttribute(positions, 3));
+    geometry.setAttribute('color', new THREE.BufferAttribute(colorArray, 3));
+
+    const material = new THREE.PointsMaterial({
+      size: 0.5,
+      transparent: true,
+      opacity: 1,
+      vertexColors: true
+    });
+
+    const particles = new THREE.Points(geometry, material);
+    this.scene.add(particles);
+
+    // Create expanding ring effect
+    const ringGeometry = new THREE.RingGeometry(0.1, 0.3, 32);
+    const ringMaterial = new THREE.MeshBasicMaterial({
+      color: 0xffaa00,
+      side: THREE.DoubleSide,
+      transparent: true,
+      opacity: 1
+    });
+    const ring = new THREE.Mesh(ringGeometry, ringMaterial);
+    ring.position.copy(position);
+    ring.rotation.x = -Math.PI / 2; // Lay flat on ground
+    this.scene.add(ring);
+
+    // Animate particles and ring
+    const startTime = Date.now();
+    const duration = 800;
+
+    const animateExplosion = () => {
+      const elapsed = Date.now() - startTime;
+      const progress = elapsed / duration;
+
+      if (progress < 1) {
+        // Animate particles
+        const posArray = particles.geometry.attributes.position.array;
+        for (let i = 0; i < particleCount; i++) {
+          posArray[i * 3] += velocities[i].x;
+          posArray[i * 3 + 1] += velocities[i].y;
+          posArray[i * 3 + 2] += velocities[i].z;
+          velocities[i].y -= 0.015; // gravity
+        }
+        particles.geometry.attributes.position.needsUpdate = true;
+        material.opacity = 1 - progress;
+
+        // Animate ring (expand and fade)
+        ring.scale.set(1 + progress * 10, 1 + progress * 10, 1);
+        ringMaterial.opacity = 1 - progress;
+
+        requestAnimationFrame(animateExplosion);
+      } else {
+        // Cleanup
+        this.scene.remove(particles);
+        geometry.dispose();
+        material.dispose();
+
+        this.scene.remove(ring);
+        ringGeometry.dispose();
+        ringMaterial.dispose();
+      }
+    };
+
+    animateExplosion();
   }
 
   // Show floating damage number
@@ -1604,15 +2112,34 @@ class Map3D {
     this.npcInteractionCallback = callback;
   }
 
-  // Check if click hit an NPC or home shop
-  checkNPCClick(event) {
+  // Check if click hit an NPC, player, or home shop
+  // Uses screen-space distance checking for more reliable detection
+  getClickTarget(event) {
     const rect = this.renderer.domElement.getBoundingClientRect();
-    this.mouse.x = ((event.clientX - rect.left) / rect.width) * 2 - 1;
-    this.mouse.y = -((event.clientY - rect.top) / rect.height) * 2 + 1;
+    const clickX = event.clientX - rect.left;
+    const clickY = event.clientY - rect.top;
+
+    // Normalized device coordinates for raycasting
+    this.mouse.x = (clickX / rect.width) * 2 - 1;
+    this.mouse.y = -(clickY / rect.height) * 2 + 1;
 
     this.raycaster.setFromCamera(this.mouse, this.camera);
 
-    // Check home shop first
+    // Click radius in pixels for screen-space detection
+    const clickRadius = 30;
+
+    // Helper to project world pos to screen
+    const worldToScreen = (worldPos) => {
+      const pos = worldPos.clone();
+      pos.project(this.camera);
+      return {
+        x: (pos.x * 0.5 + 0.5) * rect.width,
+        y: (-pos.y * 0.5 + 0.5) * rect.height,
+        z: pos.z // depth
+      };
+    };
+
+    // Check home shop first (raycast)
     if (this.homeShopData) {
       const intersects = this.raycaster.intersectObject(this.homeShopData.sprite);
       if (intersects.length > 0) {
@@ -1620,14 +2147,47 @@ class Map3D {
       }
     }
 
-    // Check NPCs
+    // Check NPCs using screen-space distance
+    let closestNPC = null;
+    let closestNPCDist = clickRadius;
     for (const [npcId, npcData] of this.npcSprites) {
-      const intersects = this.raycaster.intersectObject(npcData.sprite);
-      if (intersects.length > 0) {
-        return { type: 'npc', npcId };
+      const screenPos = worldToScreen(npcData.group.position);
+      if (screenPos.z > 0 && screenPos.z < 1) { // In front of camera
+        const dx = clickX - screenPos.x;
+        const dy = clickY - screenPos.y;
+        const dist = Math.sqrt(dx * dx + dy * dy);
+        if (dist < closestNPCDist) {
+          closestNPCDist = dist;
+          closestNPC = { type: 'npc', npcId };
+        }
       }
     }
+    if (closestNPC) return closestNPC;
+
+    // Check other players using screen-space distance
+    let closestPlayer = null;
+    let closestPlayerDist = clickRadius;
+    for (const [playerId, playerData] of this.playerSprites) {
+      if (playerId === this.selfPlayerId) continue; // Skip self
+      const screenPos = worldToScreen(playerData.group.position);
+      if (screenPos.z > 0 && screenPos.z < 1) { // In front of camera
+        const dx = clickX - screenPos.x;
+        const dy = clickY - screenPos.y;
+        const dist = Math.sqrt(dx * dx + dy * dy);
+        if (dist < closestPlayerDist) {
+          closestPlayerDist = dist;
+          closestPlayer = { type: 'player', playerId, playerData };
+        }
+      }
+    }
+    if (closestPlayer) return closestPlayer;
+
     return null;
+  }
+
+  // Alias for backwards compatibility
+  checkNPCClick(event) {
+    return this.getClickTarget(event);
   }
 
   // Update NPC overlay positions
@@ -1673,7 +2233,7 @@ class Map3D {
 
         npcData.healthBar.style.display = 'block';
         npcData.healthBar.style.left = `${x}px`;
-        npcData.healthBar.style.top = `${y + 35}px`;
+        npcData.healthBar.style.top = `${y + 5}px`;
       } else {
         npcData.nameLabel.style.display = 'none';
         npcData.healthBar.style.display = 'none';
@@ -1709,11 +2269,124 @@ class Map3D {
     }
   }
 
+  // Create a radial gradient texture for safe zones (edge visible, center transparent)
+  createSafeZoneTexture(size = 256) {
+    const canvas = document.createElement('canvas');
+    canvas.width = size;
+    canvas.height = size;
+    const ctx = canvas.getContext('2d');
+
+    // Create radial gradient: transparent center, subtle green edge
+    const gradient = ctx.createRadialGradient(
+      size / 2, size / 2, 0,           // Inner circle (center)
+      size / 2, size / 2, size / 2     // Outer circle (edge)
+    );
+
+    // Fully transparent in center, very subtle green at edge
+    gradient.addColorStop(0, 'rgba(68, 255, 68, 0)');       // Center: fully transparent
+    gradient.addColorStop(0.7, 'rgba(68, 255, 68, 0)');     // Still transparent at 70%
+    gradient.addColorStop(0.85, 'rgba(68, 255, 68, 0.08)'); // Start fading in
+    gradient.addColorStop(0.95, 'rgba(68, 255, 68, 0.15)'); // Subtle at edge
+    gradient.addColorStop(1, 'rgba(68, 255, 68, 0.2)');     // Edge: slightly visible
+
+    // Draw circle (not rectangle) to avoid square corners
+    ctx.beginPath();
+    ctx.arc(size / 2, size / 2, size / 2, 0, Math.PI * 2);
+    ctx.fillStyle = gradient;
+    ctx.fill();
+
+    const texture = new THREE.CanvasTexture(canvas);
+    texture.needsUpdate = true;
+    return texture;
+  }
+
+  // Render safe zone circles on the ground
+  renderSafeZones() {
+    // Clear existing safe zone meshes
+    this.clearSafeZones();
+
+    // Get safe zones from skills manager
+    if (!window.skillsManager) {
+      console.log('renderSafeZones: skillsManager not ready, retrying in 500ms');
+      setTimeout(() => this.renderSafeZones(), 500);
+      return;
+    }
+
+    const safeZones = window.skillsManager.getSafeZones();
+    if (!safeZones || safeZones.length === 0) {
+      console.log('renderSafeZones: No safe zones found');
+      return;
+    }
+
+    const worldScale = GAME_CONFIG.view3d.worldScale;
+    console.log(`renderSafeZones: Rendering ${safeZones.length} safe zones, worldScale=${worldScale}`);
+
+    for (const zone of safeZones) {
+      // Convert radius from lat/lng degrees to world units
+      const radiusWorld = zone.radius * worldScale;
+      const segments = 64;
+
+      // Create individual texture for each zone
+      const safeZoneTexture = this.createSafeZoneTexture();
+
+      // Use CircleGeometry for proper circular shape
+      const circleGeometry = new THREE.CircleGeometry(radiusWorld, segments);
+      const circleMaterial = new THREE.MeshBasicMaterial({
+        map: safeZoneTexture,
+        side: THREE.DoubleSide,
+        transparent: true,
+        depthWrite: false
+      });
+      const circleMesh = new THREE.Mesh(circleGeometry, circleMaterial);
+
+      // Position on ground using the zone's actual coordinates
+      const worldPos = this.latLngToWorld(zone.lat, zone.lng);
+      circleMesh.position.set(worldPos.x, 0.05, worldPos.z);
+      circleMesh.rotation.x = -Math.PI / 2; // Lay flat
+
+      this.scene.add(circleMesh);
+
+      this.safeZoneMeshes.push({
+        mesh: circleMesh,
+        lat: zone.lat,
+        lng: zone.lng,
+        name: zone.name,
+        radius: zone.radius
+      });
+    }
+
+    console.log(`renderSafeZones: Created ${this.safeZoneMeshes.length} safe zone meshes`);
+  }
+
+  // Update safe zone positions (after fast travel when coordinate center changes)
+  updateSafeZonePositions() {
+    for (const zoneData of this.safeZoneMeshes) {
+      const worldPos = this.latLngToWorld(zoneData.lat, zoneData.lng);
+      zoneData.mesh.position.set(worldPos.x, 0.05, worldPos.z);
+    }
+  }
+
+  // Clear all safe zone meshes
+  clearSafeZones() {
+    for (const zoneData of this.safeZoneMeshes) {
+      this.scene.remove(zoneData.mesh);
+      zoneData.mesh.geometry.dispose();
+      if (zoneData.mesh.material.map) {
+        zoneData.mesh.material.map.dispose();
+      }
+      zoneData.mesh.material.dispose();
+    }
+    this.safeZoneMeshes = [];
+  }
+
   // Dispose everything
   dispose() {
     if (this.animationId) {
       cancelAnimationFrame(this.animationId);
     }
+
+    // Clear safe zones
+    this.clearSafeZones();
 
     // Remove all players
     this.playerSprites.forEach((_, id) => this.removePlayer(id));

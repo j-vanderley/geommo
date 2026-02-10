@@ -61,7 +61,9 @@ class Geommo {
         // Store user info but don't auto-login - show continue button instead
         this.user = user;
         this.authType = 'firebase';
-        this.showContinueOption(user.displayName || user.email || 'your account');
+        // Use stored display name if available (persisted from server)
+        const storedName = localStorage.getItem(`display_name_${user.uid}`);
+        this.showContinueOption(storedName || user.displayName || user.email || 'your account');
       } else {
         // Check for saved wallet session
         const savedWallet = localStorage.getItem('wallet_address');
@@ -802,6 +804,9 @@ class Geommo {
     // Set up map mode toggle
     this.setupMapToggle();
 
+    // Set up admin panel (below satellite slider)
+    this.setupAdminPanel();
+
     // Loading screen will be hidden by hideLoadingScreen() called from auth:success
   }
 
@@ -872,6 +877,36 @@ class Geommo {
       }
     });
   }
+
+  // ========================================
+  // ADMIN PANEL SETUP - Remove this to disable admin tools
+  // ========================================
+  setupAdminPanel() {
+    const adminPanel = document.getElementById('admin-tools-panel');
+    const toggleBtn = adminPanel?.querySelector('.admin-toggle-btn');
+    const header = adminPanel?.querySelector('.admin-panel-header');
+
+    if (!adminPanel || !toggleBtn || !header) return;
+
+    // Start collapsed
+    adminPanel.classList.add('collapsed');
+
+    // Toggle on header click
+    header.addEventListener('click', () => {
+      adminPanel.classList.toggle('collapsed');
+      toggleBtn.textContent = adminPanel.classList.contains('collapsed') ? '▼' : '▲';
+    });
+
+    // Render admin tools when skills manager is ready
+    setTimeout(() => {
+      if (window.skillsManager) {
+        window.skillsManager.renderAdminTools();
+      }
+    }, 1000);
+  }
+  // ========================================
+  // END ADMIN PANEL SETUP
+  // ========================================
 
   setupFastTravel() {
     // Fast travel is now primarily in the Home tab
@@ -945,40 +980,82 @@ class Geommo {
     const serverUrl = GAME_CONFIG.serverUrl || window.location.origin;
 
     this.socket = io(serverUrl, {
-      transports: ['websocket', 'polling']
+      transports: ['websocket', 'polling'],
+      reconnection: true,
+      reconnectionAttempts: 10,
+      reconnectionDelay: 1000,
+      reconnectionDelayMax: 5000,
+      timeout: 20000
     });
+
+    // Store current position before any reconnection
+    this.lastKnownPosition = null;
+
+    // Track if this is initial connection or reconnection
+    this.isInitialConnection = true;
 
     // Connection events
     this.socket.on('connect', async () => {
       console.log('Connected to server');
 
-      if (this.authType === 'firebase') {
-        // Authenticate with Firebase token
-        const token = await this.user.getIdToken();
-        this.socket.emit('player:authenticate', {
-          token,
-          avatar: this.selectedAvatar,
-          authType: 'firebase'
-        });
-      } else {
-        // Authenticate with wallet
-        this.socket.emit('player:authenticate', {
-          walletAddress: this.walletAddress,
-          username: this.walletUsername,
-          avatar: this.selectedAvatar,
-          authType: 'wallet'
-        });
+      // Only do initial auth here, reconnection is handled separately
+      if (this.isInitialConnection) {
+        this.isInitialConnection = false;
+
+        if (this.authType === 'firebase') {
+          // Authenticate with Firebase token
+          const token = await this.user.getIdToken();
+          this.socket.emit('player:authenticate', {
+            token,
+            avatar: this.selectedAvatar,
+            authType: 'firebase'
+          });
+        } else {
+          // Authenticate with wallet
+          this.socket.emit('player:authenticate', {
+            walletAddress: this.walletAddress,
+            username: this.walletUsername,
+            avatar: this.selectedAvatar,
+            authType: 'wallet'
+          });
+        }
       }
     });
 
-    this.socket.on('disconnect', () => {
-      console.log('Disconnected from server');
-      this.chatManager.addSystemMessage('Disconnected from server');
+    this.socket.on('disconnect', (reason) => {
+      console.log('Disconnected from server:', reason);
+      // Store current position before disconnect
+      if (this.playerManager?.selfPlayer?.position) {
+        this.lastKnownPosition = { ...this.playerManager.selfPlayer.position };
+      }
+      // Only show message for unexpected disconnects
+      if (reason !== 'io client disconnect') {
+        this.chatManager.addSystemMessage('Connection lost, reconnecting...');
+      }
+    });
+
+    // Handle reconnection (socket.io fires this after successful reconnect)
+    this.socket.io.on('reconnect', (attemptNumber) => {
+      console.log(`Reconnected to server after ${attemptNumber} attempts`);
+      this.chatManager.addSystemMessage('Reconnected!');
+      // Re-authenticate with preserved position
+      this.reauthenticate();
+    });
+
+    this.socket.io.on('reconnect_attempt', (attempt) => {
+      console.log(`Reconnection attempt ${attempt}`);
+    });
+
+    this.socket.io.on('reconnect_failed', () => {
+      this.chatManager.addSystemMessage('Failed to reconnect. Please refresh the page.');
     });
 
     // Auth events
     this.socket.on('auth:success', (data) => {
       console.log('Authentication successful:', data.player);
+
+      // Check if this is a reconnection (we already have player data)
+      const isReconnection = this.playerManager?.selfPlayer != null;
 
       // Sync avatar from server (server has the authoritative copy from Firestore)
       if (data.player.avatar) {
@@ -988,10 +1065,19 @@ class Geommo {
       }
 
       // Sync username from server (server has the authoritative copy from Firestore)
-      // This ensures display name persists across sessions
-      if (data.player.username && this.authType === 'wallet') {
-        this.walletUsername = data.player.username;
-        localStorage.setItem('wallet_username', data.player.username);
+      // This ensures display name persists across sessions for ALL auth types
+      if (data.player.username) {
+        if (this.authType === 'wallet') {
+          this.walletUsername = data.player.username;
+          localStorage.setItem('wallet_username', data.player.username);
+        }
+        // Also store for Firebase users so we can show the correct name on continue screen
+        localStorage.setItem(`display_name_${this.getUserId()}`, data.player.username);
+      }
+
+      // If reconnecting, use preserved position instead of server's
+      if (isReconnection && this.lastKnownPosition) {
+        data.player.position = this.lastKnownPosition;
       }
 
       // Set user ID for skills/inventory (per-account storage)
@@ -1017,6 +1103,28 @@ class Geommo {
         this.playerManager.updateSelfPosition(data.player.position);
       }
 
+      // Create home marker at saved home position (or default if none)
+      const homePos = data.player.homePosition || null;
+      if (homePos) {
+        this.mapManager.createMinimapHomeMarker(homePos);
+        // Sync server home position to skills manager
+        if (this.mapManager.skillsManager) {
+          this.mapManager.skillsManager.homePosition = homePos;
+        }
+        // Create home shop in 3D world (with retry if map3d not ready)
+        const createHomeShop = () => {
+          if (this.mapManager.map3d) {
+            this.mapManager.map3d.createHomeShop(homePos);
+          } else {
+            // Retry after a short delay if map3d isn't ready yet
+            setTimeout(createHomeShop, 500);
+          }
+        };
+        createHomeShop();
+      }
+      // Store home position for later use
+      this.homePosition = homePos;
+
       this.chatManager.addSystemMessage('Welcome to Geommo!');
 
       // Hide loading screen now that player is fully loaded
@@ -1036,6 +1144,25 @@ class Geommo {
       // Load NPCs from server
       if (state.npcs && this.mapManager.skillsManager) {
         this.mapManager.skillsManager.loadNPCsFromServer(state.npcs);
+
+        // Create minimap markers for NPCs
+        const npcMarkerData = state.npcs.map(npc => ({
+          id: npc.id,
+          name: npc.name,
+          lat: npc.position.lat,
+          lng: npc.position.lng,
+          level: npc.health / 10, // Rough estimate for level coloring
+          friendly: npc.sellsEquipment ? true : false
+        }));
+        this.mapManager.createMinimapNPCMarkers(npcMarkerData);
+      }
+
+      // Create home marker if player has a home position
+      if (this.playerManager.selfPlayer?.position) {
+        // Home is typically the starting position or can be set elsewhere
+        // For now, use default NYC or the player's saved position
+        const homePos = GAME_CONFIG.defaultPosition;
+        this.mapManager.createMinimapHomeMarker(homePos);
       }
     });
 
@@ -1113,6 +1240,83 @@ class Geommo {
         );
       }
     });
+
+    this.socket.on('combat:blocked', (data) => {
+      // Attack was blocked (safe zone)
+      if (window.chatManager) {
+        window.chatManager.addLogMessage(
+          `🛡️ ${data.reason}`,
+          'error'
+        );
+      }
+    });
+
+    // Home position updated (server confirmed)
+    this.socket.on('player:homeUpdated', (data) => {
+      this.homePosition = data.position;
+      this.mapManager.createMinimapHomeMarker(data.position);
+      // Sync to skills manager
+      if (this.mapManager.skillsManager) {
+        this.mapManager.skillsManager.homePosition = data.position;
+      }
+    });
+  }
+
+  // Set current position as home
+  setHome() {
+    if (!this.socket || !this.socket.connected) return;
+    if (!this.playerManager?.selfPlayer?.position) return;
+
+    const position = this.playerManager.selfPlayer.position;
+    this.socket.emit('player:setHome', { position });
+  }
+
+  // Re-authenticate after reconnection, preserving current state
+  async reauthenticate() {
+    if (!this.socket || !this.socket.connected) return;
+
+    // Use last known position or current position
+    const preservedPosition = this.lastKnownPosition || this.playerManager?.selfPlayer?.position;
+
+    if (this.authType === 'firebase' && this.user) {
+      const token = await this.user.getIdToken(true); // Force refresh token
+      this.socket.emit('player:authenticate', {
+        token,
+        avatar: this.selectedAvatar,
+        authType: 'firebase'
+      });
+    } else if (this.authType === 'wallet' && this.walletAddress) {
+      this.socket.emit('player:authenticate', {
+        walletAddress: this.walletAddress,
+        username: this.walletUsername,
+        avatar: this.selectedAvatar,
+        authType: 'wallet'
+      });
+    }
+
+    // After re-auth, restore position if we had one saved
+    if (preservedPosition) {
+      // Wait a bit for auth to complete, then restore position
+      setTimeout(() => {
+        if (this.socket?.connected && this.playerManager?.selfPlayer) {
+          this.socket.emit('player:move', {
+            lat: preservedPosition.lat,
+            lng: preservedPosition.lng
+          });
+        }
+      }, 500);
+    }
+  }
+
+  // Teleport to home position
+  teleportHome() {
+    if (!this.homePosition) {
+      this.chatManager.addSystemMessage('No home position set! Use "Set Home" first.');
+      return;
+    }
+
+    this.fastTravelTo(this.homePosition.lat, this.homePosition.lng);
+    this.chatManager.addSystemMessage('Teleported home!');
   }
 
   // Attack a player
@@ -1121,6 +1325,20 @@ class Geommo {
     if (!this.mapManager.skillsManager) return;
 
     const skillsManager = this.mapManager.skillsManager;
+
+    // Check if we're in a safe zone
+    if (skillsManager.playerPosition) {
+      const safeZone = skillsManager.isInSafeZone(
+        skillsManager.playerPosition.lat,
+        skillsManager.playerPosition.lng
+      );
+      if (safeZone) {
+        if (window.chatManager) {
+          window.chatManager.addLogMessage(`🛡️ Cannot attack from ${safeZone} safe zone!`, 'error');
+        }
+        return;
+      }
+    }
 
     // Check if we have a weapon selected and can attack
     if (!skillsManager.attackPlayer(targetId)) {

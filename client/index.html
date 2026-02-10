@@ -126,7 +126,18 @@
       <!-- Minimap (top right) -->
       <div id="minimap-container" class="ui-panel">
         <div class="panel-header">World Map</div>
-        <div id="minimap"></div>
+        <div id="minimap-clip">
+          <div id="minimap-rotator">
+            <div id="minimap"></div>
+          </div>
+        </div>
+        <!-- Compass overlay on minimap -->
+        <div id="minimap-compass">
+          <div id="compass-needle">
+            <div class="compass-north">N</div>
+            <div class="compass-arrow"></div>
+          </div>
+        </div>
         <!-- Weather and Position under minimap -->
         <div id="minimap-info">
           <div id="weather-display-mini">
@@ -156,6 +167,16 @@
             <span class="blend-label">🛰️</span>
           </div>
         </div>
+
+        <!-- ADMIN TOOLS - Remove this entire section to disable admin functionality -->
+        <div id="admin-tools-panel" class="ui-panel admin-panel">
+          <div class="admin-panel-header">
+            <span>🔧 Admin</span>
+            <button class="admin-toggle-btn">▼</button>
+          </div>
+          <div id="admin-panel-content" class="admin-panel-content"></div>
+        </div>
+        <!-- END ADMIN TOOLS -->
       </div>
 
       <!-- Hidden player name for internal use -->

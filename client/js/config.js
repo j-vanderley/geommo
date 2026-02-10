@@ -171,7 +171,7 @@ const GAME_CONFIG = {
 
   // Minimap settings
   minimap: {
-    zoom: 14
+    zoom: 12  // Zoomed out more for better overview
   },
 
   // Server URL (empty for same origin)
@@ -181,14 +181,17 @@ const GAME_CONFIG = {
   view3d: {
     enabled: true,                  // Enable 3D view (set false for 2D fallback)
     tileZoom: 16,                   // OSM zoom level (lower = larger tiles, 16 is good balance)
-    tilesPerSide: 7,                // 7x7 grid of tiles around player
+    tilesPerSide: 11,               // 11x11 grid of tiles around player (larger view)
     worldScale: 8000,               // Scale factor for lat/lng to world units
-    cameraDistance: 60,             // Default camera distance from player
+    cameraDistance: 80,             // Default camera distance from player
     cameraPitch: 0.7,               // Camera tilt angle (~40 degrees)
     cameraRotateSpeed: 0.005,       // Mouse drag rotation speed
     cameraZoomSpeed: 5,             // Scroll wheel zoom speed
     cameraMinDistance: 20,          // Minimum zoom distance
-    cameraMaxDistance: 200,         // Maximum zoom distance
+    cameraMaxDistance: 300,         // Maximum zoom distance
     playerSpriteSize: 4,            // Size of player sprites in world units
+    fogNear: 80,                    // Fog starts fading in (closer = thicker)
+    fogFar: 220,                    // Fog fully opaque (closer = stronger horizon blend)
+    fogColor: 0xB0D4E8,             // Light sky blue fog color
   }
 };

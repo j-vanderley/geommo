@@ -56,16 +56,16 @@ class SkillsManager {
       skin_lightning: { name: 'Lightning Ball', type: 'skin', icon: '⚡', color: '#ffff00', price: 75, sellValue: 37, particle: 'spark', isEquipment: true },
       skin_flame: { name: 'Flame Spirit', type: 'skin', icon: '🔥', color: '#ff4400', price: 75, sellValue: 37, particle: 'fire', isEquipment: true },
       skin_void: { name: 'Void Walker', type: 'skin', icon: '🌑', color: '#330066', price: 100, sellValue: 50, particle: 'void', isEquipment: true },
-      // Hats (head-worn items)
-      hat_ice_tiara: { name: 'Ice Tiara', type: 'hat', icon: '👑', color: '#88ddff', price: 30, sellValue: 15, isEquipment: true },
-      hat_storm_crown: { name: 'Storm Crown', type: 'hat', icon: '⚜️', color: '#9966ff', price: 40, sellValue: 20, isEquipment: true },
-      hat_sun_halo: { name: 'Sun Halo', type: 'hat', icon: '☀️', color: '#ffcc00', price: 35, sellValue: 17, isEquipment: true },
-      hat_mist_hood: { name: 'Mist Hood', type: 'hat', icon: '🎭', color: '#aabbcc', price: 25, sellValue: 12, isEquipment: true },
-      // Held items (objects held by character)
-      held_lightning_bolt: { name: 'Lightning Bolt', type: 'held', icon: '🗡️', color: '#ffff00', price: 45, sellValue: 22, isEquipment: true },
-      held_frost_staff: { name: 'Frost Staff', type: 'held', icon: '🪄', color: '#88ddff', price: 40, sellValue: 20, isEquipment: true },
-      held_sun_orb: { name: 'Sun Orb', type: 'held', icon: '🔮', color: '#ffaa00', price: 35, sellValue: 17, isEquipment: true },
-      held_void_blade: { name: 'Void Blade', type: 'held', icon: '⚔️', color: '#660099', price: 60, sellValue: 30, isEquipment: true },
+      // Hats (head-worn items) - dropBonus increases ammo drop chance
+      hat_ice_tiara: { name: 'Ice Tiara', type: 'hat', icon: '👑', color: '#88ddff', price: 30, sellValue: 15, dropBonus: 5, isEquipment: true },
+      hat_storm_crown: { name: 'Storm Crown', type: 'hat', icon: '⚜️', color: '#9966ff', price: 40, sellValue: 20, dropBonus: 8, isEquipment: true },
+      hat_sun_halo: { name: 'Sun Halo', type: 'hat', icon: '☀️', color: '#ffcc00', price: 35, sellValue: 17, dropBonus: 6, isEquipment: true },
+      hat_mist_hood: { name: 'Mist Hood', type: 'hat', icon: '🎭', color: '#aabbcc', price: 25, sellValue: 12, dropBonus: 4, isEquipment: true },
+      // Held items (objects held by character) - accuracyBonus increases hit chance
+      held_lightning_bolt: { name: 'Lightning Bolt', type: 'held', icon: '🗡️', color: '#ffff00', price: 45, sellValue: 22, accuracyBonus: 5, isEquipment: true },
+      held_frost_staff: { name: 'Frost Staff', type: 'held', icon: '🪄', color: '#88ddff', price: 40, sellValue: 20, accuracyBonus: 4, isEquipment: true },
+      held_sun_orb: { name: 'Sun Orb', type: 'held', icon: '🔮', color: '#ffaa00', price: 35, sellValue: 17, accuracyBonus: 3, isEquipment: true },
+      held_void_blade: { name: 'Void Blade', type: 'held', icon: '⚔️', color: '#660099', price: 60, sellValue: 30, accuracyBonus: 7, isEquipment: true },
       // Auras (particle effects around character)
       aura_frost: { name: 'Frost Aura', type: 'aura', icon: '❄️', color: '#88ddff', price: 80, sellValue: 40, particle: 'frost', isEquipment: true },
       aura_fire: { name: 'Fire Aura', type: 'aura', icon: '🔥', color: '#ff4400', price: 80, sellValue: 40, particle: 'fire', isEquipment: true },
@@ -92,6 +92,11 @@ class SkillsManager {
     // Inventory - 24 slots, each slot can hold one item type
     // Format: [{ itemKey, count }, null, null, ...]
     this.inventorySlots = new Array(24).fill(null);
+
+    // Bank - 100 slots for storage at home (like OSRS bank)
+    // Format: [{ itemKey, count }, null, null, ...]
+    this.bankSlots = new Array(100).fill(null);
+    this.bankOpen = false;
 
     // Dropped items on the ground (client-side only)
     // Format: [{ id, itemKey, position: {lat, lng}, worldPos: {x,z}, createdAt, sprite }]
@@ -149,6 +154,11 @@ class SkillsManager {
     this.combatTurnTick = 0;
     this.isPlayerTurn = true;
 
+    // Combat distance settings (in lat/lng units)
+    this.COMBAT_MAX_DISTANCE = 0.001; // ~100m - max distance before NPC follows
+    this.COMBAT_FOLLOW_DISTANCE = 0.0005; // ~50m - NPC follows to this distance
+    this.COMBAT_ESCAPE_DISTANCE = 0.002; // ~200m - escape combat if beyond this
+
     // Don't load here - wait for setUserId to be called with user's ID
   }
 
@@ -188,6 +198,13 @@ class SkillsManager {
     const currentLevelXP = this.xpTable[level - 1];
     const nextLevelXP = this.xpTable[level];
     return (xp - currentLevelXP) / (nextLevelXP - currentLevelXP);
+  }
+
+  // Get total XP required for a specific level
+  getXPForLevel(level) {
+    if (level <= 1) return 0;
+    if (level > 99) return this.xpTable[98]; // Max level XP
+    return this.xpTable[level - 1];
   }
 
   // Get HP level from hitpoints skill
@@ -291,14 +308,65 @@ class SkillsManager {
 
   // Called every game tick (600ms)
   onGameTick() {
-    // Handle combat turns
+    // Handle combat turns and NPC following
     if (this.inCombat && this.npcCombatTarget) {
+      const npc = this.npcs.find(n => n.id === this.npcCombatTarget);
+
+      // Check distance from NPC - NPC always pursues, no escape
+      if (npc && npc.position && this.playerPosition) {
+        const distance = this.getDistance(this.playerPosition, npc.position);
+
+        // If player runs beyond max distance, NPC follows
+        if (distance > this.COMBAT_MAX_DISTANCE) {
+          this.npcFollowPlayer(npc);
+        }
+      }
+
       this.combatTurnTick++;
 
-      // Every 2 ticks (1.2 seconds), process a combat turn
+      // Every 4 ticks (2.4 seconds), process a combat turn
       if (this.combatTurnTick >= this.COMBAT_TICKS) {
         this.combatTurnTick = 0;
         this.processCombatTurn();
+      }
+    }
+  }
+
+  // NPC follows the player when they try to run
+  npcFollowPlayer(npc) {
+    if (!npc || !npc.position || !this.playerPosition) return;
+
+    // Calculate direction from NPC to player
+    const dx = this.playerPosition.lng - npc.position.lng;
+    const dy = this.playerPosition.lat - npc.position.lat;
+    const distance = Math.sqrt(dx * dx + dy * dy);
+
+    if (distance === 0) return;
+
+    // Move NPC towards player, stopping at follow distance
+    const targetDistance = this.COMBAT_FOLLOW_DISTANCE;
+    const moveDistance = distance - targetDistance;
+
+    if (moveDistance > 0) {
+      const normalizedX = dx / distance;
+      const normalizedY = dy / distance;
+
+      // Update NPC position
+      const newPosition = {
+        lat: npc.position.lat + normalizedY * moveDistance,
+        lng: npc.position.lng + normalizedX * moveDistance
+      };
+
+      npc.position.lat = newPosition.lat;
+      npc.position.lng = newPosition.lng;
+
+      // Update NPC position in 3D view
+      if (this.map3d) {
+        this.map3d.moveNPCToPosition(npc.id, newPosition);
+      }
+
+      if (window.chatManager) {
+        window.chatManager.addLogMessage(`⚔️ ${npc.name} pursues you!`, 'combat');
       }
     }
   }
@@ -418,18 +486,58 @@ class SkillsManager {
     const container = document.getElementById('skills-content');
     if (!container) return;
 
-    let html = '<div class="skills-grid">';
     const skillEntries = Object.entries(this.skills);
 
-    // Render skills in grid format (same as inventory)
+    // Calculate total level
+    let totalLevel = 0;
+    for (const [key, skill] of skillEntries) {
+      totalLevel += this.getLevel(skill.xp);
+    }
+
+    let html = `
+      <div class="skills-panel-header">
+        <span class="skills-total-label">Total Level</span>
+        <span class="skills-total-value">${totalLevel}</span>
+      </div>
+      <div class="skills-list">
+    `;
+
+    // Render each skill as a detailed row
     for (const [key, skill] of skillEntries) {
       const level = this.getLevel(skill.xp);
       const isActive = this.getSkillForWeather(this.currentWeather) === key;
+      const xpForCurrentLevel = this.getXPForLevel(level);
+      const xpForNextLevel = this.getXPForLevel(level + 1);
+      const currentXP = skill.xp - xpForCurrentLevel;
+      const neededXP = xpForNextLevel - xpForCurrentLevel;
+      const progress = Math.min(100, (currentXP / neededXP) * 100);
+
+      // Skill type badge
+      let typeBadge = '';
+      if (skill.isCombat) {
+        typeBadge = '<span class="skill-type-badge combat">Combat</span>';
+      } else if (skill.isTeleport) {
+        typeBadge = '<span class="skill-type-badge utility">Utility</span>';
+      } else if (skill.weather) {
+        typeBadge = `<span class="skill-type-badge weather">${this.getWeatherEmoji(skill.weather)}</span>`;
+      }
 
       html += `
-        <div class="skill-slot ${isActive ? 'active' : ''}" data-skill="${key}">
-          <span class="skill-slot-icon">${skill.icon}</span>
-          <span class="skill-slot-level">lvl:${level}</span>
+        <div class="skill-row ${isActive ? 'active' : ''}" data-skill="${key}">
+          <div class="skill-row-icon">${skill.icon}</div>
+          <div class="skill-row-info">
+            <div class="skill-row-header">
+              <span class="skill-row-name">${skill.name}</span>
+              ${typeBadge}
+            </div>
+            <div class="skill-row-progress">
+              <div class="skill-progress-bar">
+                <div class="skill-progress-fill" style="width: ${progress}%"></div>
+              </div>
+              <span class="skill-row-xp">${currentXP}/${neededXP} XP</span>
+            </div>
+          </div>
+          <div class="skill-row-level">${level}</div>
         </div>
       `;
     }
@@ -438,13 +546,26 @@ class SkillsManager {
     container.innerHTML = html;
 
     // Add hover listeners for tooltips
-    container.querySelectorAll('.skill-slot[data-skill]').forEach(slot => {
-      const skillKey = slot.dataset.skill;
+    container.querySelectorAll('.skill-row[data-skill]').forEach(row => {
+      const skillKey = row.dataset.skill;
       const skill = this.skills[skillKey];
 
-      slot.addEventListener('mouseenter', () => this.showTooltip(skill, slot));
-      slot.addEventListener('mouseleave', () => this.hideTooltip());
+      row.addEventListener('mouseenter', () => this.showTooltip(skill, row));
+      row.addEventListener('mouseleave', () => this.hideTooltip());
     });
+  }
+
+  // Get weather emoji for skill badge
+  getWeatherEmoji(weather) {
+    const emojis = {
+      clear: '☀️',
+      cloudy: '☁️',
+      fog: '🌫️',
+      rain: '🌧️',
+      snow: '❄️',
+      storm: '⛈️'
+    };
+    return emojis[weather] || '🌤️';
   }
 
   // Render inventory tab
@@ -554,6 +675,318 @@ class SkillsManager {
     this.save();
   }
 
+  // ============== BANK SYSTEM ==============
+
+  // Deposit item from inventory to bank
+  depositToBank(inventorySlot, count = null) {
+    const invSlot = this.inventorySlots[inventorySlot];
+    if (!invSlot || invSlot.count <= 0) return false;
+
+    const depositCount = count || invSlot.count; // Deposit all if count not specified
+    const actualCount = Math.min(depositCount, invSlot.count);
+
+    // Find existing stack in bank or empty slot
+    let bankSlotIndex = this.bankSlots.findIndex(
+      s => s && s.itemKey === invSlot.itemKey
+    );
+
+    if (bankSlotIndex === -1) {
+      // Find empty slot
+      bankSlotIndex = this.bankSlots.findIndex(s => s === null);
+      if (bankSlotIndex === -1) {
+        if (window.chatManager) {
+          window.chatManager.addLogMessage('❌ Bank is full!', 'error');
+        }
+        return false;
+      }
+      this.bankSlots[bankSlotIndex] = { itemKey: invSlot.itemKey, count: 0 };
+    }
+
+    // Transfer items
+    this.bankSlots[bankSlotIndex].count += actualCount;
+    invSlot.count -= actualCount;
+
+    if (invSlot.count <= 0) {
+      this.inventorySlots[inventorySlot] = null;
+    }
+
+    this.save();
+    this.renderBank();
+    this.renderInventory();
+
+    const item = this.getItemType(invSlot.itemKey);
+    if (window.chatManager && item) {
+      window.chatManager.addLogMessage(`📥 Deposited ${actualCount}x ${item.icon} ${item.name}`, 'info');
+    }
+
+    return true;
+  }
+
+  // Deposit all inventory items to bank
+  depositAllToBank() {
+    let deposited = 0;
+    for (let i = 0; i < this.inventorySlots.length; i++) {
+      if (this.inventorySlots[i] && this.inventorySlots[i].count > 0) {
+        if (this.depositToBank(i)) {
+          deposited++;
+        }
+      }
+    }
+    if (deposited > 0 && window.chatManager) {
+      window.chatManager.addLogMessage(`📥 Deposited all items to bank`, 'info');
+    }
+  }
+
+  // Withdraw item from bank to inventory
+  withdrawFromBank(bankSlot, count = null) {
+    const slot = this.bankSlots[bankSlot];
+    if (!slot || slot.count <= 0) return false;
+
+    const withdrawCount = count || slot.count; // Withdraw all if count not specified
+    const actualCount = Math.min(withdrawCount, slot.count);
+
+    // Find existing stack in inventory or empty slot
+    let invSlotIndex = this.inventorySlots.findIndex(
+      s => s && s.itemKey === slot.itemKey
+    );
+
+    if (invSlotIndex === -1) {
+      // Find empty slot
+      invSlotIndex = this.inventorySlots.findIndex(s => s === null);
+      if (invSlotIndex === -1) {
+        if (window.chatManager) {
+          window.chatManager.addLogMessage('❌ Inventory is full!', 'error');
+        }
+        return false;
+      }
+      this.inventorySlots[invSlotIndex] = { itemKey: slot.itemKey, count: 0 };
+    }
+
+    // Transfer items
+    this.inventorySlots[invSlotIndex].count += actualCount;
+    slot.count -= actualCount;
+
+    if (slot.count <= 0) {
+      this.bankSlots[bankSlot] = null;
+    }
+
+    this.save();
+    this.renderBank();
+    this.renderInventory();
+
+    const item = this.getItemType(slot.itemKey);
+    if (window.chatManager && item) {
+      window.chatManager.addLogMessage(`📤 Withdrew ${actualCount}x ${item.icon} ${item.name}`, 'info');
+    }
+
+    return true;
+  }
+
+  // Get bank item count
+  getBankItemCount() {
+    return this.bankSlots.filter(s => s && s.count > 0).length;
+  }
+
+  // Open bank interface
+  openBank() {
+    if (!this.isNearHome()) {
+      if (window.chatManager) {
+        window.chatManager.addLogMessage('❌ You must be at your home to access the bank!', 'error');
+      }
+      return;
+    }
+
+    this.bankOpen = true;
+    this.showBankScreen();
+  }
+
+  // Close bank interface
+  closeBank() {
+    this.bankOpen = false;
+    const screen = document.querySelector('.bank-screen');
+    if (screen) screen.remove();
+  }
+
+  // Show home choice dialog (Bank or Shop)
+  showHomeChoice() {
+    if (!this.isNearHome()) {
+      if (window.chatManager) {
+        window.chatManager.addLogMessage('❌ You must be at your home to access this!', 'error');
+      }
+      return;
+    }
+
+    // Close any existing dialog
+    this.closeHomeChoice();
+
+    const dialog = document.createElement('div');
+    dialog.className = 'home-choice-dialog';
+    dialog.innerHTML = `
+      <div class="home-choice-overlay"></div>
+      <div class="home-choice-content">
+        <div class="home-choice-header">
+          <span class="home-choice-icon">🏠</span>
+          <h3>Home</h3>
+        </div>
+        <div class="home-choice-buttons">
+          <button class="home-choice-btn bank-choice" id="choice-bank-btn">
+            <span class="choice-icon">🏦</span>
+            <span class="choice-label">Bank</span>
+            <span class="choice-desc">${this.getBankItemCount()}/100 items</span>
+          </button>
+          <button class="home-choice-btn shop-choice" id="choice-shop-btn">
+            <span class="choice-icon">🏪</span>
+            <span class="choice-label">Shop</span>
+            <span class="choice-desc">Buy & Sell</span>
+          </button>
+        </div>
+        <button class="home-choice-close">✕</button>
+      </div>
+    `;
+
+    document.body.appendChild(dialog);
+    this.activeHomeChoice = dialog;
+
+    // Event handlers
+    dialog.querySelector('.home-choice-overlay')?.addEventListener('click', () => this.closeHomeChoice());
+    dialog.querySelector('.home-choice-close')?.addEventListener('click', () => this.closeHomeChoice());
+
+    dialog.querySelector('#choice-bank-btn')?.addEventListener('click', () => {
+      this.closeHomeChoice();
+      this.openBank();
+    });
+
+    dialog.querySelector('#choice-shop-btn')?.addEventListener('click', () => {
+      this.closeHomeChoice();
+      this.showHomeShop();
+    });
+  }
+
+  // Close home choice dialog
+  closeHomeChoice() {
+    if (this.activeHomeChoice) {
+      this.activeHomeChoice.remove();
+      this.activeHomeChoice = null;
+    }
+  }
+
+  // Show bank screen UI
+  showBankScreen() {
+    // Remove existing
+    this.closeBank();
+    this.bankOpen = true;
+
+    const screen = document.createElement('div');
+    screen.className = 'bank-screen';
+    screen.innerHTML = `
+      <div class="bank-overlay"></div>
+      <div class="bank-content">
+        <div class="bank-header">
+          <h3>🏦 Bank</h3>
+          <span class="bank-slots-used">${this.getBankItemCount()}/100 slots</span>
+          <button class="bank-close-btn">✕</button>
+        </div>
+        <div class="bank-body">
+          <div class="bank-section">
+            <div class="bank-section-header">
+              <h4>Bank Storage</h4>
+              <button class="osrs-btn small-btn" id="deposit-all-btn">Deposit All</button>
+            </div>
+            <div class="bank-grid" id="bank-grid"></div>
+          </div>
+          <div class="bank-section inventory-section">
+            <h4>Inventory</h4>
+            <div class="bank-inventory-grid" id="bank-inventory-grid"></div>
+          </div>
+        </div>
+      </div>
+    `;
+
+    document.body.appendChild(screen);
+
+    // Close button
+    screen.querySelector('.bank-close-btn').addEventListener('click', () => this.closeBank());
+    screen.querySelector('.bank-overlay').addEventListener('click', () => this.closeBank());
+
+    // Deposit all button
+    screen.querySelector('#deposit-all-btn').addEventListener('click', () => {
+      this.depositAllToBank();
+    });
+
+    this.renderBank();
+  }
+
+  // Render bank grid
+  renderBank() {
+    const bankGrid = document.getElementById('bank-grid');
+    const invGrid = document.getElementById('bank-inventory-grid');
+    if (!bankGrid || !invGrid) return;
+
+    // Render bank slots (100 slots, show first 50 by default)
+    let bankHtml = '';
+    for (let i = 0; i < 100; i++) {
+      const slot = this.bankSlots[i];
+      const hasItem = slot && slot.count > 0;
+      const item = hasItem ? this.getItemType(slot.itemKey) : null;
+
+      bankHtml += `
+        <div class="bank-slot ${hasItem ? 'has-item' : ''}" data-bank-slot="${i}">
+          ${hasItem ? `
+            <span class="slot-icon">${item?.icon || '?'}</span>
+            <span class="slot-count">${slot.count}</span>
+          ` : ''}
+        </div>
+      `;
+    }
+    bankGrid.innerHTML = bankHtml;
+
+    // Render inventory slots
+    let invHtml = '';
+    for (let i = 0; i < 24; i++) {
+      const slot = this.inventorySlots[i];
+      const hasItem = slot && slot.count > 0;
+      const item = hasItem ? this.getItemType(slot.itemKey) : null;
+
+      invHtml += `
+        <div class="bank-inv-slot ${hasItem ? 'has-item' : ''}" data-inv-slot="${i}">
+          ${hasItem ? `
+            <span class="slot-icon">${item?.icon || '?'}</span>
+            <span class="slot-count">${slot.count}</span>
+          ` : ''}
+        </div>
+      `;
+    }
+    invGrid.innerHTML = invHtml;
+
+    // Add click handlers for bank slots (withdraw)
+    bankGrid.querySelectorAll('.bank-slot.has-item').forEach(slot => {
+      slot.addEventListener('click', (e) => {
+        const bankSlot = parseInt(slot.dataset.bankSlot);
+        // Shift+click = withdraw all, otherwise withdraw 1
+        const count = e.shiftKey ? null : 1;
+        this.withdrawFromBank(bankSlot, count);
+      });
+    });
+
+    // Add click handlers for inventory slots (deposit)
+    invGrid.querySelectorAll('.bank-inv-slot.has-item').forEach(slot => {
+      slot.addEventListener('click', (e) => {
+        const invSlot = parseInt(slot.dataset.invSlot);
+        // Shift+click = deposit all, otherwise deposit 1
+        const count = e.shiftKey ? null : 1;
+        this.depositToBank(invSlot, count);
+      });
+    });
+
+    // Update slots used counter
+    const slotsUsed = document.querySelector('.bank-slots-used');
+    if (slotsUsed) {
+      slotsUsed.textContent = `${this.getBankItemCount()}/100 slots`;
+    }
+  }
+
+  // ============== END BANK SYSTEM ==============
+
   // Render home tab
   renderHome() {
     const container = document.getElementById('home-content');
@@ -571,7 +1004,7 @@ class SkillsManager {
     const playerName = window.game?.walletUsername || window.game?.currentUser?.displayName || 'Player';
 
     container.innerHTML = `
-      <div class="home-panel">
+      <div class="home-panel compact">
         <!-- Player Section -->
         <div class="home-section player-section">
           <h4>👤 ${playerName}</h4>
@@ -584,31 +1017,30 @@ class SkillsManager {
         </div>
 
         <!-- Home Location Section -->
-        <div class="home-section">
-          <h4>🏠 Home Location</h4>
-          <p class="home-coords">${posText}</p>
-          <button class="osrs-btn small-btn home-btn" id="set-home-btn">
-            ${hasHome ? 'Update Home' : 'Set Home Here'}
-          </button>
+        <div class="home-section home-location-section">
+          <div class="home-location-row">
+            <span class="home-location-label">🏠 ${hasHome ? posText : 'Not set'}</span>
+            <button class="osrs-btn tiny-btn" id="set-home-btn">${hasHome ? 'Update' : 'Set'}</button>
+          </div>
           ${hasHome ? `
-            <button class="osrs-btn small-btn home-btn" id="teleport-home-btn">
-              Teleport Home
-            </button>
+            <button class="osrs-btn small-btn home-tp-btn" id="teleport-home-btn">🏠 Teleport Home</button>
           ` : ''}
         </div>
 
         ${hasHome ? `
-        <div class="home-shop-section ${isNearHome ? '' : 'disabled'}">
-          <h4>🏪 Home Shop</h4>
-          ${isNearHome ? `
-            <p class="home-shop-desc">Buy supplies & sell items</p>
-            <button class="osrs-btn small-btn shop-btn" id="open-home-shop-btn">
-              Open Shop
-            </button>
-          ` : `
-            <p class="home-shop-desc away">Travel to your home to access the shop</p>
-          `}
+        <!-- Shop & Bank Compact Row -->
+        <div class="home-services-row ${isNearHome ? '' : 'disabled'}">
+          <button class="osrs-btn service-btn shop-service ${isNearHome ? '' : 'disabled'}" id="open-home-shop-btn" ${isNearHome ? '' : 'disabled'}>
+            <span class="service-icon">🏪</span>
+            <span class="service-label">Shop</span>
+          </button>
+          <button class="osrs-btn service-btn bank-service ${isNearHome ? '' : 'disabled'}" id="open-bank-btn" ${isNearHome ? '' : 'disabled'}>
+            <span class="service-icon">🏦</span>
+            <span class="service-label">Bank</span>
+            <span class="service-count">${this.getBankItemCount()}/100</span>
+          </button>
         </div>
+        ${!isNearHome ? `<p class="home-away-msg">Go home to access services</p>` : ''}
         ` : ''}
       </div>
     `;
@@ -645,6 +1077,11 @@ class SkillsManager {
     document.getElementById('open-home-shop-btn')?.addEventListener('click', () => {
       this.showHomeShop();
     });
+
+    // Open bank button
+    document.getElementById('open-bank-btn')?.addEventListener('click', () => {
+      this.openBank();
+    });
   }
 
   // Check if player is near their home location
@@ -670,6 +1107,16 @@ class SkillsManager {
     // Create physical home shop entity in 3D world
     if (this.map3d) {
       this.map3d.createHomeShop(this.homePosition);
+    }
+
+    // Sync home position to server for persistence across sessions
+    if (window.game?.socket?.connected) {
+      window.game.socket.emit('player:setHome', { position: this.homePosition });
+    }
+
+    // Update minimap home marker
+    if (window.game?.mapManager) {
+      window.game.mapManager.createMinimapHomeMarker(this.homePosition);
     }
 
     if (window.chatManager) {
@@ -1018,44 +1465,79 @@ class SkillsManager {
     }
   }
 
+  // Get all ammo types that can be used for combat
+  getAllAmmoTypes() {
+    // Return all weather-based ammo types
+    return ['sunstone', 'cloudwisp', 'mistessence', 'raindrop', 'snowflake', 'lightningshard'];
+  }
+
+  // Get safe zone locations (city teleport destinations)
+  getSafeZones() {
+    return this.getTeleportDestinations().map(dest => ({
+      name: dest.name,
+      lat: dest.lat,
+      lng: dest.lng,
+      radius: 0.01 // ~1km radius - large safe zone around each city
+    }));
+  }
+
+  // Check if a position is in a safe zone
+  isInSafeZone(lat, lng) {
+    const safeZones = this.getSafeZones();
+    for (const zone of safeZones) {
+      const distance = this.getDistance({ lat, lng }, { lat: zone.lat, lng: zone.lng });
+      if (distance < zone.radius) {
+        return zone.name;
+      }
+    }
+    return null;
+  }
+
   // Render combat tab
   renderCombat() {
     const container = document.getElementById('combat-content');
     if (!container) return;
 
-    // Get items that can be used for combat (gathered items only)
+    // Get all ammo types and their counts
+    const allAmmoTypes = this.getAllAmmoTypes();
     const combatItems = this.getCombatItems();
 
-    let itemsHtml = '';
-    if (combatItems.length === 0) {
-      itemsHtml = `
-        <div class="no-combat-items">
-          <p class="no-items-title">⚠️ No Ammo</p>
-          <p class="no-items-desc">Collect weather items to fight!</p>
+    // Build ammo grid showing all types (even with 0 count)
+    let itemsHtml = '<div class="combat-ammo-grid">';
+    for (const itemKey of allAmmoTypes) {
+      const itemType = this.itemTypes[itemKey];
+      if (!itemType) continue;
+
+      // Find count in inventory
+      const inventoryItem = combatItems.find(i => i.itemKey === itemKey);
+      const count = inventoryItem ? inventoryItem.count : 0;
+      const isSelected = this.selectedCombatItem === itemKey;
+      const damage = this.getCombatDamage(itemKey);
+      const isEmpty = count === 0;
+
+      itemsHtml += `
+        <div class="combat-ammo-slot ${isSelected ? 'selected' : ''} ${isEmpty ? 'empty' : ''}"
+             data-item="${itemKey}"
+             title="${itemType.name}${isEmpty ? ' (none)' : ''}">
+          <span class="ammo-icon">${itemType.icon}</span>
+          <span class="ammo-qty">${count}</span>
+          <span class="ammo-dmg">${damage}</span>
         </div>
       `;
-    } else {
-      itemsHtml = '<div class="combat-ammo-grid">';
-      for (const item of combatItems) {
-        const isSelected = this.selectedCombatItem === item.itemKey;
-        const itemType = this.itemTypes[item.itemKey];
-        if (!itemType) continue;
-        const damage = this.getCombatDamage(item.itemKey);
-        itemsHtml += `
-          <div class="combat-ammo-slot ${isSelected ? 'selected' : ''}"
-               data-item="${item.itemKey}"
-               title="${itemType.name}">
-            <span class="ammo-icon">${itemType.icon}</span>
-            <span class="ammo-qty">${item.count}</span>
-            <span class="ammo-dmg">${damage}</span>
-          </div>
-        `;
-      }
-      itemsHtml += '</div>';
     }
+    itemsHtml += '</div>';
 
     // Health display
     const healthPercent = (this.combatHealth / this.maxCombatHealth) * 100;
+
+    // Check if player is in safe zone
+    const safeZoneName = this.playerPosition ?
+      this.isInSafeZone(this.playerPosition.lat, this.playerPosition.lng) : null;
+
+    // Zone status display
+    const zoneStatusHtml = safeZoneName ?
+      `<div class="zone-status safe">🛡️ Safe Zone: ${safeZoneName}</div>` :
+      `<div class="zone-status pvp">⚔️ PvP Zone - Combat Enabled</div>`;
 
     container.innerHTML = `
       <div class="combat-panel">
@@ -1068,22 +1550,22 @@ class SkillsManager {
         </div>
 
         <div class="combat-section">
-          <h4>⚔️ Select Ammo</h4>
+          <h4>⚔️ Ammo</h4>
           ${itemsHtml}
         </div>
 
         ${this.selectedCombatItem ? `
           <div class="combat-stats">
-            <div class="combat-stat">🎯 Accuracy: ${Math.round(this.getAccuracy(this.selectedCombatItem))}%</div>
-            <div class="combat-stat">💥 Max Hit: ${this.getMaxHit(this.selectedCombatItem)}</div>
+            <div class="combat-stat">🎯 ${Math.round(this.getAccuracy(this.selectedCombatItem))}%</div>
+            <div class="combat-stat">💥 ${this.getMaxHit(this.selectedCombatItem)}</div>
           </div>
-          <div class="combat-ready">✅ Ready for battle!</div>
-        ` : '<div class="combat-warning">⚠️ Select ammo to fight</div>'}
+        ` : ''}
+        ${zoneStatusHtml}
       </div>
     `;
 
-    // Combat item selection
-    container.querySelectorAll('.combat-ammo-slot').forEach(el => {
+    // Combat item selection (only allow selecting if count > 0)
+    container.querySelectorAll('.combat-ammo-slot:not(.empty)').forEach(el => {
       el.addEventListener('click', () => {
         const itemKey = el.dataset.item;
         this.selectCombatItem(itemKey);
@@ -1096,37 +1578,78 @@ class SkillsManager {
     const container = document.getElementById('equipment-content');
     if (!container) return;
 
-    // Equipment slots in 2x2 grid
+    // Consolidated equipment slots with inline stats
     const slotTypes = ['skin', 'hat', 'held', 'aura'];
     const slotNames = { skin: 'Skin', hat: 'Hat', held: 'Held', aura: 'Aura' };
     const slotIcons = { skin: '👤', hat: '🎩', held: '🗡️', aura: '✨' };
 
-    let slotsHtml = '<div class="equipment-grid">';
+    // Calculate total bonuses
+    const totalAccuracy = this.getEquipmentAccuracyBonus();
+    const totalDrop = this.getEquipmentDropBonus();
+
+    // Build total bonuses header if any
+    let totalsHtml = '';
+    if (totalAccuracy > 0 || totalDrop > 0) {
+      totalsHtml = '<div class="equip-totals-bar">';
+      if (totalAccuracy > 0) {
+        totalsHtml += `<span class="equip-stat accuracy">🎯 +${totalAccuracy}%</span>`;
+      }
+      if (totalDrop > 0) {
+        totalsHtml += `<span class="equip-stat drop">🍀 +${totalDrop}%</span>`;
+      }
+      totalsHtml += '</div>';
+    }
+
+    // Build consolidated slot rows
+    let slotsHtml = '<div class="equipment-list">';
     for (const slotType of slotTypes) {
       const equipped = this.equippedGear[slotType];
       const gear = equipped ? this.equipmentTypes[equipped] : null;
+
+      // Build stats string
+      let statsHtml = '';
+      if (gear) {
+        const stats = [];
+        if (gear.particle) stats.push(`✨${gear.particle}`);
+        if (gear.accuracyBonus) stats.push(`🎯+${gear.accuracyBonus}%`);
+        if (gear.dropBonus) stats.push(`🍀+${gear.dropBonus}%`);
+        if (stats.length > 0) {
+          statsHtml = `<span class="eq-row-stats">${stats.join(' ')}</span>`;
+        }
+      }
+
       slotsHtml += `
-        <div class="equip-slot ${equipped ? 'equipped' : ''}" data-slot="${slotType}" title="${equipped ? gear.name + ' - Click to unequip' : slotNames[slotType]}">
-          <span class="equip-icon" ${gear ? `style="color: ${gear.color}"` : ''}>${gear ? gear.icon : slotIcons[slotType]}</span>
-          <span class="equip-label">${slotNames[slotType]}</span>
+        <div class="equip-row ${equipped ? 'equipped' : ''}" data-slot="${slotType}" title="${equipped ? 'Click to unequip' : 'Empty slot'}">
+          <span class="eq-row-slot">${slotNames[slotType]}</span>
+          <span class="eq-row-icon" ${gear ? `style="color: ${gear.color}"` : ''}>${gear ? gear.icon : slotIcons[slotType]}</span>
+          <span class="eq-row-name">${gear ? gear.name : '—'}</span>
+          ${statsHtml}
         </div>
       `;
     }
     slotsHtml += '</div>';
 
+    // Count equipped items
+    const equippedCount = slotTypes.filter(s => this.equippedGear[s]).length;
+
     container.innerHTML = `
-      <div class="equipment-panel">
-        <div class="light-balance">
-          <span class="light-icon">✨</span>
-          <span class="light-amount">${this.lightBalance}</span>
+      <div class="equipment-panel-consolidated">
+        <div class="equipment-header">
+          <span class="equipment-header-icon">🛡️</span>
+          <span class="equipment-header-title">Equipment</span>
+          <span class="equipment-header-count">${equippedCount}/4</span>
         </div>
+        ${totalsHtml}
         ${slotsHtml}
-        <p class="equip-hint">Equip gear from inventory</p>
+        <div class="equipment-tip">
+          <span class="tip-icon">💡</span>
+          <span class="tip-text">Equip gear from inventory for combat bonuses</span>
+        </div>
       </div>
     `;
 
     // Click handlers for unequipping gear
-    container.querySelectorAll('.equip-slot.equipped').forEach(el => {
+    container.querySelectorAll('.equip-row.equipped').forEach(el => {
       el.addEventListener('click', () => {
         const slotType = el.dataset.slot;
         this.unequipGear(slotType);
@@ -1185,6 +1708,82 @@ class SkillsManager {
     ];
   }
 
+  // Directional teleport config: direction -> ammo type
+  getDirectionalConfig() {
+    return {
+      N:  { label: 'N',  angle: 0,   ammoType: 'snowflake', icon: '⬆️' },
+      NE: { label: 'NE', angle: 45,  ammoType: 'lightningshard', icon: '↗️' },
+      E:  { label: 'E',  angle: 90,  ammoType: 'sunstone', icon: '➡️' },
+      SE: { label: 'SE', angle: 135, ammoType: 'sunstone', icon: '↘️' },
+      S:  { label: 'S',  angle: 180, ammoType: 'sunstone', icon: '⬇️' },
+      SW: { label: 'SW', angle: 225, ammoType: 'mistessence', icon: '↙️' },
+      W:  { label: 'W',  angle: 270, ammoType: 'raindrop', icon: '⬅️' },
+      NW: { label: 'NW', angle: 315, ammoType: 'cloudwisp', icon: '↖️' }
+    };
+  }
+
+  // Calculate ammo cost based on distance (1 ammo per 25km, minimum 1)
+  getDirectionalAmmoCost(distanceKm) {
+    return Math.max(1, Math.ceil(distanceKm / 25));
+  }
+
+  // Get max teleport distance based on teleport level (100km at level 1, scales up)
+  getMaxTeleportDistance() {
+    const level = this.getTeleportationLevel();
+    // Level 1 = 100km, each level adds 100km, capped at 5000km
+    return Math.min(5000, level * 100);
+  }
+
+  // Show directional teleport info modal
+  showTeleportInfoModal() {
+    // Remove existing
+    document.querySelector('.tp-info-modal')?.remove();
+
+    const maxDistance = this.getMaxTeleportDistance();
+    const teleportLevel = this.getTeleportationLevel();
+
+    const modal = document.createElement('div');
+    modal.className = 'tp-info-modal';
+    modal.innerHTML = `
+      <div class="tp-info-modal-overlay"></div>
+      <div class="tp-info-modal-content">
+        <div class="tp-info-modal-header">
+          <span>🧭 Directional Teleport Info</span>
+          <button class="tp-info-modal-close">✕</button>
+        </div>
+        <div class="tp-info-modal-body">
+          <div class="tp-info-section">
+            <div class="tp-info-label">Direction → Ammo Type</div>
+            <div class="tp-info-ammo-grid">
+              <span>⬆️ N = ❄️ Snowflake</span>
+              <span>↗️ NE = ⚡ Lightning</span>
+              <span>➡️ E = ☀️ Sunstone</span>
+              <span>↘️ SE = ☀️ Sunstone</span>
+              <span>⬇️ S = ☀️ Sunstone</span>
+              <span>↙️ SW = 🫧 Mist</span>
+              <span>⬅️ W = 💧 Raindrop</span>
+              <span>↖️ NW = 💨 Cloudwisp</span>
+            </div>
+          </div>
+          <div class="tp-info-section">
+            <div class="tp-info-label">Cost</div>
+            <div class="tp-info-text">1 ammo per 25km</div>
+          </div>
+          <div class="tp-info-section">
+            <div class="tp-info-label">Your Max Distance</div>
+            <div class="tp-info-text">${maxDistance}km (Level ${teleportLevel})</div>
+            <div class="tp-info-subtext">+100km per teleport level</div>
+          </div>
+        </div>
+      </div>
+    `;
+
+    document.body.appendChild(modal);
+
+    modal.querySelector('.tp-info-modal-overlay')?.addEventListener('click', () => modal.remove());
+    modal.querySelector('.tp-info-modal-close')?.addEventListener('click', () => modal.remove());
+  }
+
   // Render teleports tab
   renderTeleports() {
     const container = document.getElementById('teleports-content');
@@ -1193,19 +1792,25 @@ class SkillsManager {
     // Don't allow new teleports while animating
     if (this.teleportAnimating) return;
 
-    // Preserve scroll position before re-render
-    const existingPanel = container.querySelector('.teleports-panel');
-    const scrollTop = existingPanel ? existingPanel.scrollTop : 0;
-
     const destinations = this.getTeleportDestinations();
     const teleportLevel = this.getTeleportationLevel();
+    const directionalConfig = this.getDirectionalConfig();
+    const maxDistance = this.getMaxTeleportDistance();
+
+    // Initialize selected distance
+    if (!this.selectedTeleportDistance) this.selectedTeleportDistance = Math.min(50, maxDistance);
+    if (this.selectedTeleportDistance > maxDistance) this.selectedTeleportDistance = maxDistance;
+
+    // Preserve scroll position
+    const existingList = container.querySelector('.tp-cities-list');
+    const scrollTop = existingList ? existingList.scrollTop : 0;
 
     // Group destinations by category
     const categories = {
-      training: { name: '🎯 Training Cities', icon: '🎯', destinations: [] },
-      explore: { name: '🗺️ Exploration Cities', icon: '🗺️', destinations: [] },
-      battle: { name: '⚔️ Battle NPC Cities', icon: '⚔️', destinations: [] },
-      boss: { name: '👑 Boss Cities', icon: '👑', destinations: [] }
+      training: { name: '🎯', destinations: [] },
+      explore: { name: '🗺️', destinations: [] },
+      battle: { name: '⚔️', destinations: [] },
+      boss: { name: '👑', destinations: [] }
     };
 
     for (const dest of destinations) {
@@ -1215,24 +1820,10 @@ class SkillsManager {
       }
     }
 
-    let html = `
-      <div class="teleports-panel">
-        <div class="teleports-header">
-          <h4>🌀 Teleport Destinations</h4>
-          <p class="tp-level-info">Teleportation Level: ${teleportLevel} | Requires level & ammo</p>
-        </div>
-    `;
-
-    // Render each category
+    // Build city teleports as clickable list
+    let citiesListHtml = '<div class="tp-cities-list" id="tp-cities-list">';
     for (const [catKey, category] of Object.entries(categories)) {
       if (category.destinations.length === 0) continue;
-
-      html += `
-        <div class="teleports-category">
-          <div class="tp-category-header">${category.name}</div>
-          <div class="teleports-list">
-      `;
-
       for (const dest of category.destinations) {
         const meetsLevel = teleportLevel >= dest.levelReq;
         const ammoItem = this.itemTypes[dest.ammoType];
@@ -1240,42 +1831,86 @@ class SkillsManager {
         const hasAmmo = ammoCount >= dest.ammoCost;
         const canTeleport = meetsLevel && hasAmmo;
 
-        html += `
-          <div class="teleport-dest ${canTeleport ? 'available' : 'locked'} ${dest.boss ? 'boss-dest' : ''} cat-${catKey}"
-               data-lat="${dest.lat}" data-lng="${dest.lng}" data-ammo="${dest.ammoType}" data-cost="${dest.ammoCost}"
-               data-levelreq="${dest.levelReq}" data-name="${dest.name}">
-            <div class="tp-name">${dest.name}</div>
-            <div class="tp-info">
-              <span class="tp-difficulty ${dest.boss ? 'boss' : ''}">${dest.difficulty}</span>
-            </div>
-            <div class="tp-reqs">
-              <span class="tp-level ${meetsLevel ? 'met' : 'unmet'}">Lv.${dest.levelReq}</span>
-              <span class="tp-ammo ${hasAmmo ? 'met' : 'unmet'}">${ammoItem?.icon || '?'} ${dest.ammoCost} (${ammoCount})</span>
-            </div>
+        citiesListHtml += `
+          <div class="tp-city-item ${canTeleport ? 'available' : 'locked'}"
+               data-lat="${dest.lat}" data-lng="${dest.lng}" data-ammo="${dest.ammoType}"
+               data-cost="${dest.ammoCost}" data-levelreq="${dest.levelReq}" data-name="${dest.name}">
+            <span class="tp-city-cat">${category.name}</span>
+            <span class="tp-city-name">${dest.name}</span>
+            <span class="tp-city-cost">${ammoItem?.icon || '?'}${dest.ammoCost}</span>
           </div>
         `;
       }
+    }
+    citiesListHtml += '</div>';
 
-      html += `
-          </div>
+    let citiesHtml = `
+      <div class="tp-cities-section">
+        <div class="tp-section-header">
+          <span>🌍 Cities</span>
+          <span class="tp-level-badge">Lv.${teleportLevel}</span>
         </div>
-      `;
+        ${citiesListHtml}
+      </div>
+    `;
+
+    // Build directional teleport - click direction to teleport
+    let compassHtml = '<div class="tp-compass-grid">';
+    const compassOrder = ['NW', 'N', 'NE', 'W', 'C', 'E', 'SW', 'S', 'SE'];
+    for (const dir of compassOrder) {
+      if (dir === 'C') {
+        compassHtml += `<div class="tp-compass-center-new">🧭</div>`;
+      } else {
+        const config = directionalConfig[dir];
+        const ammoCost = this.getDirectionalAmmoCost(this.selectedTeleportDistance);
+        const ammoItem = this.itemTypes[config.ammoType];
+        const ammoCount = this.getItemCount(config.ammoType);
+        const canTeleport = ammoCount >= ammoCost;
+
+        compassHtml += `
+          <div class="tp-dir-btn ${canTeleport ? 'available' : 'locked'}" data-dir="${dir}" title="${dir}: ${ammoItem?.icon}${ammoCost} (have ${ammoCount})">
+            <span class="tp-dir-icon">${config.icon}</span>
+            <span class="tp-dir-label">${dir}</span>
+          </div>
+        `;
+      }
+    }
+    compassHtml += '</div>';
+
+    let directionalHtml = `
+      <div class="tp-directional-section">
+        <div class="tp-section-header">
+          <span>🧭 Directional</span>
+          <button class="tp-info-btn" id="tp-info-btn" title="Info">ℹ️</button>
+        </div>
+
+        <div class="tp-slider-row">
+          <span class="tp-slider-label">5km</span>
+          <input type="range" id="tp-distance-slider" min="5" max="${maxDistance}" step="5" value="${this.selectedTeleportDistance}" />
+          <span class="tp-slider-val" id="tp-slider-val">${this.selectedTeleportDistance}km</span>
+        </div>
+
+        ${compassHtml}
+      </div>
+    `;
+
+    container.innerHTML = `
+      <div class="teleports-panel compact">
+        ${citiesHtml}
+        ${directionalHtml}
+      </div>
+    `;
+
+    // Restore scroll position
+    const newList = container.querySelector('#tp-cities-list');
+    if (newList && scrollTop > 0) {
+      newList.scrollTop = scrollTop;
     }
 
-    html += `</div>`;
-
-    container.innerHTML = html;
-
-    // Restore scroll position after re-render
-    const newPanel = container.querySelector('.teleports-panel');
-    if (newPanel && scrollTop > 0) {
-      newPanel.scrollTop = scrollTop;
-    }
-
-    // Click handlers for teleport
-    container.querySelectorAll('.teleport-dest.available').forEach(el => {
+    // City click to teleport
+    container.querySelectorAll('.tp-city-item.available').forEach(el => {
       el.addEventListener('click', () => {
-        if (this.teleportAnimating) return; // Prevent double-click
+        if (this.teleportAnimating) return;
         const lat = parseFloat(el.dataset.lat);
         const lng = parseFloat(el.dataset.lng);
         const ammoType = el.dataset.ammo;
@@ -1285,6 +1920,292 @@ class SkillsManager {
         this.teleportTo(lat, lng, ammoType, ammoCost, levelReq, destName);
       });
     });
+
+    // Info button - opens modal
+    container.querySelector('#tp-info-btn')?.addEventListener('click', () => {
+      this.showTeleportInfoModal();
+    });
+
+    // Distance slider - just updates value display and re-renders compass costs
+    const slider = container.querySelector('#tp-distance-slider');
+    const sliderVal = container.querySelector('#tp-slider-val');
+    slider?.addEventListener('input', (e) => {
+      this.selectedTeleportDistance = parseInt(e.target.value);
+      if (sliderVal) sliderVal.textContent = `${this.selectedTeleportDistance}km`;
+
+      // Update compass button states
+      const compassBtns = container.querySelectorAll('.tp-dir-btn');
+      compassBtns.forEach(btn => {
+        const dir = btn.dataset.dir;
+        const config = directionalConfig[dir];
+        const ammoCost = this.getDirectionalAmmoCost(this.selectedTeleportDistance);
+        const ammoItem = this.itemTypes[config.ammoType];
+        const ammoCount = this.getItemCount(config.ammoType);
+        const canTeleport = ammoCount >= ammoCost;
+
+        btn.className = `tp-dir-btn ${canTeleport ? 'available' : 'locked'}`;
+        btn.title = `${dir}: ${ammoItem?.icon}${ammoCost} (have ${ammoCount})`;
+      });
+    });
+
+    // Direction buttons - click to teleport
+    container.querySelectorAll('.tp-dir-btn.available').forEach(el => {
+      el.addEventListener('click', () => {
+        if (this.teleportAnimating) return;
+        const dir = el.dataset.dir;
+        this.teleportDirectional(dir, this.selectedTeleportDistance);
+      });
+    });
+  }
+
+  // ========================================
+  // ADMIN TOOLS - Remove this entire section to disable admin functionality
+  // ========================================
+  renderAdminTools() {
+    const container = document.getElementById('admin-panel-content');
+    if (!container) return;
+
+    // Build ammo buttons
+    const ammoTypes = this.getAllAmmoTypes();
+    let adminAmmoHtml = '';
+    for (const ammoKey of ammoTypes) {
+      const item = this.itemTypes[ammoKey];
+      if (item) {
+        adminAmmoHtml += `<button class="admin-give-btn" data-item="${ammoKey}" data-amount="50">${item.icon}+50</button>`;
+      }
+    }
+
+    // Build equipment buttons
+    let adminEquipHtml = '';
+    for (const [key, item] of Object.entries(this.equipmentTypes)) {
+      adminEquipHtml += `<button class="admin-give-btn equip" data-item="${key}" data-amount="1">${item.icon}</button>`;
+    }
+
+    container.innerHTML = `
+      <div class="admin-section">
+        <div class="admin-section-label">Ammo</div>
+        <div class="admin-btns">${adminAmmoHtml}</div>
+      </div>
+      <div class="admin-section">
+        <div class="admin-section-label">Gear</div>
+        <div class="admin-btns">${adminEquipHtml}</div>
+      </div>
+      <div class="admin-section">
+        <div class="admin-section-label">Light</div>
+        <div class="admin-btns">
+          <button class="admin-give-btn light" data-light="100">+100</button>
+          <button class="admin-give-btn light" data-light="1000">+1k</button>
+          <button class="admin-give-btn light" data-light="10000">+10k</button>
+        </div>
+      </div>
+      <div class="admin-section">
+        <div class="admin-section-label">Health</div>
+        <div class="admin-btns">
+          <button class="admin-action-btn" data-action="fullheal">❤️ Heal</button>
+          <button class="admin-action-btn" data-action="damage50">-50</button>
+          <button class="admin-action-btn" data-action="kill">💀</button>
+        </div>
+      </div>
+      <div class="admin-section">
+        <div class="admin-section-label">Teleport</div>
+        <div class="admin-btns">
+          <button class="admin-action-btn" data-action="tphome">🏠</button>
+          <button class="admin-action-btn" data-action="tpnyc">🗽</button>
+          <button class="admin-action-btn" data-action="tptokyo">🗼</button>
+        </div>
+      </div>
+      <div class="admin-section">
+        <div class="admin-section-label">XP</div>
+        <div class="admin-btns">
+          <button class="admin-action-btn" data-action="xp100">+100</button>
+          <button class="admin-action-btn" data-action="xp1000">+1k</button>
+        </div>
+      </div>
+    `;
+
+    // Admin give item buttons
+    container.querySelectorAll('.admin-give-btn:not(.light)').forEach(el => {
+      el.addEventListener('click', () => {
+        const itemKey = el.dataset.item;
+        const amount = parseInt(el.dataset.amount) || 1;
+        this.addItem(itemKey, amount);
+        const item = this.itemTypes[itemKey] || this.equipmentTypes[itemKey];
+        if (window.chatManager && item) {
+          window.chatManager.addLogMessage(`🔧 Admin: Added ${amount}x ${item.icon} ${item.name}`, 'system');
+        }
+        this.updateUI();
+        this.save();
+      });
+    });
+
+    // Admin give light buttons
+    container.querySelectorAll('.admin-give-btn.light').forEach(el => {
+      el.addEventListener('click', () => {
+        const amount = parseInt(el.dataset.light) || 100;
+        this.lightBalance += amount;
+        if (window.chatManager) {
+          window.chatManager.addLogMessage(`🔧 Admin: Added ${amount} Light`, 'system');
+        }
+        this.updateUI();
+        this.save();
+      });
+    });
+
+    // Admin action buttons
+    container.querySelectorAll('.admin-action-btn').forEach(el => {
+      el.addEventListener('click', () => {
+        const action = el.dataset.action;
+        switch (action) {
+          case 'fullheal':
+            this.combatHealth = this.maxCombatHealth;
+            if (window.chatManager) {
+              window.chatManager.addLogMessage(`🔧 Admin: Full heal!`, 'system');
+            }
+            this.renderCombat();
+            break;
+          case 'damage50':
+            this.combatHealth = Math.max(0, this.combatHealth - 50);
+            if (window.chatManager) {
+              window.chatManager.addLogMessage(`🔧 Admin: Took 50 damage (${this.combatHealth}/${this.maxCombatHealth})`, 'system');
+            }
+            this.renderCombat();
+            break;
+          case 'kill':
+            this.combatHealth = 0;
+            this.die();
+            break;
+          case 'tphome':
+            if (window.mapManager) {
+              window.mapManager.goToHome();
+            }
+            break;
+          case 'tpnyc':
+            if (window.mapManager) {
+              window.mapManager.setPosition({ lat: 40.758896, lng: -73.985130 });
+            }
+            break;
+          case 'tptokyo':
+            if (window.mapManager) {
+              window.mapManager.setPosition({ lat: 35.6762, lng: 139.6503 });
+            }
+            break;
+          case 'xp100':
+            for (const skill of Object.values(this.skills)) {
+              skill.xp += 100;
+            }
+            if (window.chatManager) {
+              window.chatManager.addLogMessage(`🔧 Admin: Added 100 XP to all skills`, 'system');
+            }
+            this.updateUI();
+            this.save();
+            break;
+          case 'xp1000':
+            for (const skill of Object.values(this.skills)) {
+              skill.xp += 1000;
+            }
+            if (window.chatManager) {
+              window.chatManager.addLogMessage(`🔧 Admin: Added 1000 XP to all skills`, 'system');
+            }
+            this.updateUI();
+            this.save();
+            break;
+        }
+      });
+    });
+  }
+  // ========================================
+  // END ADMIN TOOLS SECTION
+  // ========================================
+
+  // Teleport in a specific direction by distance
+  teleportDirectional(direction, distanceKm) {
+    if (this.teleportAnimating) {
+      if (window.chatManager) {
+        window.chatManager.addLogMessage('❌ Already teleporting!', 'error');
+      }
+      return;
+    }
+
+    const config = this.getDirectionalConfig()[direction];
+    if (!config) return;
+
+    const ammoCost = this.getDirectionalAmmoCost(distanceKm);
+    const ammoType = config.ammoType;
+
+    // Check and consume ammo
+    let remaining = ammoCost;
+    for (let i = 0; i < this.inventorySlots.length && remaining > 0; i++) {
+      const slot = this.inventorySlots[i];
+      if (slot && slot.itemKey === ammoType && slot.count > 0) {
+        const take = Math.min(slot.count, remaining);
+        slot.count -= take;
+        remaining -= take;
+        if (slot.count <= 0) {
+          this.inventorySlots[i] = null;
+        }
+      }
+    }
+
+    if (remaining > 0) {
+      if (window.chatManager) {
+        const ammoItem = this.itemTypes[ammoType];
+        window.chatManager.addLogMessage(`❌ Not enough ${ammoItem?.icon || ''} ${ammoItem?.name || 'ammo'}! Need ${ammoCost}`, 'error');
+      }
+      return;
+    }
+
+    // Calculate destination based on direction and distance
+    const currentPos = this.playerPosition;
+    if (!currentPos) return;
+
+    // Convert angle to radians (0 = North, clockwise)
+    const angleRad = (config.angle * Math.PI) / 180;
+
+    // Approximate: 1 degree latitude ≈ 111km, longitude varies by latitude
+    const kmPerDegreeLat = 111;
+    const kmPerDegreeLng = 111 * Math.cos(currentPos.lat * Math.PI / 180);
+
+    // Calculate offset
+    const latOffset = (distanceKm * Math.cos(angleRad)) / kmPerDegreeLat;
+    const lngOffset = (distanceKm * Math.sin(angleRad)) / kmPerDegreeLng;
+
+    const destLat = currentPos.lat + latOffset;
+    const destLng = currentPos.lng + lngOffset;
+
+    // Start teleport animation
+    this.teleportAnimating = true;
+    const animDuration = 2400;
+    const ammoItem = this.itemTypes[ammoType];
+
+    if (window.chatManager) {
+      window.chatManager.addLogMessage(`🧭 Teleporting ${distanceKm}km ${direction}...`, 'info');
+    }
+
+    this.showTeleportAnimation(ammoType, animDuration);
+    this.save();
+    this.renderInventory();
+    this.renderTeleports();
+
+    setTimeout(() => {
+      if (window.game) {
+        window.game.fastTravelTo(destLat, destLng);
+      }
+
+      // Add XP based on ammo used, scaled with teleport level
+      // Formula: base XP per ammo * ammo used * (1 + level bonus)
+      const teleportLevel = this.getTeleportationLevel();
+      const baseXPPerAmmo = 15;
+      const levelMultiplier = 1 + (teleportLevel * 0.1); // 10% more XP per level
+      const xpGain = Math.floor(ammoCost * baseXPPerAmmo * levelMultiplier);
+      this.addTeleportXP(xpGain);
+
+      if (window.chatManager) {
+        window.chatManager.addLogMessage(`🧭 Arrived ${distanceKm}km ${direction}! Used ${ammoCost}x ${ammoItem?.icon || ''} ${ammoItem?.name || 'ammo'}`, 'info');
+      }
+
+      this.teleportAnimating = false;
+      this.renderTeleports();
+    }, animDuration);
   }
 
   // Teleport to a destination (consumes ammo, plays animation)
@@ -1803,6 +2724,13 @@ class SkillsManager {
       return;
     }
 
+    // If NPCs already exist (reconnection), preserve their health state
+    const existingNPCHealth = new Map();
+    for (const npc of this.npcs) {
+      existingNPCHealth.set(npc.id, npc.health);
+    }
+    const isReconnection = this.npcsInitialized && this.npcs.length > 0;
+
     // Clear existing NPCs first
     for (const npc of this.npcs) {
       if (this.map3d) {
@@ -1813,6 +2741,12 @@ class SkillsManager {
 
     // Create NPCs from server data
     for (const serverNPC of serverNPCs) {
+      // Preserve health if this is a reconnection and NPC existed before
+      let npcHealth = serverNPC.health;
+      if (isReconnection && existingNPCHealth.has(serverNPC.id)) {
+        npcHealth = existingNPCHealth.get(serverNPC.id);
+      }
+
       // Create client-side NPC instance from server data
       const npcInstance = {
         id: serverNPC.id,
@@ -1822,7 +2756,7 @@ class SkillsManager {
         equipment: serverNPC.equipment,
         sellsEquipment: serverNPC.sellsEquipment,
         baseCity: serverNPC.baseCity,
-        health: serverNPC.health,
+        health: npcHealth,
         maxHealth: serverNPC.maxHealth,
         damage: serverNPC.damage,
         attackItems: [...serverNPC.attackItems],
@@ -1836,11 +2770,17 @@ class SkillsManager {
       this.map3d.createNPC(npcInstance, npcInstance.position);
       this.npcs.push(npcInstance);
 
-      console.log(`Loaded NPC from server: ${npcInstance.name} (${npcInstance.icon}) at ${npcInstance.baseCity} - Position: ${npcInstance.position.lat.toFixed(4)}, ${npcInstance.position.lng.toFixed(4)}`);
+      if (!isReconnection) {
+        console.log(`Loaded NPC from server: ${npcInstance.name} (${npcInstance.icon}) at ${npcInstance.baseCity} - Position: ${npcInstance.position.lat.toFixed(4)}, ${npcInstance.position.lng.toFixed(4)}`);
+      }
     }
 
     this.npcsInitialized = true;
-    console.log(`Loaded ${this.npcs.length} NPCs from server:`, this.npcs.map(n => `${n.icon} ${n.name}`).join(', '));
+    if (!isReconnection) {
+      console.log(`Loaded ${this.npcs.length} NPCs from server:`, this.npcs.map(n => `${n.icon} ${n.name}`).join(', '));
+    } else {
+      console.log(`Reconnection: Preserved health for ${existingNPCHealth.size} NPCs`);
+    }
   }
 
   // Show Trade Screen (modular for NPC and future P2P trading)
@@ -1987,8 +2927,8 @@ class SkillsManager {
     this.activeTradeScreen = null;
   }
 
-  // Show NPC interaction menu (Trade/Battle/Talk options)
-  showNPCDialog(npcId) {
+  // Show NPC interaction tooltip (Trade/Battle/Talk options) at click position
+  showNPCDialog(npcId, clientX, clientY) {
     const npc = this.npcs.find(n => n.id === npcId);
     if (!npc) return;
 
@@ -1997,91 +2937,66 @@ class SkillsManager {
 
     // Build menu options based on NPC type
     const isBattleOnly = npc.isBattleOnly;
-    const isTraining = npc.isTraining;
 
-    // Build drops display
-    const dropInfo = npc.drops && npc.drops.length > 0 ?
-      `<div class="npc-drop-info">
-        <span class="drop-label">Drops:</span>
-        ${npc.drops.map(d => {
-          const item = this.itemTypes[d];
-          return item ? `<span class="drop-item" title="${item.name}">${item.icon}</span>` : '';
-        }).join('')}
-        <span class="drop-chance">(${Math.round((npc.dropChance || 0) * 100)}%)</span>
-      </div>` : '';
-
-    // NPC difficulty label
-    const difficultyLabel = isTraining ? '<span class="npc-difficulty training">Training</span>' :
-      (isBattleOnly ? '<span class="npc-difficulty battle">Battle</span>' :
-      '<span class="npc-difficulty boss">Boss</span>');
-
-    // Create interaction menu
+    // Create tooltip menu (same style as player interaction)
     const menu = document.createElement('div');
-    menu.className = 'npc-interaction-menu';
+    menu.className = 'entity-interaction-tooltip';
     menu.innerHTML = `
-      <div class="npc-menu-overlay"></div>
-      <div class="npc-menu-content">
-        <div class="npc-menu-header">
-          <span class="npc-menu-icon" style="color: ${npc.color}">${npc.icon}</span>
-          <div class="npc-menu-info">
-            <h3>${npc.name}</h3>
-            <span class="npc-menu-title">${npc.title}</span>
-            ${difficultyLabel}
-          </div>
+      <div class="entity-tooltip-header">
+        <span class="entity-tooltip-icon" style="color: ${npc.color}">${npc.icon}</span>
+        <div class="entity-tooltip-info">
+          <span class="entity-tooltip-name">${npc.name}</span>
+          <span class="entity-tooltip-sub">${npc.title}</span>
         </div>
-        <div class="npc-stats">
-          <div class="npc-stat">
-            <span class="stat-icon">❤️</span>
-            <span class="stat-value">${npc.health}/${npc.maxHealth}</span>
-          </div>
-          <div class="npc-stat">
-            <span class="stat-icon">⚔️</span>
-            <span class="stat-value">${npc.damage} max hit</span>
-          </div>
-          <div class="npc-stat">
-            <span class="stat-icon">📍</span>
-            <span class="stat-value">${npc.baseCity}</span>
-          </div>
-        </div>
-        ${dropInfo}
-        ${this.selectedCombatItem ? `
-        <div class="npc-player-stats">
-          <div class="player-combat-title">Your Combat Stats:</div>
-          <div class="player-combat-row">
-            <span>🎯 ${Math.round(this.getAccuracy(this.selectedCombatItem))}% accuracy</span>
-            <span>💥 0-${this.getMaxHit(this.selectedCombatItem)} damage</span>
-          </div>
-        </div>
-        ` : '<div class="npc-player-warning">⚠️ Select ammo in Combat tab first!</div>'}
-        <div class="npc-menu-options">
-          ${!isBattleOnly ? `
-          <button class="npc-menu-btn trade-btn" data-action="trade">
-            <span class="btn-icon">💰</span>
-            <span class="btn-text">Trade</span>
-          </button>
-          ` : ''}
-          <button class="npc-menu-btn inspect-btn" data-action="inspect">
-            <span class="btn-icon">🔍</span>
-            <span class="btn-text">Inspect</span>
-          </button>
-          <button class="npc-menu-btn battle-btn" data-action="battle">
-            <span class="btn-icon">⚔️</span>
-            <span class="btn-text">Battle</span>
-          </button>
-        </div>
-        <button class="npc-menu-close">✕</button>
+      </div>
+      <div class="entity-tooltip-stats">
+        <span>❤️ ${npc.health}/${npc.maxHealth}</span>
+        <span>⚔️ ${npc.damage}</span>
+      </div>
+      <div class="entity-tooltip-options">
+        ${!isBattleOnly ? `
+        <button class="entity-tooltip-btn trade" data-action="trade">
+          <span>💰</span> Trade
+        </button>
+        ` : ''}
+        <button class="entity-tooltip-btn battle" data-action="battle">
+          <span>⚔️</span> Battle
+        </button>
+        <button class="entity-tooltip-btn inspect" data-action="inspect">
+          <span>🔍</span> Inspect
+        </button>
       </div>
     `;
+
+    // Position at click location
+    menu.style.left = `${clientX}px`;
+    menu.style.top = `${clientY}px`;
 
     document.body.appendChild(menu);
     this.activeNPCMenu = { element: menu, npc, npcId };
 
-    // Event handlers
-    menu.querySelector('.npc-menu-overlay')?.addEventListener('click', () => this.closeNPCMenu());
-    menu.querySelector('.npc-menu-close')?.addEventListener('click', () => this.closeNPCMenu());
+    // Adjust position if off-screen
+    const rect = menu.getBoundingClientRect();
+    if (rect.right > window.innerWidth) {
+      menu.style.left = `${clientX - rect.width}px`;
+    }
+    if (rect.bottom > window.innerHeight) {
+      menu.style.top = `${clientY - rect.height}px`;
+    }
 
-    menu.querySelectorAll('.npc-menu-btn').forEach(btn => {
-      btn.addEventListener('click', () => {
+    // Close on click outside
+    const closeHandler = (e) => {
+      if (!menu.contains(e.target)) {
+        this.closeNPCMenu();
+        document.removeEventListener('click', closeHandler);
+      }
+    };
+    setTimeout(() => document.addEventListener('click', closeHandler), 10);
+
+    // Button handlers
+    menu.querySelectorAll('.entity-tooltip-btn').forEach(btn => {
+      btn.addEventListener('click', (e) => {
+        e.stopPropagation();
         const action = btn.dataset.action;
         this.closeNPCMenu();
 
@@ -2106,6 +3021,199 @@ class SkillsManager {
       this.activeNPCMenu.element.remove();
     }
     this.activeNPCMenu = null;
+  }
+
+  // Show player interaction menu (right-click style tooltip at click position)
+  showPlayerInteractionMenu(playerId, clientX, clientY) {
+    // Close any existing menu
+    this.closePlayerInteractionMenu();
+
+    // Get player info from the map manager
+    const playerInfo = window.mapManager?.map3d?.playerSprites?.get(playerId);
+    if (!playerInfo) return;
+
+    // Try to get more info about the player from socket connection
+    const players = window.gameSocket?.players || [];
+    const player = players.find(p => p.id === playerId) || { id: playerId };
+
+    const playerName = player.username || player.name || 'Unknown Player';
+    const playerFlag = player.flag || '🙂';
+
+    // Create the tooltip menu
+    const menu = document.createElement('div');
+    menu.className = 'player-interaction-tooltip';
+    menu.innerHTML = `
+      <div class="player-tooltip-header">
+        <span class="player-tooltip-flag">${playerFlag}</span>
+        <span class="player-tooltip-name">${playerName}</span>
+      </div>
+      <div class="player-tooltip-options">
+        <button class="player-tooltip-btn trade" data-action="trade">
+          <span>💰</span> Trade
+        </button>
+        <button class="player-tooltip-btn attack" data-action="attack">
+          <span>⚔️</span> Attack
+        </button>
+        <button class="player-tooltip-btn inspect" data-action="inspect">
+          <span>🔍</span> Inspect
+        </button>
+      </div>
+    `;
+
+    // Position at click location
+    menu.style.left = `${clientX}px`;
+    menu.style.top = `${clientY}px`;
+
+    document.body.appendChild(menu);
+    this.activePlayerMenu = { element: menu, playerId, player };
+
+    // Adjust position if off-screen
+    const rect = menu.getBoundingClientRect();
+    if (rect.right > window.innerWidth) {
+      menu.style.left = `${clientX - rect.width}px`;
+    }
+    if (rect.bottom > window.innerHeight) {
+      menu.style.top = `${clientY - rect.height}px`;
+    }
+
+    // Close on click outside
+    const closeHandler = (e) => {
+      if (!menu.contains(e.target)) {
+        this.closePlayerInteractionMenu();
+        document.removeEventListener('click', closeHandler);
+      }
+    };
+    setTimeout(() => document.addEventListener('click', closeHandler), 10);
+
+    // Button handlers
+    menu.querySelectorAll('.player-tooltip-btn').forEach(btn => {
+      btn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        const action = btn.dataset.action;
+        this.closePlayerInteractionMenu();
+
+        switch (action) {
+          case 'trade':
+            this.initiatePlayerTrade(playerId, player);
+            break;
+          case 'attack':
+            this.initiatePlayerAttack(playerId, player);
+            break;
+          case 'inspect':
+            this.showPlayerInspect(player);
+            break;
+        }
+      });
+    });
+  }
+
+  // Close player interaction menu
+  closePlayerInteractionMenu() {
+    if (this.activePlayerMenu && this.activePlayerMenu.element) {
+      this.activePlayerMenu.element.remove();
+    }
+    this.activePlayerMenu = null;
+  }
+
+  // Initiate trade with another player
+  initiatePlayerTrade(playerId, player) {
+    const playerName = player?.username || player?.name || 'Unknown';
+
+    // Check if we have selected combat item (used as currency for trades)
+    if (!this.selectedCombatItem) {
+      if (window.chatManager) {
+        window.chatManager.addLogMessage(`❌ Select ammo in Combat tab first to trade!`, 'error');
+      }
+      return;
+    }
+
+    // Send trade request to server
+    if (window.game && window.game.socket && window.game.socket.connected) {
+      window.game.socket.emit('player:tradeRequest', { targetId: playerId });
+      if (window.chatManager) {
+        window.chatManager.addLogMessage(`💰 Sent trade request to ${playerName}`, 'info');
+      }
+    } else {
+      if (window.chatManager) {
+        window.chatManager.addLogMessage(`❌ Not connected to server!`, 'error');
+      }
+    }
+  }
+
+  // Initiate attack on another player (PvP combat)
+  initiatePlayerAttack(playerId, player) {
+    const playerName = player?.username || player?.name || 'Unknown';
+
+    // Check if we have selected combat item
+    if (!this.selectedCombatItem) {
+      if (window.chatManager) {
+        window.chatManager.addLogMessage(`❌ Select ammo in Combat tab first to attack!`, 'error');
+      }
+      return;
+    }
+
+    // Check if we have any of the selected ammo
+    const ammoCount = this.getItemCount(this.selectedCombatItem);
+    if (ammoCount <= 0) {
+      if (window.chatManager) {
+        const item = this.itemTypes[this.selectedCombatItem];
+        window.chatManager.addLogMessage(`❌ You have no ${item?.icon || ''} ${item?.name || 'ammo'}!`, 'error');
+      }
+      return;
+    }
+
+    // Perform attack - consume 1 ammo and send attack to server
+    this.removeItem(this.selectedCombatItem, 1);
+
+    // Calculate damage (same formula as NPC combat)
+    const accuracy = this.getAccuracy(this.selectedCombatItem);
+    const maxHit = this.getMaxHit(this.selectedCombatItem);
+    const hitRoll = Math.random() * 100;
+    const didHit = hitRoll < accuracy;
+    const damage = didHit ? Math.floor(Math.random() * (maxHit + 1)) : 0;
+
+    // Send attack to server (server will validate and apply damage)
+    if (window.game && window.game.socket && window.game.socket.connected) {
+      window.game.socket.emit('player:attack', {
+        targetId: playerId,
+        damage: damage,
+        didHit: didHit,
+        ammoUsed: this.selectedCombatItem
+      });
+
+      // Show attack message
+      const item = this.itemTypes[this.selectedCombatItem];
+      if (didHit) {
+        if (window.chatManager) {
+          window.chatManager.addLogMessage(`⚔️ You hit ${playerName} for ${damage} damage! (${item?.icon || ''})`, 'combat');
+        }
+      } else {
+        if (window.chatManager) {
+          window.chatManager.addLogMessage(`⚔️ You missed ${playerName}! (${item?.icon || ''})`, 'combat');
+        }
+      }
+
+      // Add combat XP
+      if (damage > 0) {
+        this.addCombatXP(damage);
+      }
+    } else {
+      // Offline - just show message
+      if (window.chatManager) {
+        window.chatManager.addLogMessage(`⚔️ Attack sent! (${didHit ? damage + ' damage' : 'missed'})`, 'combat');
+      }
+    }
+
+    this.save();
+    this.renderInventory();
+    this.renderCombat();
+  }
+
+  // Add combat XP based on damage dealt
+  addCombatXP(damage) {
+    const xpGain = Math.max(1, Math.floor(damage / 10));
+    this.skills.hitpoints.xp += xpGain;
+    this.renderSkills();
   }
 
   // Show player inspection dialog
@@ -2612,23 +3720,25 @@ class SkillsManager {
       window.chatManager.addLogMessage(`✨ Received ${lightReward} Light!`, 'item');
     }
 
-    // Always drop ammo based on NPC level/difficulty
+    // NPC explodes and drops ammo on the ground!
     // NPCs drop ammo from their attack items list
     const attackItems = npc.attackItems || ['cloudwisp'];
-    const ammoDropKey = attackItems[Math.floor(Math.random() * attackItems.length)];
-    const ammoItem = this.itemTypes[ammoDropKey];
 
-    // Amount scales with NPC difficulty (maxHealth / 100, min 1, max 10)
-    const ammoAmount = Math.max(1, Math.min(10, Math.floor(npc.maxHealth / 100)));
+    // Amount scales with NPC difficulty (maxHealth / 50, min 3, max 15)
+    const ammoAmount = Math.max(3, Math.min(15, Math.floor(npc.maxHealth / 50)));
 
-    if (ammoItem) {
-      const added = this.addItemToInventory(ammoDropKey, ammoAmount);
-      if (added && window.chatManager) {
-        window.chatManager.addLogMessage(`📦 Dropped: ${ammoItem.icon} ${ammoItem.name} x${ammoAmount}`, 'item');
-      }
+    // Play death animation, then spawn items from NPC center
+    if (this.map3d && npc.position) {
+      this.map3d.playNPCDeathAnimation(npcId, () => {
+        // After death animation completes, spawn items from where NPC died
+        this.createItemExplosionFromCenter(attackItems, npc.position, ammoAmount);
+        if (window.chatManager) {
+          window.chatManager.addLogMessage(`💥 ${npc.name} exploded! ${ammoAmount} ammo dropped!`, 'item');
+        }
+      });
     }
 
-    // Check for rare item drops (battle NPCs only)
+    // Check for rare item drops (battle NPCs only) - these go to inventory
     if (npc.isBattleOnly && npc.drops && npc.drops.length > 0 && npc.dropChance) {
       const roll = Math.random();
       if (roll < npc.dropChance) {
@@ -2652,13 +3762,14 @@ class SkillsManager {
       }
     }
 
-    // Respawn NPC after delay (NPCs respawn)
+    // Respawn NPC after delay (NPCs respawn by dropping from sky)
     // Battle NPCs respawn faster than bosses
-    const respawnTime = npc.isBattleOnly ? 15000 : 30000; // 15s for battle, 30s for bosses
+    const respawnTime = npc.isBattleOnly ? 60000 : 120000; // 1 min for battle, 2 min for bosses
     setTimeout(() => {
       npc.health = npc.maxHealth;
       if (this.map3d) {
         this.map3d.updateNPCHealth(npcId, npc.health, npc.maxHealth);
+        this.map3d.playNPCRespawnAnimation(npcId);
       }
     }, respawnTime);
 
@@ -2754,18 +3865,47 @@ class SkillsManager {
   }
 
   // Get accuracy percentage for an item (chance to hit)
-  // Base accuracy: 50% + (skill level * 0.5) + item accuracy bonus
+  // Base accuracy: 50% + (skill level * 0.5) + item accuracy bonus + equipment bonus
   // Capped at 95% to always have some miss chance
   getAccuracy(itemKey) {
     const level = this.getCombatLevel(itemKey);
     const item = this.itemTypes[itemKey];
-    const accuracyBonus = item?.accuracyBonus || 0;
+    const itemAccuracyBonus = item?.accuracyBonus || 0;
 
-    // Base 50% + 0.5% per level + item bonus
-    const accuracy = 50 + (level * 0.5) + accuracyBonus;
+    // Get equipment accuracy bonus (from held items)
+    const equipmentBonus = this.getEquipmentAccuracyBonus();
+
+    // Base 50% + 0.5% per level + item bonus + equipment bonus
+    const accuracy = 50 + (level * 0.5) + itemAccuracyBonus + equipmentBonus;
 
     // Cap at 95%
     return Math.min(95, accuracy);
+  }
+
+  // Get total accuracy bonus from equipped gear
+  getEquipmentAccuracyBonus() {
+    let bonus = 0;
+    for (const [slotType, itemKey] of Object.entries(this.equippedGear)) {
+      if (!itemKey) continue;
+      const gear = this.equipmentTypes[itemKey];
+      if (gear?.accuracyBonus) {
+        bonus += gear.accuracyBonus;
+      }
+    }
+    return bonus;
+  }
+
+  // Get total drop bonus from equipped gear (increases ammo drop chance)
+  getEquipmentDropBonus() {
+    let bonus = 0;
+    for (const [slotType, itemKey] of Object.entries(this.equippedGear)) {
+      if (!itemKey) continue;
+      const gear = this.equipmentTypes[itemKey];
+      if (gear?.dropBonus) {
+        bonus += gear.dropBonus;
+      }
+    }
+    return bonus;
   }
 
   // Roll damage (0 to max hit) and check accuracy
@@ -2856,26 +3996,87 @@ class SkillsManager {
       window.chatManager.addLogMessage('💀 You have been defeated!', 'error');
     }
 
-    // Reset health
-    this.combatHealth = this.maxCombatHealth;
+    // Collect ammo to drop
+    const ammoTypes = this.getAllAmmoTypes();
+    const deathPosition = this.playerPosition ? { ...this.playerPosition } : null;
+    let totalDropped = 0;
+    const itemsToDrop = [];
 
-    // Respawn at home or default location
-    setTimeout(() => {
-      if (this.homePosition && window.game) {
-        window.game.fastTravelTo(this.homePosition.lat, this.homePosition.lng);
-        if (window.chatManager) {
-          window.chatManager.addLogMessage('🏠 Respawned at home!', 'info');
-        }
-      } else if (window.game) {
-        // Respawn at default location
-        window.game.fastTravelTo(GAME_CONFIG.defaultPosition.lat, GAME_CONFIG.defaultPosition.lng);
-        if (window.chatManager) {
-          window.chatManager.addLogMessage('🏠 Respawned at spawn point!', 'info');
+    if (deathPosition) {
+      for (const ammoKey of ammoTypes) {
+        const count = this.getItemCount(ammoKey);
+        if (count > 0) {
+          // Drop 80-95% of this ammo type
+          const dropPercent = 0.80 + Math.random() * 0.15;
+          const dropAmount = Math.floor(count * dropPercent);
+
+          if (dropAmount > 0) {
+            // Remove from inventory
+            this.removeItemFromInventory(ammoKey, dropAmount);
+
+            // Add to drop list (max 20 sprites per type)
+            const spriteCount = Math.min(dropAmount, 20);
+            for (let i = 0; i < spriteCount; i++) {
+              itemsToDrop.push(ammoKey);
+            }
+            totalDropped += dropAmount;
+          }
         }
       }
+    }
 
-      this.renderCombat();
-    }, 1500);
+    // Play death animation for player, then drop items, then respawn
+    if (this.map3d && deathPosition) {
+      this.map3d.playPlayerDeathAnimation(() => {
+        // After death animation, explode items from center
+        if (itemsToDrop.length > 0) {
+          this.createItemExplosionFromCenter(itemsToDrop, deathPosition, itemsToDrop.length);
+
+          if (window.chatManager) {
+            window.chatManager.addLogMessage(`💥 You dropped ${totalDropped} ammo on death!`, 'error');
+          }
+        }
+
+        // Wait for items to disperse, then respawn
+        setTimeout(() => {
+          // Reset health
+          this.combatHealth = this.maxCombatHealth;
+
+          if (this.homePosition && window.game) {
+            window.game.fastTravelTo(this.homePosition.lat, this.homePosition.lng);
+            if (window.chatManager) {
+              window.chatManager.addLogMessage('🏠 Respawned at home!', 'info');
+            }
+          } else if (window.game) {
+            // Respawn at default location
+            window.game.fastTravelTo(GAME_CONFIG.defaultPosition.lat, GAME_CONFIG.defaultPosition.lng);
+            if (window.chatManager) {
+              window.chatManager.addLogMessage('🏠 Respawned at spawn point!', 'info');
+            }
+          }
+
+          // Play respawn animation
+          if (this.map3d) {
+            this.map3d.playPlayerRespawnAnimation();
+          }
+
+          this.renderCombat();
+        }, 1500);
+      });
+    } else {
+      // Fallback if no map3d
+      this.combatHealth = this.maxCombatHealth;
+      setTimeout(() => {
+        if (this.homePosition && window.game) {
+          window.game.fastTravelTo(this.homePosition.lat, this.homePosition.lng);
+        } else if (window.game) {
+          window.game.fastTravelTo(GAME_CONFIG.defaultPosition.lat, GAME_CONFIG.defaultPosition.lng);
+        }
+        this.renderCombat();
+      }, 1500);
+    }
+
+    this.save();
   }
 
   // Heal (for later use)
@@ -2927,6 +4128,32 @@ class SkillsManager {
       }
     }
     return total;
+  }
+
+  // Remove item from inventory (returns actual amount removed)
+  removeItemFromInventory(itemKey, count = 1) {
+    let remaining = count;
+
+    for (let i = 0; i < this.inventorySlots.length && remaining > 0; i++) {
+      const slot = this.inventorySlots[i];
+      if (slot && slot.itemKey === itemKey) {
+        const toRemove = Math.min(remaining, slot.count);
+        slot.count -= toRemove;
+        remaining -= toRemove;
+
+        // Clear slot if empty
+        if (slot.count <= 0) {
+          this.inventorySlots[i] = null;
+        }
+      }
+    }
+
+    return count - remaining; // Return actual amount removed
+  }
+
+  // Alias for addItem (for consistency)
+  addItemToInventory(itemKey, count = 1) {
+    return this.addItem(itemKey, count);
   }
 
   // Get skill key for weather type
@@ -3029,6 +4256,12 @@ class SkillsManager {
       default: dropChance = 0.1;
     }
 
+    // Add equipment drop bonus (percentage increase)
+    const dropBonus = this.getEquipmentDropBonus();
+    if (dropBonus > 0) {
+      dropChance *= (1 + dropBonus / 100);  // e.g. 5% bonus = 1.05x multiplier
+    }
+
     if (Math.random() < dropChance) {
       this.dropItemOnGround(itemKey);
     }
@@ -3036,18 +4269,25 @@ class SkillsManager {
 
   // Drop an item on the ground near the player
   dropItemOnGround(itemKey) {
-    if (!this.playerPosition || !this.map3d) return;
+    this.dropItemAtPosition(itemKey, this.playerPosition);
+  }
+
+  // Drop an item on the ground at a specific position
+  // radiusMultiplier: controls spread of items (0.5 = tight, 1.0 = normal, 2.0 = wide)
+  // silent: if true, don't log to chat
+  dropItemAtPosition(itemKey, centerPosition, radiusMultiplier = 1.0, silent = false) {
+    if (!centerPosition || !this.map3d) return;
 
     const item = this.itemTypes[itemKey];
     if (!item) return;
 
-    // Random position near player
+    // Random position near center
     const angle = Math.random() * Math.PI * 2;
-    const distance = this.dropConfig.dropRadius * (0.5 + Math.random() * 0.5);
+    const distance = this.dropConfig.dropRadius * (0.3 + Math.random() * 0.7) * radiusMultiplier;
 
     const dropPosition = {
-      lat: this.playerPosition.lat + Math.cos(angle) * distance,
-      lng: this.playerPosition.lng + Math.sin(angle) * distance
+      lat: centerPosition.lat + Math.cos(angle) * distance,
+      lng: centerPosition.lng + Math.sin(angle) * distance
     };
 
     // Create dropped item
@@ -3067,8 +4307,70 @@ class SkillsManager {
     this.droppedItems.push(droppedItem);
 
     // Log to game log (no popup notification for drops)
-    if (window.chatManager) {
+    if (!silent && window.chatManager) {
       window.chatManager.addLogMessage(`${item.icon} ${item.name} dropped nearby!`, 'item');
+    }
+  }
+
+  // Create an explosion of items at a position (for NPC death, player death, etc.)
+  createItemExplosion(itemKeys, centerPosition, count, radiusMultiplier = 0.8) {
+    if (!centerPosition || !this.map3d || itemKeys.length === 0) return;
+
+    // Drop multiple items in an explosion pattern
+    for (let i = 0; i < count; i++) {
+      const itemKey = itemKeys[Math.floor(Math.random() * itemKeys.length)];
+      this.dropItemAtPosition(itemKey, centerPosition, radiusMultiplier, true);
+    }
+
+    // Show explosion effect
+    if (this.map3d) {
+      this.map3d.showExplosionEffect(centerPosition);
+    }
+  }
+
+  // Create an explosion of items that radiate outward from the center (for death animations)
+  // Items spawn at center then animate outward
+  createItemExplosionFromCenter(itemKeys, centerPosition, count) {
+    if (!centerPosition || !this.map3d || itemKeys.length === 0) return;
+
+    // Show explosion effect first
+    this.map3d.showExplosionEffect(centerPosition);
+
+    // Drop items with staggered timing radiating from center
+    const dropDelay = 50; // ms between each drop
+    for (let i = 0; i < count; i++) {
+      setTimeout(() => {
+        const itemKey = itemKeys[Math.floor(Math.random() * itemKeys.length)];
+        const item = this.itemTypes[itemKey];
+        if (!item) return;
+
+        // Calculate outward direction
+        const angle = (i / count) * Math.PI * 2 + Math.random() * 0.5;
+        const distance = this.dropConfig.dropRadius * (0.4 + Math.random() * 0.6);
+
+        const dropPosition = {
+          lat: centerPosition.lat + Math.cos(angle) * distance,
+          lng: centerPosition.lng + Math.sin(angle) * distance
+        };
+
+        // Create dropped item
+        const droppedItem = {
+          id: ++this.droppedItemId,
+          itemKey,
+          position: dropPosition,
+          createdAt: Date.now(),
+          sprite: null
+        };
+
+        // Create 3D sprite that animates from center to drop position
+        if (this.map3d) {
+          droppedItem.sprite = this.map3d.createDroppedItemAnimated(
+            droppedItem.id, item, centerPosition, dropPosition
+          );
+        }
+
+        this.droppedItems.push(droppedItem);
+      }, i * dropDelay);
     }
   }
 
@@ -3138,21 +4440,50 @@ class SkillsManager {
   }
 
   // Calculate distance between two lat/lng positions
+  // Accounts for longitude compression at different latitudes
   getDistance(pos1, pos2) {
     const latDiff = pos1.lat - pos2.lat;
-    const lngDiff = pos1.lng - pos2.lng;
+    // Adjust longitude difference by cosine of average latitude
+    const avgLat = (pos1.lat + pos2.lat) / 2;
+    const lngDiff = (pos1.lng - pos2.lng) * Math.cos(avgLat * Math.PI / 180);
     return Math.sqrt(latDiff * latDiff + lngDiff * lngDiff);
   }
 
   // Update player position (called from map.js)
   setPlayerPosition(position) {
     const wasNearHome = this.isNearHome();
+    const wasInSafeZone = this.playerPosition ? this.isInSafeZone(this.playerPosition.lat, this.playerPosition.lng) : null;
+
     this.playerPosition = position;
+
     const isNearHomeNow = this.isNearHome();
+    const isInSafeZoneNow = this.isInSafeZone(position.lat, position.lng);
 
     // Refresh home tab if near-home status changed
     if (wasNearHome !== isNearHomeNow && this.activeTab === 'home') {
       this.renderHome();
+    }
+
+    // Refresh combat tab zone status if safe zone status changed
+    if (wasInSafeZone !== isInSafeZoneNow && this.activeTab === 'combat') {
+      this.updateZoneStatus();
+    }
+  }
+
+  // Update just the zone status in combat tab (without full re-render)
+  updateZoneStatus() {
+    const zoneStatusEl = document.querySelector('.zone-status');
+    if (!zoneStatusEl) return;
+
+    const safeZoneName = this.playerPosition ?
+      this.isInSafeZone(this.playerPosition.lat, this.playerPosition.lng) : null;
+
+    if (safeZoneName) {
+      zoneStatusEl.className = 'zone-status safe';
+      zoneStatusEl.innerHTML = `🛡️ Safe Zone: ${safeZoneName}`;
+    } else {
+      zoneStatusEl.className = 'zone-status pvp';
+      zoneStatusEl.innerHTML = `⚔️ PvP Zone`;
     }
   }
 
@@ -3160,8 +4491,8 @@ class SkillsManager {
   setMap3D(map3d) {
     this.map3d = map3d;
 
-    // Create home shop entity if home position is already set
-    if (this.homePosition && this.map3d) {
+    // Create home shop entity if home position is already set and shop doesn't exist
+    if (this.homePosition && this.map3d && !this.map3d.homeShopData) {
       this.map3d.createHomeShop(this.homePosition);
     }
   }
@@ -3236,6 +4567,7 @@ class SkillsManager {
     const data = {
       skills: {},
       inventorySlots: this.inventorySlots,
+      bankSlots: this.bankSlots,
       homePosition: this.homePosition,
       selectedCombatItem: this.selectedCombatItem,
       combatHealth: this.combatHealth,
@@ -3289,6 +4621,15 @@ class SkillsManager {
             this.inventorySlots[slotIndex] = { itemKey: key, count };
             slotIndex++;
           }
+        }
+      }
+
+      // Load bank slots
+      if (data.bankSlots) {
+        this.bankSlots = data.bankSlots;
+        // Ensure 100 slots
+        while (this.bankSlots.length < 100) {
+          this.bankSlots.push(null);
         }
       }
 

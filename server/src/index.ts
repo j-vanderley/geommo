@@ -26,6 +26,63 @@ const chatManager = new ChatManager(playerManager);
 const npcManager = new NPCManager();
 const worldManager = new WorldManager(playerManager, npcManager);
 
+// Safe zones - city teleport locations where PvP is disabled
+const SAFE_ZONES = [
+  { name: 'Paris', lat: 48.8566, lng: 2.3522 },
+  { name: 'Los Angeles', lat: 34.0522, lng: -118.2437 },
+  { name: 'Berlin', lat: 52.5200, lng: 13.4050 },
+  { name: 'Singapore', lat: 1.3521, lng: 103.8198 },
+  { name: 'Dubai', lat: 25.2048, lng: 55.2708 },
+  { name: 'Rio de Janeiro', lat: -22.9068, lng: -43.1729 },
+  { name: 'Mumbai', lat: 19.0760, lng: 72.8777 },
+  { name: 'Cairo', lat: 30.0444, lng: 31.2357 },
+  { name: 'San Francisco', lat: 37.7749, lng: -122.4194 },
+  { name: 'Chicago', lat: 41.8781, lng: -87.6298 },
+  { name: 'Miami', lat: 25.7617, lng: -80.1918 },
+  { name: 'Toronto', lat: 43.6532, lng: -79.3832 },
+  { name: 'Vancouver', lat: 49.2827, lng: -123.1207 },
+  { name: 'Mexico City', lat: 19.4326, lng: -99.1332 },
+  { name: 'Buenos Aires', lat: -34.6037, lng: -58.3816 },
+  { name: 'Rome', lat: 41.9028, lng: 12.4964 },
+  { name: 'Madrid', lat: 40.4168, lng: -3.7038 },
+  { name: 'Amsterdam', lat: 52.3676, lng: 4.9041 },
+  { name: 'Barcelona', lat: 41.3851, lng: 2.1734 },
+  { name: 'Vienna', lat: 48.2082, lng: 16.3738 },
+  { name: 'Prague', lat: 50.0755, lng: 14.4378 },
+  { name: 'Seoul', lat: 37.5665, lng: 126.9780 },
+  { name: 'Beijing', lat: 39.9042, lng: 116.4074 },
+  { name: 'Shanghai', lat: 31.2304, lng: 121.4737 },
+  { name: 'Hong Kong', lat: 22.3193, lng: 114.1694 },
+  { name: 'Bangkok', lat: 13.7563, lng: 100.5018 },
+  { name: 'Moscow', lat: 55.7558, lng: 37.6173 },
+  { name: 'Melbourne', lat: -37.8136, lng: 144.9631 },
+  { name: 'Brisbane', lat: -27.4698, lng: 153.0251 },
+  { name: 'Auckland', lat: -36.8509, lng: 174.7645 },
+  { name: 'Cape Town', lat: -33.9249, lng: 18.4241 },
+  { name: 'Lagos', lat: 6.5244, lng: 3.3792 },
+  { name: 'Sydney', lat: -33.8688, lng: 151.2093 },
+  { name: 'Tokyo', lat: 35.6762, lng: 139.6503 },
+  { name: 'London', lat: 51.5074, lng: -0.1278 },
+  { name: 'New York', lat: 40.758896, lng: -73.985130 }
+];
+const SAFE_ZONE_RADIUS = 0.01; // ~1km radius - large safe zone around each city
+
+// Helper to check if a position is in a safe zone
+// Accounts for longitude compression at different latitudes
+function isInSafeZone(lat: number, lng: number): string | null {
+  for (const zone of SAFE_ZONES) {
+    const latDiff = lat - zone.lat;
+    // Adjust longitude difference by cosine of average latitude
+    const avgLat = (lat + zone.lat) / 2;
+    const lngDiff = (lng - zone.lng) * Math.cos(avgLat * Math.PI / 180);
+    const distance = Math.sqrt(latDiff * latDiff + lngDiff * lngDiff);
+    if (distance < SAFE_ZONE_RADIUS) {
+      return zone.name;
+    }
+  }
+  return null;
+}
+
 // Express app
 const app = express();
 app.use(cors());
@@ -46,12 +103,18 @@ app.get('/health', (req, res) => {
 // Create HTTP server
 const httpServer = createServer(app);
 
-// Socket.io server
+// Socket.io server with Cloud Run-friendly settings
 const io = new Server<ClientToServerEvents, ServerToClientEvents>(httpServer, {
   cors: {
     origin: '*',
     methods: ['GET', 'POST']
-  }
+  },
+  // Keep connections alive on Cloud Run
+  pingTimeout: 60000,      // 60 seconds before considering connection dead
+  pingInterval: 25000,     // Send ping every 25 seconds
+  upgradeTimeout: 30000,   // 30 seconds to upgrade connection
+  transports: ['websocket', 'polling'], // Prefer WebSocket
+  allowUpgrades: true
 });
 
 // Socket.io connection handling
@@ -179,12 +242,43 @@ io.on('connection', (socket) => {
     }
   });
 
+  // Set home position
+  socket.on('player:setHome', async (data) => {
+    const player = await playerManager.updateHomePosition(socket.id, data.position);
+
+    if (player) {
+      // Confirm home position was set
+      socket.emit('player:homeUpdated', {
+        position: player.homePosition!
+      });
+      console.log(`Player ${player.username} set home to ${data.position.lat.toFixed(4)}, ${data.position.lng.toFixed(4)}`);
+    }
+  });
+
   // Combat attack
   socket.on('combat:attack', (data) => {
     const attacker = playerManager.getPlayer(socket.id);
     const target = playerManager.getPlayer(data.targetId);
 
     if (!attacker || !target) return;
+
+    // Check if attacker is in a safe zone
+    const attackerSafeZone = isInSafeZone(attacker.position.lat, attacker.position.lng);
+    if (attackerSafeZone) {
+      socket.emit('combat:blocked', {
+        reason: `You cannot attack from ${attackerSafeZone} safe zone`
+      });
+      return;
+    }
+
+    // Check if target is in a safe zone
+    const targetSafeZone = isInSafeZone(target.position.lat, target.position.lng);
+    if (targetSafeZone) {
+      socket.emit('combat:blocked', {
+        reason: `${target.username} is protected in ${targetSafeZone} safe zone`
+      });
+      return;
+    }
 
     // Notify the target they were attacked
     io.to(data.targetId).emit('combat:attacked', {
