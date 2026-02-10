@@ -892,6 +892,40 @@ body {
   border-radius: 3px;
 }
 
+/* Player Health Bar (shown during PvP combat) */
+.player-health-bar {
+  position: absolute;
+  width: 90px;
+  height: 10px;
+  background: rgba(0, 0, 0, 0.85);
+  border: 2px solid #8B0000;
+  border-radius: 5px;
+  transform: translate(-50%, 0);
+  pointer-events: none;
+  z-index: 165;
+  overflow: hidden;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.6);
+}
+
+.player-health-fill {
+  height: 100%;
+  background: linear-gradient(180deg, #e74c3c 0%, #c0392b 50%, #8B0000 100%);
+  transition: width 0.3s ease-out;
+  border-radius: 3px;
+}
+
+.player-health-text {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  font-size: 8px;
+  font-weight: bold;
+  color: #fff;
+  text-shadow: 1px 1px 1px #000, -1px -1px 1px #000;
+  white-space: nowrap;
+}
+
 /* Chat Bubbles for 3D View */
 .chat-bubble-3d {
   position: absolute;

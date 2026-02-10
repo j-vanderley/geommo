@@ -661,19 +661,61 @@ class Map3D {
     playerData.health = health;
     playerData.maxHealth = maxHealth;
 
-    // Update health bar if player has one
-    if (playerData.healthBar) {
-      const fill = playerData.healthBar.querySelector('.player-health-fill');
-      if (fill) {
-        const pct = Math.max(0, Math.min(100, (health / maxHealth) * 100));
-        fill.style.width = `${pct}%`;
-        fill.style.backgroundColor = pct > 50 ? '#44ff44' : pct > 25 ? '#ffaa00' : '#ff4444';
-      }
-      const text = playerData.healthBar.querySelector('.player-health-text');
-      if (text) {
-        text.textContent = `${health}/${maxHealth}`;
-      }
+    // Create health bar if player doesn't have one yet
+    if (!playerData.healthBar) {
+      playerData.healthBar = this.createPlayerHealthBar(playerId);
     }
+
+    // Show the health bar
+    playerData.healthBar.style.display = 'block';
+
+    // Update health bar values
+    const fill = playerData.healthBar.querySelector('.player-health-fill');
+    if (fill) {
+      const pct = Math.max(0, Math.min(100, (health / maxHealth) * 100));
+      fill.style.width = `${pct}%`;
+      fill.style.backgroundColor = pct > 50 ? '#44ff44' : pct > 25 ? '#ffaa00' : '#ff4444';
+    }
+    const text = playerData.healthBar.querySelector('.player-health-text');
+    if (text) {
+      text.textContent = `${health}/${maxHealth}`;
+    }
+  }
+
+  // Create player health bar element
+  createPlayerHealthBar(playerId) {
+    const bar = document.createElement('div');
+    bar.className = 'player-health-bar';
+    bar.innerHTML = `
+      <div class="player-health-fill" style="width: 100%"></div>
+      <span class="player-health-text">100/100</span>
+    `;
+    bar.style.display = 'none'; // Hidden by default
+    this.container.appendChild(bar);
+    return bar;
+  }
+
+  // Show player health bar
+  showPlayerHealthBar(playerId, health, maxHealth) {
+    const playerData = this.playerSprites.get(playerId);
+    if (!playerData) return;
+
+    // Create if doesn't exist
+    if (!playerData.healthBar) {
+      playerData.healthBar = this.createPlayerHealthBar(playerId);
+    }
+
+    // Update and show
+    this.updatePlayerHealth(playerId, health, maxHealth);
+    playerData.healthBar.style.display = 'block';
+  }
+
+  // Hide player health bar
+  hidePlayerHealthBar(playerId) {
+    const playerData = this.playerSprites.get(playerId);
+    if (!playerData || !playerData.healthBar) return;
+
+    playerData.healthBar.style.display = 'none';
   }
 
   // Update player's avatar (text and color)
@@ -2386,6 +2428,29 @@ class Map3D {
       } else {
         npcData.nameLabel.style.display = 'none';
         npcData.healthBar.style.display = 'none';
+      }
+    });
+
+    // Update player health bar positions
+    this.playerSprites.forEach((playerData, playerId) => {
+      if (!playerData.healthBar) return;
+      if (playerData.healthBar.style.display === 'none') return;
+
+      const worldPos = playerData.group.position.clone();
+
+      // Health bar position (above player)
+      const healthBarPos = worldPos.clone();
+      healthBarPos.y += 7;
+      const screenPos = healthBarPos.project(this.camera);
+      const x = (screenPos.x * 0.5 + 0.5) * this.container.clientWidth;
+      const y = (-screenPos.y * 0.5 + 0.5) * this.container.clientHeight;
+
+      // Show only if in front of camera
+      if (screenPos.z < 1) {
+        playerData.healthBar.style.left = `${x}px`;
+        playerData.healthBar.style.top = `${y}px`;
+      } else {
+        playerData.healthBar.style.display = 'none';
       }
     });
 

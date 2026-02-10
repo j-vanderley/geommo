@@ -3287,6 +3287,18 @@ class SkillsManager {
   processPvPTurn() {
     if (!this.pvpCombatTarget) return;
 
+    // Check if we're in a safe zone - end combat if so
+    if (this.playerPosition) {
+      const selfSafeZone = this.isInSafeZone(this.playerPosition.lat, this.playerPosition.lng);
+      if (selfSafeZone) {
+        if (window.chatManager) {
+          window.chatManager.addLogMessage(`🛡️ Entered ${selfSafeZone} safe zone. Combat ended.`, 'combat');
+        }
+        this.endPvPCombat();
+        return;
+      }
+    }
+
     // Check if target is still online
     const targetPlayer = window.playerManager?.getPlayer(this.pvpCombatTarget);
     if (!targetPlayer) {
@@ -3297,19 +3309,35 @@ class SkillsManager {
       return;
     }
 
+    // Check if target is in a safe zone - end combat if so
+    if (targetPlayer.position) {
+      const targetSafeZone = this.isInSafeZone(targetPlayer.position.lat, targetPlayer.position.lng);
+      if (targetSafeZone) {
+        if (window.chatManager) {
+          window.chatManager.addLogMessage(`🛡️ ${this.pvpCombatTargetName} entered ${targetSafeZone} safe zone. Combat ended.`, 'combat');
+        }
+        this.endPvPCombat();
+        return;
+      }
+    }
+
     // Send attack
     this.sendPvPAttack(this.pvpCombatTarget, this.pvpCombatTargetName);
   }
 
   // End PvP combat
   endPvPCombat() {
-    if (this.pvpCombatTarget && window.chatManager) {
-      window.chatManager.addLogMessage(`⚔️ Combat with ${this.pvpCombatTargetName || 'player'} ended.`, 'combat');
-    }
+    const hadTarget = !!this.pvpCombatTarget;
+
     this.pvpCombatTarget = null;
     this.pvpCombatTargetName = null;
     this.pvpTurnTick = 0;
     this.lastPvPTarget = null;
+
+    // Hide player health bar when combat ends
+    if (this.map3d && this.map3d.selfPlayerId) {
+      this.map3d.hidePlayerHealthBar(this.map3d.selfPlayerId);
+    }
   }
 
   // Handle PvP attack result from server
@@ -3399,8 +3427,21 @@ class SkillsManager {
     this.endPvPCombat();
     this.endNPCCombat();
 
+    // Hide player health bar
+    if (this.map3d && this.map3d.selfPlayerId) {
+      this.map3d.hidePlayerHealthBar(this.map3d.selfPlayerId);
+    }
+
     if (window.chatManager) {
       window.chatManager.addLogMessage(`💀 You were defeated by ${data.killerName}!`, 'death');
+    }
+
+    // Drop most inventory items on death
+    const droppedItems = this.dropInventoryOnDeath();
+    if (droppedItems.length > 0) {
+      if (window.chatManager) {
+        window.chatManager.addLogMessage(`📦 You dropped ${droppedItems.length} item stacks!`, 'death');
+      }
     }
 
     // Play death animation and respawn
@@ -3418,6 +3459,38 @@ class SkillsManager {
         this.map3d.playPlayerRespawnAnimation();
       });
     }
+  }
+
+  // Drop most inventory items when dying in PvP
+  dropInventoryOnDeath() {
+    const droppedItems = [];
+    const keepChance = 0.25; // 25% chance to keep each item stack
+
+    for (let i = 0; i < this.inventorySlots.length; i++) {
+      const slot = this.inventorySlots[i];
+      if (!slot || !slot.itemKey || slot.count <= 0) continue;
+
+      // Don't drop equipment items (keep those)
+      const itemType = this.itemTypes[slot.itemKey] || this.equipmentTypes[slot.itemKey];
+      if (itemType?.isEquipment) continue;
+
+      // Random chance to keep each item stack
+      if (Math.random() < keepChance) continue;
+
+      // Drop this item stack
+      droppedItems.push({ itemKey: slot.itemKey, count: slot.count });
+
+      // Remove from inventory
+      this.inventorySlots[i] = null;
+    }
+
+    // Save and update UI
+    if (droppedItems.length > 0) {
+      this.save();
+      this.renderInventory();
+    }
+
+    return droppedItems;
   }
 
   // Handle when we defeat another player
