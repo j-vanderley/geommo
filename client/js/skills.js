@@ -151,6 +151,8 @@ class SkillsManager {
     this.pvpCombatTargetName = null;  // Player name for messages
     this.pvpTurnTick = 0;  // Tick counter for PvP turns
     this.PVP_COMBAT_TICKS = 4;  // 4 ticks = 2.4 seconds between PvP attacks
+    this.lastPvPAttackTime = 0;  // Timestamp of last PvP attack (prevent double attacks)
+    this.PVP_ATTACK_COOLDOWN = 2000;  // 2 second minimum between attacks
 
     // Game tick system (600ms ticks for future features)
     this.TICK_DURATION = 600; // 0.6 seconds per tick
@@ -3198,6 +3200,12 @@ class SkillsManager {
       return;
     }
 
+    // Check if already attacking this target
+    if (this.pvpCombatTarget === playerId) {
+      // Already in combat with this target, don't double-attack
+      return;
+    }
+
     // Check if switching targets
     const isNewTarget = this.pvpCombatTarget !== playerId;
 
@@ -3205,10 +3213,10 @@ class SkillsManager {
     this.pvpCombatTarget = playerId;
     this.pvpCombatTargetName = playerName;
 
-    if (isNewTarget) {
-      // Reset turn tick for new target - attack immediately
-      this.pvpTurnTick = this.PVP_COMBAT_TICKS;
+    // Reset turn tick - next auto-attack will happen after full cycle
+    this.pvpTurnTick = 0;
 
+    if (isNewTarget) {
       if (window.chatManager) {
         window.chatManager.addLogMessage(`⚔️ Engaging ${playerName} in combat!`, 'combat');
       }
@@ -3220,6 +3228,14 @@ class SkillsManager {
 
   // Send a single PvP attack to server
   sendPvPAttack(playerId, playerName) {
+    // Check attack cooldown to prevent double attacks
+    const now = Date.now();
+    if (now - this.lastPvPAttackTime < this.PVP_ATTACK_COOLDOWN) {
+      console.log('PvP attack on cooldown, skipping');
+      return;
+    }
+    this.lastPvPAttackTime = now;
+
     // Check if we have any of the selected ammo
     const ammoCount = this.getItemCount(this.selectedCombatItem);
     if (ammoCount <= 0) {
@@ -3395,8 +3411,8 @@ class SkillsManager {
         this.renderCombat();
 
         // Teleport home
-        if (this.homePosition && window.game) {
-          window.game.teleportTo(this.homePosition.lat, this.homePosition.lng);
+        if (window.game && window.game.teleportHome) {
+          window.game.teleportHome();
         }
 
         this.map3d.playPlayerRespawnAnimation();
