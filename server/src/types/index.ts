@@ -126,6 +126,7 @@ export interface ServerToClientEvents {
   // NPC Combat events
   'npc:healthUpdate': (data: { npcId: string; health: number; maxHealth: number }) => void;
   'npc:attackResult': (data: { npcId: string; damage: number; didHit: boolean; npcHealth: number; npcMaxHealth: number }) => void;
+  'npc:combatEffect': (data: { attackerId: string; attackerName: string; npcId: string; npcName: string; itemKey: string; damage: number; didHit: boolean }) => void;
   'npc:attackPlayer': (data: { npcId: string; npcName: string; damage: number; playerHealth: number; playerMaxHealth: number }) => void;
   'npc:defeated': (data: { npcId: string; npcName: string; drops: string[] }) => void;
   'npc:respawned': (data: { npcId: string }) => void;

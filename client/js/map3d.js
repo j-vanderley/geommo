@@ -1608,6 +1608,36 @@ class Map3D {
     }, 300);
   }
 
+  // Show NPC combat effect for all players to see (called when receiving broadcast)
+  showNPCCombatBroadcast(attackerId, npcId, icon, damage, didHit) {
+    console.log('showNPCCombatBroadcast:', attackerId, npcId, damage, didHit);
+
+    // Get attacker (player) and target (NPC) positions
+    const attackerData = this.playerSprites.get(attackerId);
+    const npcData = this.npcSprites.get(npcId);
+
+    if (!attackerData || !npcData) {
+      console.log('Missing data for NPC combat broadcast');
+      return;
+    }
+
+    const attackerPosition = attackerData.group.position.clone();
+    const npcPosition = npcData.group.position.clone();
+
+    // Create projectile animation
+    const color = didHit ? '#ffff00' : '#888888';
+    this.createAttackProjectile(attackerPosition, npcPosition, icon, color);
+
+    // Show damage number or miss text
+    setTimeout(() => {
+      if (didHit && damage > 0) {
+        this.showDamageNumber(npcPosition, damage, '#ff4444');
+      } else {
+        this.showMissText(npcPosition);
+      }
+    }, 300);
+  }
+
   // Show "MISS" floating text
   showMissText(position) {
     const canvas = document.createElement('canvas');

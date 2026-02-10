@@ -338,6 +338,17 @@ io.on('connection', (socket) => {
       npcMaxHealth: npc.maxHealth
     });
 
+    // Broadcast combat effect to ALL players so they can see the fight
+    io.emit('npc:combatEffect', {
+      attackerId: socket.id,
+      attackerName: player.username,
+      npcId: data.npcId,
+      npcName: npc.name,
+      itemKey: data.itemKey,
+      damage,
+      didHit
+    });
+
     // Broadcast NPC health to all nearby players
     io.emit('npc:healthUpdate', {
       npcId: data.npcId,
