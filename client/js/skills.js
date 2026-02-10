@@ -3161,6 +3161,8 @@ class SkillsManager {
   initiatePlayerAttack(playerId, player) {
     const playerName = player?.username || player?.name || 'Unknown';
 
+    console.log('Initiating PvP attack on:', playerId, playerName);
+
     // Check if we have selected combat item
     if (!this.selectedCombatItem) {
       if (window.chatManager) {
@@ -3185,18 +3187,29 @@ class SkillsManager {
     // Get accuracy and max hit for server-side calculation
     const accuracy = this.getAccuracy(this.selectedCombatItem);
     const maxHit = this.getMaxHit(this.selectedCombatItem);
+    const item = this.itemTypes[this.selectedCombatItem];
 
     // Store target info for result handler
     this.lastPvPTarget = { playerId, playerName, itemKey: this.selectedCombatItem };
 
+    // Show immediate attack animation (projectile from self to target)
+    if (this.map3d) {
+      this.map3d.showPvPAttackEffect(playerId, item?.icon || '⚔️');
+    }
+
     // Send attack to server for damage calculation
     if (window.game && window.game.socket && window.game.socket.connected) {
+      console.log('Sending pvp:attack to server');
       window.game.socket.emit('pvp:attack', {
         targetId: playerId,
         itemKey: this.selectedCombatItem,
         accuracy,
         maxHit
       });
+
+      if (window.chatManager) {
+        window.chatManager.addLogMessage(`⚔️ Attacking ${playerName}...`, 'combat');
+      }
     } else {
       // Offline fallback
       if (window.chatManager) {
@@ -3216,6 +3229,19 @@ class SkillsManager {
 
     const item = this.itemTypes[target.itemKey];
 
+    // Show damage number or miss text on target
+    if (this.map3d) {
+      const targetPlayerData = this.map3d.playerSprites.get(data.targetId);
+      if (targetPlayerData) {
+        const targetPosition = targetPlayerData.group.position.clone();
+        if (data.didHit && data.damage > 0) {
+          this.map3d.showDamageNumber(targetPosition, data.damage, '#ff4444');
+        } else {
+          this.map3d.showMissText(targetPosition);
+        }
+      }
+    }
+
     if (data.didHit) {
       if (window.chatManager) {
         window.chatManager.addLogMessage(`⚔️ You hit ${target.playerName} for ${data.damage} damage! (${item?.icon || ''})`, 'combat');
@@ -3234,6 +3260,15 @@ class SkillsManager {
     // Update our health
     this.combatHealth = data.health;
     this.maxCombatHealth = data.maxHealth;
+
+    // Show damage number on self
+    if (this.map3d && data.damage > 0) {
+      const selfPlayerData = this.map3d.selfPlayerId ? this.map3d.playerSprites.get(this.map3d.selfPlayerId) : null;
+      if (selfPlayerData) {
+        const selfPosition = selfPlayerData.group.position.clone();
+        this.map3d.showDamageNumber(selfPosition, data.damage, '#ff0000');
+      }
+    }
 
     if (window.chatManager) {
       window.chatManager.addLogMessage(`💥 ${data.attackerName} hit you for ${data.damage} damage! (${this.combatHealth}/${this.maxCombatHealth} HP)`, 'damage');
@@ -3278,7 +3313,7 @@ class SkillsManager {
     this.renderSkills();
   }
 
-  // Show player inspection dialog (tooltip style)
+  // Show player inspection dialog (comprehensive view with all details)
   showPlayerInspect(player) {
     if (!player) return;
 
@@ -3286,56 +3321,142 @@ class SkillsManager {
     this.closePlayerInspect();
     this.closeNPCInspect();
 
-    // Get player's equipment display
+    // Get player's equipment display with full details
     const equipment = player.equipment || {};
-    const equipItems = [];
-    if (equipment.skin) {
-      const item = this.equipmentTypes[equipment.skin];
-      if (item) equipItems.push(`<span title="${item.name}">${item.icon}</span>`);
-    }
-    if (equipment.hat) {
-      const item = this.equipmentTypes[equipment.hat];
-      if (item) equipItems.push(`<span title="${item.name}">${item.icon}</span>`);
-    }
-    if (equipment.held) {
-      const item = this.equipmentTypes[equipment.held];
-      if (item) equipItems.push(`<span title="${item.name}">${item.icon}</span>`);
-    }
-    if (equipment.aura) {
-      const item = this.equipmentTypes[equipment.aura];
-      if (item) equipItems.push(`<span title="${item.name}">${item.icon}</span>`);
-    }
 
+    // Build detailed equipment section
+    const equipmentSlots = [
+      { key: 'skin', label: 'Skin', emptyText: 'Default' },
+      { key: 'hat', label: 'Hat', emptyText: 'None' },
+      { key: 'held', label: 'Weapon', emptyText: 'None' },
+      { key: 'aura', label: 'Aura', emptyText: 'None' }
+    ];
+
+    let equipmentHtml = '';
+    let totalAccuracyBonus = 0;
+    let totalDropBonus = 0;
+
+    equipmentSlots.forEach(slot => {
+      const itemKey = equipment[slot.key];
+      const item = itemKey ? this.equipmentTypes[itemKey] : null;
+
+      if (item) {
+        // Calculate bonuses
+        if (item.accuracyBonus) totalAccuracyBonus += item.accuracyBonus;
+        if (item.dropBonus) totalDropBonus += item.dropBonus;
+
+        // Build stat string
+        let statsStr = '';
+        if (item.accuracyBonus) statsStr += `+${item.accuracyBonus}% acc `;
+        if (item.dropBonus) statsStr += `+${item.dropBonus}% drop `;
+        if (item.particle) statsStr += `${item.particle} `;
+
+        equipmentHtml += `
+          <div class="inspect-equip-slot">
+            <span class="equip-slot-label">${slot.label}:</span>
+            <span class="equip-slot-icon" style="color:${item.color || '#fff'}">${item.icon}</span>
+            <span class="equip-slot-name">${item.name}</span>
+            ${statsStr ? `<span class="equip-slot-stats">(${statsStr.trim()})</span>` : ''}
+          </div>
+        `;
+      } else {
+        equipmentHtml += `
+          <div class="inspect-equip-slot empty">
+            <span class="equip-slot-label">${slot.label}:</span>
+            <span class="equip-slot-name" style="color:#666">${slot.emptyText}</span>
+          </div>
+        `;
+      }
+    });
+
+    // Player avatar and appearance
     const avatarText = player.avatar?.text || player.flag || ':-)';
     const avatarColor = player.avatar?.color || '#ffb000';
-    const equipHtml = equipItems.length > 0 ? equipItems.join(' ') : '<span style="color:#666">None</span>';
 
-    // Create inspect tooltip (same style as NPC inspect)
+    // Combat stats
+    const health = player.health ?? 100;
+    const maxHealth = player.maxHealth ?? 100;
+    const healthPct = Math.max(0, Math.min(100, (health / maxHealth) * 100));
+    const healthColor = healthPct > 50 ? '#44ff44' : healthPct > 25 ? '#ffaa00' : '#ff4444';
+    const combatLevel = player.combatLevel ?? this.getLevelFromXP(0);
+
+    // Create comprehensive inspect tooltip
     const inspect = document.createElement('div');
-    inspect.className = 'inspect-tooltip player-inspect';
+    inspect.className = 'inspect-tooltip player-inspect comprehensive';
     inspect.innerHTML = `
       <div class="inspect-header">
-        <span class="inspect-icon" style="color:${avatarColor}">${avatarText}</span>
+        <span class="inspect-icon" style="color:${avatarColor};font-size:28px">${avatarText}</span>
         <div class="inspect-title">
           <span class="inspect-name">${player.username}</span>
-          <span class="inspect-subtitle">Player</span>
+          <span class="inspect-subtitle">Player • Combat Lvl ${combatLevel}</span>
         </div>
         <button class="inspect-close">✕</button>
       </div>
+
       <div class="inspect-body">
-        <div class="inspect-stat-row">
-          <span class="inspect-label">🎮 Status</span>
-          <span class="inspect-value" style="color:#44ff44">Online</span>
+        <!-- Health Section -->
+        <div class="inspect-section">
+          <div class="inspect-section-title">❤️ Health</div>
+          <div class="inspect-health-bar large">
+            <div class="inspect-health-fill" style="width:${healthPct}%;background:${healthColor}"></div>
+            <span class="inspect-health-text">${health}/${maxHealth}</span>
+          </div>
         </div>
-        <div class="inspect-stat-row">
-          <span class="inspect-label">📍 Location</span>
-          <span class="inspect-value">${player.position ? `${player.position.lat.toFixed(4)}, ${player.position.lng.toFixed(4)}` : 'Unknown'}</span>
+
+        <!-- Status Section -->
+        <div class="inspect-section">
+          <div class="inspect-section-title">📋 Status</div>
+          <div class="inspect-stat-row">
+            <span class="inspect-label">🎮 Online</span>
+            <span class="inspect-value" style="color:#44ff44">✓ Active</span>
+          </div>
+          <div class="inspect-stat-row">
+            <span class="inspect-label">📍 Location</span>
+            <span class="inspect-value">${player.position ? `${player.position.lat.toFixed(4)}, ${player.position.lng.toFixed(4)}` : 'Unknown'}</span>
+          </div>
+          <div class="inspect-stat-row">
+            <span class="inspect-label">🏳️ Flag</span>
+            <span class="inspect-value">${player.flag || 'None'}</span>
+          </div>
         </div>
-        <div class="inspect-stat-row">
-          <span class="inspect-label">🛡️ Equipment</span>
-          <span class="inspect-value">${equipHtml}</span>
+
+        <!-- Equipment Section -->
+        <div class="inspect-section">
+          <div class="inspect-section-title">🛡️ Equipment</div>
+          <div class="inspect-equipment-grid">
+            ${equipmentHtml}
+          </div>
+          ${(totalAccuracyBonus > 0 || totalDropBonus > 0) ? `
+          <div class="inspect-equip-totals">
+            ${totalAccuracyBonus > 0 ? `<span class="total-stat">+${totalAccuracyBonus}% Accuracy</span>` : ''}
+            ${totalDropBonus > 0 ? `<span class="total-stat">+${totalDropBonus}% Drop Rate</span>` : ''}
+          </div>
+          ` : ''}
+        </div>
+
+        <!-- Combat Stats Section -->
+        <div class="inspect-section">
+          <div class="inspect-section-title">⚔️ Combat Stats</div>
+          <div class="inspect-stat-grid">
+            <div class="inspect-mini-stat">
+              <span class="mini-stat-icon">⚔️</span>
+              <span class="mini-stat-value">Lvl ${combatLevel}</span>
+              <span class="mini-stat-label">Combat</span>
+            </div>
+            <div class="inspect-mini-stat">
+              <span class="mini-stat-icon">🎯</span>
+              <span class="mini-stat-value">+${totalAccuracyBonus}%</span>
+              <span class="mini-stat-label">Accuracy</span>
+            </div>
+            <div class="inspect-mini-stat">
+              <span class="mini-stat-icon">🎁</span>
+              <span class="mini-stat-value">+${totalDropBonus}%</span>
+              <span class="mini-stat-label">Drop Bonus</span>
+            </div>
+          </div>
         </div>
       </div>
+
       <div class="inspect-actions">
         <button class="inspect-action-btn" data-action="goto">
           <span>📍</span> Go To

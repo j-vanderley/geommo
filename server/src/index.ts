@@ -430,6 +430,17 @@ io.on('connection', (socket) => {
       maxHealth: targetMaxHealth
     });
 
+    // Broadcast combat effect to ALL players so they can see the fight
+    io.emit('pvp:combatEffect', {
+      attackerId: socket.id,
+      attackerName: attacker.username,
+      targetId: data.targetId,
+      targetName: target.username,
+      itemKey: data.itemKey,
+      damage,
+      didHit
+    });
+
     // Broadcast health update
     io.emit('player:healthUpdated', {
       id: data.targetId,

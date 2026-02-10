@@ -5705,3 +5705,121 @@ body[class*="ui-"] .item-count {
 .inspect-action-btn span:first-child {
   font-size: 14px;
 }
+
+/* Comprehensive player inspect styles */
+.inspect-tooltip.comprehensive {
+  min-width: 300px;
+  max-width: 360px;
+}
+
+.inspect-section {
+  padding: 8px 0;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.inspect-section:last-child {
+  border-bottom: none;
+}
+
+.inspect-section-title {
+  font-size: 11px;
+  font-weight: bold;
+  color: var(--osrs-gold);
+  margin-bottom: 8px;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+}
+
+.inspect-health-bar.large {
+  max-width: none;
+  height: 18px;
+}
+
+.inspect-health-bar.large .inspect-health-text {
+  font-size: 10px;
+}
+
+.inspect-equipment-grid {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.inspect-equip-slot {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 6px;
+  background: rgba(0, 0, 0, 0.2);
+  border-radius: 4px;
+  font-size: 10px;
+}
+
+.inspect-equip-slot.empty {
+  opacity: 0.6;
+}
+
+.equip-slot-label {
+  color: #888;
+  min-width: 50px;
+}
+
+.equip-slot-icon {
+  font-size: 14px;
+}
+
+.equip-slot-name {
+  color: #ddd;
+  flex: 1;
+}
+
+.equip-slot-stats {
+  color: #88ff88;
+  font-size: 9px;
+}
+
+.inspect-equip-totals {
+  display: flex;
+  gap: 12px;
+  margin-top: 6px;
+  padding-top: 6px;
+  border-top: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.total-stat {
+  font-size: 10px;
+  color: #88ff88;
+  font-weight: bold;
+}
+
+.inspect-stat-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 8px;
+}
+
+.inspect-mini-stat {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+  padding: 6px;
+  background: rgba(0, 0, 0, 0.2);
+  border-radius: 4px;
+}
+
+.mini-stat-icon {
+  font-size: 16px;
+}
+
+.mini-stat-value {
+  font-size: 12px;
+  font-weight: bold;
+  color: #fff;
+}
+
+.mini-stat-label {
+  font-size: 8px;
+  color: #888;
+  text-transform: uppercase;
+}

@@ -1306,6 +1306,28 @@ class Geommo {
       }
     });
 
+    // Combat effect broadcast - show all PvP fights to all players
+    this.socket.on('pvp:combatEffect', (data) => {
+      // Don't show our own attacks (we already show them locally)
+      if (data.attackerId === this.socket.id) return;
+
+      // Show the combat effect to spectators
+      if (this.mapManager?.map3d) {
+        // Get item icon from skills manager
+        let icon = '⚔️';
+        if (this.mapManager.skillsManager?.itemTypes?.[data.itemKey]) {
+          icon = this.mapManager.skillsManager.itemTypes[data.itemKey].icon;
+        }
+        this.mapManager.map3d.showPvPCombatBroadcast(
+          data.attackerId,
+          data.targetId,
+          icon,
+          data.damage,
+          data.didHit
+        );
+      }
+    });
+
     this.socket.on('player:healthUpdated', (data) => {
       // Update other player's health display
       if (this.mapManager?.map3d) {

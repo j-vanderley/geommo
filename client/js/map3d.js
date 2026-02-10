@@ -1551,6 +1551,63 @@ class Map3D {
     }
   }
 
+  // Show PvP attack effect (projectile from self to target player)
+  showPvPAttackEffect(targetPlayerId, icon) {
+    console.log('showPvPAttackEffect called:', targetPlayerId, icon);
+
+    // Get self player position
+    const selfPlayerData = this.selfPlayerId ? this.playerSprites.get(this.selfPlayerId) : null;
+    if (!selfPlayerData) {
+      console.log('No self player data found');
+      return;
+    }
+
+    // Get target player position
+    const targetPlayerData = this.playerSprites.get(targetPlayerId);
+    if (!targetPlayerData) {
+      console.log('No target player data found for:', targetPlayerId);
+      return;
+    }
+
+    const selfPosition = selfPlayerData.group.position.clone();
+    const targetPosition = targetPlayerData.group.position.clone();
+
+    console.log('Creating PvP projectile from', selfPosition, 'to', targetPosition);
+
+    // Create projectile from self to target
+    this.createAttackProjectile(selfPosition, targetPosition, icon, '#ff6600');
+  }
+
+  // Show PvP combat effect for all players to see (called when receiving broadcast)
+  showPvPCombatBroadcast(attackerId, targetId, icon, damage, didHit) {
+    console.log('showPvPCombatBroadcast:', attackerId, targetId, damage, didHit);
+
+    // Get attacker and target positions
+    const attackerData = this.playerSprites.get(attackerId);
+    const targetData = this.playerSprites.get(targetId);
+
+    if (!attackerData || !targetData) {
+      console.log('Missing player data for combat broadcast');
+      return;
+    }
+
+    const attackerPosition = attackerData.group.position.clone();
+    const targetPosition = targetData.group.position.clone();
+
+    // Create projectile animation
+    const color = didHit ? '#ff6600' : '#888888';
+    this.createAttackProjectile(attackerPosition, targetPosition, icon, color);
+
+    // Show damage number or miss text
+    setTimeout(() => {
+      if (didHit && damage > 0) {
+        this.showDamageNumber(targetPosition, damage, '#ff4444');
+      } else {
+        this.showMissText(targetPosition);
+      }
+    }, 300);
+  }
+
   // Show "MISS" floating text
   showMissText(position) {
     const canvas = document.createElement('canvas');

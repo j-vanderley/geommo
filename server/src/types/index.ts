@@ -133,4 +133,5 @@ export interface ServerToClientEvents {
   'pvp:attackResult': (data: { targetId: string; damage: number; didHit: boolean; targetHealth: number; targetMaxHealth: number }) => void;
   'pvp:damaged': (data: { attackerId: string; attackerName: string; damage: number; health: number; maxHealth: number }) => void;
   'pvp:defeated': (data: { killerId: string; killerName: string }) => void;
+  'pvp:combatEffect': (data: { attackerId: string; attackerName: string; targetId: string; targetName: string; itemKey: string; damage: number; didHit: boolean }) => void;
 }
