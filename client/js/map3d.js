@@ -541,47 +541,52 @@ class Map3D {
     }
   }
 
-  // Update all HTML overlay positions (names and chat bubbles)
+  // Update all HTML overlay positions (names, health bars, and chat bubbles)
+  // Uses unified positioning to prevent jitter between overlays
   updateOverlayPositions() {
-    // Update name labels
-    this.nameLabels.forEach((labelData, playerId) => {
-      const playerData = this.playerSprites.get(playerId);
-      if (!playerData || !labelData.element) return;
-
+    // Process each player's overlays together
+    this.playerSprites.forEach((playerData, playerId) => {
+      // Calculate single screen position for this player
       const worldPos = playerData.group.position.clone();
-      worldPos.y += GAME_CONFIG.view3d.playerSpriteSize + 0.5;
+      worldPos.y += GAME_CONFIG.view3d.playerSpriteSize + 1;
 
       const screenPos = worldPos.clone().project(this.camera);
-      const x = (screenPos.x * 0.5 + 0.5) * this.container.clientWidth;
-      const y = (-screenPos.y * 0.5 + 0.5) * this.container.clientHeight;
+      const baseX = (screenPos.x * 0.5 + 0.5) * this.container.clientWidth;
+      const baseY = (-screenPos.y * 0.5 + 0.5) * this.container.clientHeight;
+      const isVisible = screenPos.z < 1;
 
-      if (screenPos.z < 1) {
-        labelData.element.style.display = 'block';
-        labelData.element.style.left = `${x}px`;
-        labelData.element.style.top = `${y}px`;
-      } else {
-        labelData.element.style.display = 'none';
+      // Update name label (at base position)
+      const labelData = this.nameLabels.get(playerId);
+      if (labelData && labelData.element) {
+        if (isVisible) {
+          labelData.element.style.display = 'block';
+          labelData.element.style.left = `${baseX}px`;
+          labelData.element.style.top = `${baseY}px`;
+        } else {
+          labelData.element.style.display = 'none';
+        }
       }
-    });
 
-    // Update chat bubbles
-    this.chatBubbles.forEach((bubble, playerId) => {
-      const playerData = this.playerSprites.get(playerId);
-      if (!playerData || !bubble.element) return;
+      // Update health bar (below name label)
+      if (playerData.healthBar && playerData.healthBar.style.display !== 'none') {
+        if (isVisible) {
+          playerData.healthBar.style.left = `${baseX}px`;
+          playerData.healthBar.style.top = `${baseY + 18}px`;
+        } else {
+          playerData.healthBar.style.display = 'none';
+        }
+      }
 
-      const worldPos = playerData.group.position.clone();
-      worldPos.y += GAME_CONFIG.view3d.playerSpriteSize + 2;
-
-      const screenPos = worldPos.clone().project(this.camera);
-      const x = (screenPos.x * 0.5 + 0.5) * this.container.clientWidth;
-      const y = (-screenPos.y * 0.5 + 0.5) * this.container.clientHeight;
-
-      if (screenPos.z < 1) {
-        bubble.element.style.display = 'block';
-        bubble.element.style.left = `${x}px`;
-        bubble.element.style.top = `${y}px`;
-      } else {
-        bubble.element.style.display = 'none';
+      // Update chat bubble (above name label)
+      const bubble = this.chatBubbles.get(playerId);
+      if (bubble && bubble.element) {
+        if (isVisible) {
+          bubble.element.style.display = 'block';
+          bubble.element.style.left = `${baseX}px`;
+          bubble.element.style.top = `${baseY - 25}px`;
+        } else {
+          bubble.element.style.display = 'none';
+        }
       }
     });
   }
@@ -669,27 +674,19 @@ class Map3D {
     // Show the health bar
     playerData.healthBar.style.display = 'block';
 
-    // Update health bar values
+    // Update health bar values (uses CSS gradient, same as NPC)
     const fill = playerData.healthBar.querySelector('.player-health-fill');
     if (fill) {
       const pct = Math.max(0, Math.min(100, (health / maxHealth) * 100));
       fill.style.width = `${pct}%`;
-      fill.style.backgroundColor = pct > 50 ? '#44ff44' : pct > 25 ? '#ffaa00' : '#ff4444';
-    }
-    const text = playerData.healthBar.querySelector('.player-health-text');
-    if (text) {
-      text.textContent = `${health}/${maxHealth}`;
     }
   }
 
-  // Create player health bar element
+  // Create player health bar element (matches NPC health bar structure)
   createPlayerHealthBar(playerId) {
     const bar = document.createElement('div');
     bar.className = 'player-health-bar';
-    bar.innerHTML = `
-      <div class="player-health-fill" style="width: 100%"></div>
-      <span class="player-health-text">100/100</span>
-    `;
+    bar.innerHTML = `<div class="player-health-fill" style="width: 100%"></div>`;
     bar.style.display = 'none'; // Hidden by default
     this.container.appendChild(bar);
     return bar;
@@ -2409,48 +2406,26 @@ class Map3D {
         tooFar = distance > maxUIDistance;
       }
 
-      // Name label position (above NPC)
-      const nameLabelPos = worldPos.clone();
-      nameLabelPos.y += 8;
-      const screenPos = nameLabelPos.project(this.camera);
-      const x = (screenPos.x * 0.5 + 0.5) * this.container.clientWidth;
-      const y = (-screenPos.y * 0.5 + 0.5) * this.container.clientHeight;
+      // Calculate single screen position for NPC (unified positioning)
+      const labelPos = worldPos.clone();
+      labelPos.y += 8;
+      const screenPos = labelPos.project(this.camera);
+      const baseX = (screenPos.x * 0.5 + 0.5) * this.container.clientWidth;
+      const baseY = (-screenPos.y * 0.5 + 0.5) * this.container.clientHeight;
 
       // Show only if in front of camera AND not too far from player
       if (screenPos.z < 1 && !tooFar) {
         npcData.nameLabel.style.display = 'block';
-        npcData.nameLabel.style.left = `${x}px`;
-        npcData.nameLabel.style.top = `${y}px`;
+        npcData.nameLabel.style.left = `${baseX}px`;
+        npcData.nameLabel.style.top = `${baseY}px`;
 
+        // Health bar directly below name label
         npcData.healthBar.style.display = 'block';
-        npcData.healthBar.style.left = `${x}px`;
-        npcData.healthBar.style.top = `${y + 5}px`;
+        npcData.healthBar.style.left = `${baseX}px`;
+        npcData.healthBar.style.top = `${baseY + 5}px`;
       } else {
         npcData.nameLabel.style.display = 'none';
         npcData.healthBar.style.display = 'none';
-      }
-    });
-
-    // Update player health bar positions
-    this.playerSprites.forEach((playerData, playerId) => {
-      if (!playerData.healthBar) return;
-      if (playerData.healthBar.style.display === 'none') return;
-
-      const worldPos = playerData.group.position.clone();
-
-      // Health bar position (above player)
-      const healthBarPos = worldPos.clone();
-      healthBarPos.y += 7;
-      const screenPos = healthBarPos.project(this.camera);
-      const x = (screenPos.x * 0.5 + 0.5) * this.container.clientWidth;
-      const y = (-screenPos.y * 0.5 + 0.5) * this.container.clientHeight;
-
-      // Show only if in front of camera
-      if (screenPos.z < 1) {
-        playerData.healthBar.style.left = `${x}px`;
-        playerData.healthBar.style.top = `${y}px`;
-      } else {
-        playerData.healthBar.style.display = 'none';
       }
     });
 

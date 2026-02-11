@@ -3287,6 +3287,12 @@ class SkillsManager {
   processPvPTurn() {
     if (!this.pvpCombatTarget) return;
 
+    // Check if we're dead - end combat
+    if (this.combatHealth <= 0) {
+      this.endPvPCombat();
+      return;
+    }
+
     // Check if we're in a safe zone - end combat if so
     if (this.playerPosition) {
       const selfSafeZone = this.isInSafeZone(this.playerPosition.lat, this.playerPosition.lng);
@@ -3315,6 +3321,23 @@ class SkillsManager {
       if (targetSafeZone) {
         if (window.chatManager) {
           window.chatManager.addLogMessage(`🛡️ ${this.pvpCombatTargetName} entered ${targetSafeZone} safe zone. Combat ended.`, 'combat');
+        }
+        this.endPvPCombat();
+        return;
+      }
+    }
+
+    // Check distance - end combat if too far apart (about 100 meters)
+    if (this.playerPosition && targetPlayer.position) {
+      const dx = targetPlayer.position.lng - this.playerPosition.lng;
+      const dy = targetPlayer.position.lat - this.playerPosition.lat;
+      // Convert to approximate meters (rough conversion at mid-latitudes)
+      const distanceMeters = Math.sqrt(dx * dx + dy * dy) * 111000;
+      const MAX_COMBAT_DISTANCE = 100; // 100 meters
+
+      if (distanceMeters > MAX_COMBAT_DISTANCE) {
+        if (window.chatManager) {
+          window.chatManager.addLogMessage(`⚔️ ${this.pvpCombatTargetName} is too far away. Combat ended.`, 'combat');
         }
         this.endPvPCombat();
         return;
@@ -3415,9 +3438,10 @@ class SkillsManager {
     // Update health display
     this.renderCombat();
 
-    // Check if dead
+    // Check if dead - end combat immediately
     if (this.combatHealth <= 0) {
-      // Will receive pvp:defeated event
+      this.endPvPCombat();
+      // Will also receive pvp:defeated event from server
     }
   }
 
