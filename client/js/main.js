@@ -1352,8 +1352,10 @@ class Geommo {
 
     // Combat effect broadcast - show all PvP fights to all players
     this.socket.on('pvp:combatEffect', (data) => {
-      // Don't show our own attacks (we already show them locally)
+      // Don't show our own attacks (we already show them via pvp:attackResult)
       if (data.attackerId === this.socket.id) return;
+      // Don't show attacks on us (we already show them via pvp:damaged)
+      if (data.targetId === this.socket.id) return;
 
       // Show the combat effect to spectators
       if (this.mapManager?.map3d) {

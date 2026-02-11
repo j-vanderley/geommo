@@ -3333,7 +3333,7 @@ class SkillsManager {
       const dy = targetPlayer.position.lat - this.playerPosition.lat;
       // Convert to approximate meters (rough conversion at mid-latitudes)
       const distanceMeters = Math.sqrt(dx * dx + dy * dy) * 111000;
-      const MAX_COMBAT_DISTANCE = 100; // 100 meters
+      const MAX_COMBAT_DISTANCE = 1000; // 1000 meters
 
       if (distanceMeters > MAX_COMBAT_DISTANCE) {
         if (window.chatManager) {
@@ -3512,6 +3512,16 @@ class SkillsManager {
     if (droppedItems.length > 0) {
       this.save();
       this.renderInventory();
+
+      // Actually drop items on the ground at player's position
+      if (this.playerPosition && this.map3d) {
+        for (const dropped of droppedItems) {
+          // Drop each item in the stack
+          for (let i = 0; i < Math.min(dropped.count, 10); i++) { // Cap at 10 visual items per stack
+            this.dropItemAtPosition(dropped.itemKey, this.playerPosition, 1.5, true);
+          }
+        }
+      }
     }
 
     return droppedItems;

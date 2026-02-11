@@ -552,7 +552,8 @@ class Map3D {
 
       const screenPos = worldPos.clone().project(this.camera);
       const baseX = (screenPos.x * 0.5 + 0.5) * this.container.clientWidth;
-      const baseY = (-screenPos.y * 0.5 + 0.5) * this.container.clientHeight;
+      // Move all overlays up by 15px
+      const baseY = (-screenPos.y * 0.5 + 0.5) * this.container.clientHeight - 15;
       const isVisible = screenPos.z < 1;
 
       // Update name label (at base position)
@@ -567,11 +568,11 @@ class Map3D {
         }
       }
 
-      // Update health bar (below name label)
+      // Update health bar (5px below name label)
       if (playerData.healthBar && playerData.healthBar.style.display !== 'none') {
         if (isVisible) {
           playerData.healthBar.style.left = `${baseX}px`;
-          playerData.healthBar.style.top = `${baseY + 18}px`;
+          playerData.healthBar.style.top = `${baseY + 5}px`;
         } else {
           playerData.healthBar.style.display = 'none';
         }
@@ -680,13 +681,22 @@ class Map3D {
       const pct = Math.max(0, Math.min(100, (health / maxHealth) * 100));
       fill.style.width = `${pct}%`;
     }
+
+    // Update health text
+    const text = playerData.healthBar.querySelector('.player-health-text');
+    if (text) {
+      text.textContent = `${health}/${maxHealth}`;
+    }
   }
 
   // Create player health bar element (matches NPC health bar structure)
   createPlayerHealthBar(playerId) {
     const bar = document.createElement('div');
     bar.className = 'player-health-bar';
-    bar.innerHTML = `<div class="player-health-fill" style="width: 100%"></div>`;
+    bar.innerHTML = `
+      <div class="player-health-fill" style="width: 100%"></div>
+      <span class="player-health-text"></span>
+    `;
     bar.style.display = 'none'; // Hidden by default
     this.container.appendChild(bar);
     return bar;
@@ -1170,6 +1180,9 @@ class Map3D {
       latLng: { lat: position.lat, lng: position.lng }
     });
 
+    // Initialize health bar text
+    this.updateNPCHealth(npc.id, npc.health, npc.maxHealth);
+
     // Make NPC clickable
     group.userData = { type: 'npc', npcId: npc.id };
 
@@ -1191,7 +1204,10 @@ class Map3D {
   createNPCHealthBar(npcId) {
     const bar = document.createElement('div');
     bar.className = 'npc-health-bar';
-    bar.innerHTML = `<div class="npc-health-fill" style="width: 100%"></div>`;
+    bar.innerHTML = `
+      <div class="npc-health-fill" style="width: 100%"></div>
+      <span class="npc-health-text"></span>
+    `;
     this.container.appendChild(bar);
     return bar;
   }
@@ -1307,6 +1323,12 @@ class Map3D {
       if (percent > 60) fill.style.background = '#4CAF50';
       else if (percent > 30) fill.style.background = '#ffcc00';
       else fill.style.background = '#f44336';
+    }
+
+    // Update health text
+    const text = npcData.healthBar.querySelector('.npc-health-text');
+    if (text) {
+      text.textContent = `${health}/${maxHealth}`;
     }
   }
 

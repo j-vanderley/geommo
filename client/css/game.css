@@ -875,14 +875,14 @@ body {
 .npc-health-bar {
   position: absolute;
   width: 80px;
-  height: 8px;
+  height: 12px;
   background: rgba(0, 0, 0, 0.8);
   border: 1px solid #444;
   border-radius: 4px;
   transform: translate(-50%, 0);
   pointer-events: none;
   z-index: 160;
-  overflow: hidden;
+  overflow: visible;
 }
 
 .npc-health-fill {
@@ -892,18 +892,31 @@ body {
   border-radius: 3px;
 }
 
+.npc-health-text {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  font-size: 9px;
+  font-weight: bold;
+  color: #fff;
+  text-shadow: 1px 1px 1px #000, -1px -1px 1px #000, 1px -1px 1px #000, -1px 1px 1px #000;
+  white-space: nowrap;
+  font-family: 'Courier New', monospace;
+}
+
 /* Player Health Bar (shown during PvP combat) - matches NPC health bar style */
 .player-health-bar {
   position: absolute;
   width: 80px;
-  height: 8px;
+  height: 12px;
   background: rgba(0, 0, 0, 0.8);
   border: 1px solid #444;
   border-radius: 4px;
   transform: translate(-50%, 0);
   pointer-events: none;
   z-index: 160;
-  overflow: hidden;
+  overflow: visible;
 }
 
 .player-health-fill {
@@ -914,7 +927,16 @@ body {
 }
 
 .player-health-text {
-  display: none;
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  font-size: 9px;
+  font-weight: bold;
+  color: #fff;
+  text-shadow: 1px 1px 1px #000, -1px -1px 1px #000, 1px -1px 1px #000, -1px 1px 1px #000;
+  white-space: nowrap;
+  font-family: 'Courier New', monospace;
 }
 
 /* Chat Bubbles for 3D View */
