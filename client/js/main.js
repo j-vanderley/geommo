@@ -1380,6 +1380,41 @@ class Geommo {
         this.mapManager.map3d.updatePlayerHealth(data.id, data.health, data.maxHealth);
       }
     });
+
+    // Player death broadcast - show death animation for all players
+    this.socket.on('pvp:playerDied', (data) => {
+      // Don't handle our own death here (we handle it in pvp:defeated)
+      if (data.playerId === this.socket.id) return;
+
+      // Show death animation for the dying player
+      if (this.mapManager?.map3d) {
+        this.mapManager.map3d.playDeathAnimationFor(data.playerId);
+      }
+
+      // Log the death
+      if (window.chatManager) {
+        window.chatManager.addLogMessage(`💀 ${data.playerName} was defeated by ${data.killerName}!`, 'combat');
+      }
+    });
+
+    // Items dropped from PvP death - show on ground for attackers
+    this.socket.on('pvp:itemsDropped', (data) => {
+      if (!data.position || !data.items || data.items.length === 0) return;
+
+      // Create visual items on the ground
+      if (this.mapManager?.skillsManager) {
+        for (const dropped of data.items) {
+          // Drop each item in the stack (cap visual items)
+          for (let i = 0; i < Math.min(dropped.count, 5); i++) {
+            this.mapManager.skillsManager.dropItemAtPosition(dropped.itemKey, data.position, 1.5, true);
+          }
+        }
+
+        if (window.chatManager) {
+          window.chatManager.addLogMessage(`📦 Enemy dropped loot nearby!`, 'item');
+        }
+      }
+    });
   }
 
   // Set current position as home

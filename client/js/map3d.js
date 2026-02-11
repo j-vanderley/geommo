@@ -1494,14 +1494,19 @@ class Map3D {
     return npcData.group.position.clone();
   }
 
-  // Play player death animation (fade out and sink)
+  // Play player death animation (fade out and sink) - for self
   playPlayerDeathAnimation(callback) {
-    if (!this.selfPlayerId) {
+    this.playDeathAnimationFor(this.selfPlayerId, callback);
+  }
+
+  // Play death animation for any player by ID
+  playDeathAnimationFor(playerId, callback) {
+    if (!playerId) {
       if (callback) callback();
       return;
     }
 
-    const playerData = this.playerSprites.get(this.selfPlayerId);
+    const playerData = this.playerSprites.get(playerId);
     if (!playerData) {
       if (callback) callback();
       return;
@@ -1510,6 +1515,8 @@ class Map3D {
     const duration = 1200; // 1.2 seconds
     const startTime = Date.now();
     const startY = playerData.group.position.y;
+    const originalOpacity = playerData.sprite?.material?.opacity || 1;
+    const originalScale = playerData.sprite?.scale?.x || GAME_CONFIG.view3d.playerSpriteSize;
 
     const animateDeath = () => {
       const elapsed = Date.now() - startTime;
@@ -1517,7 +1524,7 @@ class Map3D {
 
       // Fade out sprite
       if (playerData.sprite && playerData.sprite.material) {
-        playerData.sprite.material.opacity = 1 - progress;
+        playerData.sprite.material.opacity = originalOpacity * (1 - progress);
       }
 
       // Sink into ground and spin
@@ -1528,8 +1535,8 @@ class Map3D {
       const scale = 1 - progress * 0.5;
       if (playerData.sprite) {
         playerData.sprite.scale.set(
-          GAME_CONFIG.view3d.playerSpriteSize * scale,
-          GAME_CONFIG.view3d.playerSpriteSize * scale,
+          originalScale * scale,
+          originalScale * scale,
           1
         );
       }
@@ -1537,11 +1544,41 @@ class Map3D {
       if (progress < 1) {
         requestAnimationFrame(animateDeath);
       } else {
+        // Reset for respawn if this is another player
+        if (playerId !== this.selfPlayerId) {
+          setTimeout(() => {
+            this.resetPlayerAfterDeath(playerId);
+          }, 1000);
+        }
         if (callback) callback();
       }
     };
 
     animateDeath();
+  }
+
+  // Reset a player's appearance after death animation
+  resetPlayerAfterDeath(playerId) {
+    const playerData = this.playerSprites.get(playerId);
+    if (!playerData) return;
+
+    // Reset opacity
+    if (playerData.sprite && playerData.sprite.material) {
+      playerData.sprite.material.opacity = 1;
+    }
+
+    // Reset scale
+    if (playerData.sprite) {
+      playerData.sprite.scale.set(
+        GAME_CONFIG.view3d.playerSpriteSize,
+        GAME_CONFIG.view3d.playerSpriteSize,
+        1
+      );
+    }
+
+    // Reset position and rotation
+    playerData.group.position.y = 0;
+    playerData.group.rotation.y = 0;
   }
 
   // Play player respawn animation (drop from sky)
@@ -1865,9 +1902,9 @@ class Map3D {
     animateProjectile();
   }
 
-  // Create impact particle effect
+  // Create impact particle effect (larger and colored based on ammo)
   createImpactEffect(position, color) {
-    const particleCount = 15;
+    const particleCount = 30; // More particles for bigger effect
     const geometry = new THREE.BufferGeometry();
     const positions = new Float32Array(particleCount * 3);
     const velocities = [];
@@ -1877,11 +1914,11 @@ class Map3D {
       positions[i * 3 + 1] = position.y;
       positions[i * 3 + 2] = position.z;
 
-      // Random outward velocity
+      // Random outward velocity - faster and wider spread
       velocities.push({
-        x: (Math.random() - 0.5) * 0.3,
-        y: Math.random() * 0.2,
-        z: (Math.random() - 0.5) * 0.3
+        x: (Math.random() - 0.5) * 0.6,
+        y: Math.random() * 0.4 + 0.1,
+        z: (Math.random() - 0.5) * 0.6
       });
     }
 
@@ -1889,7 +1926,7 @@ class Map3D {
 
     const material = new THREE.PointsMaterial({
       color: new THREE.Color(color),
-      size: 0.3,
+      size: 0.8, // Larger particles
       transparent: true,
       opacity: 1
     });
@@ -1899,7 +1936,7 @@ class Map3D {
 
     // Animate particles
     const startTime = Date.now();
-    const duration = 500;
+    const duration = 600; // Slightly longer duration
 
     const animateParticles = () => {
       const elapsed = Date.now() - startTime;
@@ -1911,7 +1948,7 @@ class Map3D {
           posArray[i * 3] += velocities[i].x;
           posArray[i * 3 + 1] += velocities[i].y;
           posArray[i * 3 + 2] += velocities[i].z;
-          velocities[i].y -= 0.01; // gravity
+          velocities[i].y -= 0.015; // gravity
         }
         particles.geometry.attributes.position.needsUpdate = true;
         material.opacity = 1 - progress;

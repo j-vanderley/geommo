@@ -3466,6 +3466,13 @@ class SkillsManager {
       if (window.chatManager) {
         window.chatManager.addLogMessage(`📦 You dropped ${droppedItems.length} item stacks!`, 'death');
       }
+
+      // Report dropped items to server so attackers can see them
+      if (window.game && window.game.socket) {
+        window.game.socket.emit('pvp:reportDeath', {
+          items: droppedItems
+        });
+      }
     }
 
     // Play death animation and respawn

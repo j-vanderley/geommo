@@ -26,6 +26,40 @@ const chatManager = new ChatManager(playerManager);
 const npcManager = new NPCManager();
 const worldManager = new WorldManager(playerManager, npcManager);
 
+// Track recent damage for death drops (playerId -> Map<attackerId, timestamp>)
+const recentDamage = new Map<string, Map<string, number>>();
+const DAMAGE_TRACKING_DURATION = 60000; // 60 seconds
+
+// Record damage from attacker to target
+function recordDamage(targetId: string, attackerId: string) {
+  if (!recentDamage.has(targetId)) {
+    recentDamage.set(targetId, new Map());
+  }
+  recentDamage.get(targetId)!.set(attackerId, Date.now());
+}
+
+// Get recent attackers (within last 60 seconds)
+function getRecentAttackers(targetId: string): string[] {
+  const attackers = recentDamage.get(targetId);
+  if (!attackers) return [];
+
+  const now = Date.now();
+  const recentAttackerIds: string[] = [];
+
+  attackers.forEach((timestamp, attackerId) => {
+    if (now - timestamp < DAMAGE_TRACKING_DURATION) {
+      recentAttackerIds.push(attackerId);
+    }
+  });
+
+  return recentAttackerIds;
+}
+
+// Clear damage tracking for a player
+function clearDamageTracking(playerId: string) {
+  recentDamage.delete(playerId);
+}
+
 // Safe zones - city teleport locations where PvP is disabled
 const SAFE_ZONES = [
   { name: 'Paris', lat: 48.8566, lng: 2.3522 },
@@ -476,11 +510,26 @@ io.on('connection', (socket) => {
       maxHealth: targetMaxHealth
     });
 
+    // Record damage for drop tracking
+    if (damage > 0) {
+      recordDamage(data.targetId, socket.id);
+    }
+
     // Check if target is defeated
     if (targetHealth <= 0) {
+      // Send defeat event to the dying player
       io.to(data.targetId).emit('pvp:defeated', {
         killerId: socket.id,
         killerName: attacker.username
+      });
+
+      // Broadcast death to ALL players so they can see death animation
+      io.emit('pvp:playerDied', {
+        playerId: data.targetId,
+        playerName: target.username,
+        killerId: socket.id,
+        killerName: attacker.username,
+        position: target.position
       });
 
       // Reset target health after short delay (respawn)
@@ -496,6 +545,32 @@ io.on('connection', (socket) => {
       console.log(`PvP: ${attacker.username} defeated ${target.username}!`);
     } else {
       console.log(`PvP: ${attacker.username} hit ${target.username} for ${damage} damage (${targetHealth}/${targetMaxHealth} HP)`);
+    }
+  });
+
+  // Report death with dropped items - broadcast to recent attackers
+  socket.on('pvp:reportDeath', (data) => {
+    const player = playerManager.getPlayer(socket.id);
+    if (!player) return;
+
+    // Get attackers from last 60 seconds
+    const attackerIds = getRecentAttackers(socket.id);
+
+    // Clear damage tracking for this player
+    clearDamageTracking(socket.id);
+
+    // Broadcast dropped items to all recent attackers
+    if (data.items && data.items.length > 0 && attackerIds.length > 0) {
+      const dropData = {
+        position: player.position,
+        items: data.items
+      };
+
+      attackerIds.forEach(attackerId => {
+        io.to(attackerId).emit('pvp:itemsDropped', dropData);
+      });
+
+      console.log(`PvP: ${player.username} dropped ${data.items.length} item types for ${attackerIds.length} attackers`);
     }
   });
 
