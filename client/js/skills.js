@@ -3265,7 +3265,7 @@ class SkillsManager {
 
     // Show immediate attack animation (projectile from self to target)
     if (this.map3d) {
-      this.map3d.showPvPAttackEffect(playerId, item?.icon || '⚔️');
+      this.map3d.showPvPAttackEffect(playerId, item?.icon || '⚔️', this.selectedCombatItem);
     }
 
     // Send attack to server for damage calculation
@@ -3407,14 +3407,8 @@ class SkillsManager {
     this.combatHealth = data.health;
     this.maxCombatHealth = data.maxHealth;
 
-    // Show damage number on self
-    if (this.map3d && data.damage > 0) {
-      const selfPlayerData = this.map3d.selfPlayerId ? this.map3d.playerSprites.get(this.map3d.selfPlayerId) : null;
-      if (selfPlayerData) {
-        const selfPosition = selfPlayerData.group.position.clone();
-        this.map3d.showDamageNumber(selfPosition, data.damage, '#ff0000');
-      }
-    }
+    // Damage number and projectile are shown via pvp:combatEffect broadcast
+    // so we don't need to show them here (avoids double damage numbers)
 
     if (window.chatManager) {
       window.chatManager.addLogMessage(`💥 ${data.attackerName} hit you for ${data.damage} damage! (${this.combatHealth}/${this.maxCombatHealth} HP)`, 'damage');
@@ -4085,9 +4079,9 @@ class SkillsManager {
 
     if (this.map3d) {
       if (didHit) {
-        this.map3d.showCombatEffect('player_attack', npcId, item?.icon || '⚔️', damage);
+        this.map3d.showCombatEffect('player_attack', npcId, item?.icon || '⚔️', damage, this.selectedCombatItem);
       } else {
-        this.map3d.showCombatEffect('player_miss', npcId, '💨', 0);
+        this.map3d.showCombatEffect('player_miss', npcId, '💨', 0, this.selectedCombatItem);
       }
       this.map3d.updateNPCHealth(npcId, Math.max(0, npc.health), npc.maxHealth);
     }
@@ -4124,9 +4118,9 @@ class SkillsManager {
     // Show attack particle effect
     if (this.map3d) {
       if (data.didHit) {
-        this.map3d.showCombatEffect('player_attack', data.npcId, item?.icon || '⚔️', data.damage);
+        this.map3d.showCombatEffect('player_attack', data.npcId, item?.icon || '⚔️', data.damage, this.selectedCombatItem);
       } else {
-        this.map3d.showCombatEffect('player_miss', data.npcId, '💨', 0);
+        this.map3d.showCombatEffect('player_miss', data.npcId, '💨', 0, this.selectedCombatItem);
       }
       this.map3d.updateNPCHealth(data.npcId, data.npcHealth, data.npcMaxHealth);
     }
@@ -4213,7 +4207,7 @@ class SkillsManager {
 
     // Show attack particle effect
     if (this.map3d) {
-      this.map3d.showCombatEffect('npc_attack', npcId, attackItem?.icon || '💀', damage);
+      this.map3d.showCombatEffect('npc_attack', npcId, attackItem?.icon || '💀', damage, attackItemKey);
     }
 
     // Broadcast NPC attack to other players via server

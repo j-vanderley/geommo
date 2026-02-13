@@ -1304,7 +1304,8 @@ class Geommo {
           data.npcId,
           icon,
           data.damage,
-          data.didHit
+          data.didHit,
+          data.itemKey
         );
       }
     });
@@ -1326,7 +1327,8 @@ class Geommo {
           data.playerId,
           icon,
           data.damage,
-          data.didHit
+          data.didHit,
+          data.itemKey
         );
       }
     });
@@ -1352,12 +1354,10 @@ class Geommo {
 
     // Combat effect broadcast - show all PvP fights to all players
     this.socket.on('pvp:combatEffect', (data) => {
-      // Don't show our own attacks (we already show them via pvp:attackResult)
+      // Don't show our own attacks (we already show them locally via showPvPAttackEffect)
       if (data.attackerId === this.socket.id) return;
-      // Don't show attacks on us (we already show them via pvp:damaged)
-      if (data.targetId === this.socket.id) return;
 
-      // Show the combat effect to spectators
+      // Show the combat effect - both for the target (incoming projectile) and spectators
       if (this.mapManager?.map3d) {
         // Get item icon from skills manager
         let icon = '⚔️';
@@ -1369,7 +1369,8 @@ class Geommo {
           data.targetId,
           icon,
           data.damage,
-          data.didHit
+          data.didHit,
+          data.itemKey
         );
       }
     });

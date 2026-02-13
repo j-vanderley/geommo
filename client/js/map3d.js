@@ -1637,8 +1637,33 @@ class Map3D {
     animateRespawn();
   }
 
+  // Get projectile color based on ammo/item type
+  getAmmoColor(itemKey) {
+    const colors = {
+      cloudwisp: '#aabbcc',
+      raindrop: '#4488ff',
+      sunstone: '#ffaa00',
+      snowflake: '#cceeff',
+      mistessence: '#9966ff',
+      lightningshard: '#ffff00',
+      shadow_essence: '#6600aa',
+      dark_fragment: '#330066',
+      ember_shard: '#ff4400',
+      flame_core: '#ff8800',
+      ancient_bark: '#228b22',
+      living_vine: '#44cc44',
+      crystal_shard: '#00ffff',
+      prismatic_gem: '#ff00ff',
+      wind_fragment: '#c2b280',
+      storm_dust: '#aa8844',
+      frost_shard: '#88ddff',
+      frozen_heart: '#b0e0e6',
+    };
+    return colors[itemKey] || '#ff6600';
+  }
+
   // Show combat visual effect (attack particles and damage numbers)
-  showCombatEffect(type, npcId, icon, damage) {
+  showCombatEffect(type, npcId, icon, damage, itemKey) {
     const npcData = this.npcSprites.get(npcId);
     if (!npcData) return;
 
@@ -1651,7 +1676,8 @@ class Map3D {
 
     if (type === 'player_attack') {
       // Player attacking NPC - projectile from player to NPC
-      this.createAttackProjectile(playerPosition, npcPosition, icon, '#ffff00');
+      const color = itemKey ? this.getAmmoColor(itemKey) : '#ffff00';
+      this.createAttackProjectile(playerPosition, npcPosition, icon, color);
       // Show damage number on NPC
       setTimeout(() => {
         this.showDamageNumber(npcPosition, damage, '#ff4444');
@@ -1674,8 +1700,8 @@ class Map3D {
   }
 
   // Show PvP attack effect (projectile from self to target player)
-  showPvPAttackEffect(targetPlayerId, icon) {
-    console.log('showPvPAttackEffect called:', targetPlayerId, icon);
+  showPvPAttackEffect(targetPlayerId, icon, itemKey) {
+    console.log('showPvPAttackEffect called:', targetPlayerId, icon, itemKey);
 
     // Get self player position
     const selfPlayerData = this.selfPlayerId ? this.playerSprites.get(this.selfPlayerId) : null;
@@ -1696,13 +1722,14 @@ class Map3D {
 
     console.log('Creating PvP projectile from', selfPosition, 'to', targetPosition);
 
-    // Create projectile from self to target
-    this.createAttackProjectile(selfPosition, targetPosition, icon, '#ff6600');
+    // Create projectile from self to target, colored by ammo type
+    const color = itemKey ? this.getAmmoColor(itemKey) : '#ff6600';
+    this.createAttackProjectile(selfPosition, targetPosition, icon, color);
   }
 
   // Show PvP combat effect for all players to see (called when receiving broadcast)
-  showPvPCombatBroadcast(attackerId, targetId, icon, damage, didHit) {
-    console.log('showPvPCombatBroadcast:', attackerId, targetId, damage, didHit);
+  showPvPCombatBroadcast(attackerId, targetId, icon, damage, didHit, itemKey) {
+    console.log('showPvPCombatBroadcast:', attackerId, targetId, damage, didHit, itemKey);
 
     // Get attacker and target positions
     const attackerData = this.playerSprites.get(attackerId);
@@ -1716,8 +1743,8 @@ class Map3D {
     const attackerPosition = attackerData.group.position.clone();
     const targetPosition = targetData.group.position.clone();
 
-    // Create projectile animation
-    const color = didHit ? '#ff6600' : '#888888';
+    // Create projectile animation - colored by ammo type
+    const color = didHit ? (itemKey ? this.getAmmoColor(itemKey) : '#ff6600') : '#888888';
     this.createAttackProjectile(attackerPosition, targetPosition, icon, color);
 
     // Show damage number or miss text
@@ -1731,8 +1758,8 @@ class Map3D {
   }
 
   // Show NPC combat effect for all players to see (called when receiving broadcast)
-  showNPCCombatBroadcast(attackerId, npcId, icon, damage, didHit) {
-    console.log('showNPCCombatBroadcast:', attackerId, npcId, damage, didHit);
+  showNPCCombatBroadcast(attackerId, npcId, icon, damage, didHit, itemKey) {
+    console.log('showNPCCombatBroadcast:', attackerId, npcId, damage, didHit, itemKey);
 
     // Get attacker (player) and target (NPC) positions
     const attackerData = this.playerSprites.get(attackerId);
@@ -1746,8 +1773,8 @@ class Map3D {
     const attackerPosition = attackerData.group.position.clone();
     const npcPosition = npcData.group.position.clone();
 
-    // Create projectile animation
-    const color = didHit ? '#ffff00' : '#888888';
+    // Create projectile animation - colored by ammo type
+    const color = didHit ? (itemKey ? this.getAmmoColor(itemKey) : '#ffff00') : '#888888';
     this.createAttackProjectile(attackerPosition, npcPosition, icon, color);
 
     // Show damage number or miss text
@@ -1761,8 +1788,8 @@ class Map3D {
   }
 
   // Show NPC attacking player effect for all players to see (called when receiving broadcast)
-  showNPCAttackPlayerBroadcast(npcId, playerId, icon, damage, didHit) {
-    console.log('showNPCAttackPlayerBroadcast:', npcId, playerId, damage, didHit);
+  showNPCAttackPlayerBroadcast(npcId, playerId, icon, damage, didHit, itemKey) {
+    console.log('showNPCAttackPlayerBroadcast:', npcId, playerId, damage, didHit, itemKey);
 
     // Get NPC and target player positions
     const npcData = this.npcSprites.get(npcId);
@@ -1776,8 +1803,8 @@ class Map3D {
     const npcPosition = npcData.group.position.clone();
     const playerPosition = playerData.group.position.clone();
 
-    // Create projectile animation from NPC to player
-    const color = didHit ? '#ff0000' : '#888888';
+    // Create projectile animation from NPC to player - colored by ammo type or NPC color
+    const color = didHit ? (itemKey ? this.getAmmoColor(itemKey) : '#ff0000') : '#888888';
     this.createAttackProjectile(npcPosition, playerPosition, icon, color);
 
     // Show damage number or miss text on player
